@@ -11,7 +11,7 @@ function ChangePassword() {
     const user = JSON.parse(localStorage.getItem('user'));
 
     useEffect(() => {
-        document.title = "Change Password | TASKFLOW";
+        document.title = "Đổi Mật Khẩu | TASKFLOW";
     }, []);
 
     const handleSubmit = async (e) => {
@@ -19,7 +19,7 @@ function ChangePassword() {
         setMessage({ type: '', text: '' });
 
         if (newPassword !== confirmPassword) {
-            setMessage({ type: 'error', text: 'New password and confirmation do not match!' });
+            setMessage({ type: 'error', text: 'Mật khẩu mới và xác nhận mật khẩu không khớp!' });
             return;
         }
 
@@ -46,10 +46,10 @@ function ChangePassword() {
             const data = await response.json();
 
             if (!response.ok) {
-                setMessage({ type: 'error', text: data.message || 'Update failed!' });
+                setMessage({ type: 'error', text: data.message || 'Cập nhật mật khẩu thất bại!' });
                 return;
             }
-            setMessage({ type: 'success', text: 'Password updated successfully!' });
+            setMessage({ type: 'success', text: 'Mật khẩu đã được cập nhật thành công!' });
             setOldPassword('');
             setNewPassword('');
             setConfirmPassword('');
@@ -72,10 +72,10 @@ return (
     <div className="password-container">
         <div className="password-settings-layout">
             <div className="password-card-header">
-                <h3>Update Password</h3>
-                <p>Ensure your account is using a long, random password to stay secure.</p>
+                <h3>Đổi Mật Khẩu</h3>
+                <p>Đảm bảo tài khoản của bạn đang sử dụng mật khẩu dài và ngẫu nhiên để giữ an toàn.</p>
                 <p style={{ marginTop: '12px', fontSize: '13px' }}>
-                    Use a minimum of 8 characters including letters, numbers and special characters for optimal security.
+                    Sử dụng tối thiểu 8 ký tự bao gồm chữ cái, số và ký tự đặc biệt để đảm bảo an toàn tối ưu.
                 </p>
             </div>
 
@@ -88,47 +88,47 @@ return (
                 
                 <form onSubmit={handleSubmit}>
                     <div className="form-group">
-                        <label className="form-label" htmlFor="current-password">Current Password</label>
+                        <label className="form-label" htmlFor="current-password">Mật khẩu hiện tại</label>
                         <input 
                             type="password" 
                             id="current-password" 
                             className="form-input" 
                             required 
-                            placeholder="Enter current password"
+                            placeholder="Nhập mật khẩu hiện tại"
                             value={oldPassword}
                             onChange={(e) => setOldPassword(e.target.value)}
                         />
                     </div>
                     
                     <div className="form-group">
-                        <label className="form-label" htmlFor="new-password">New Password</label>
+                        <label className="form-label" htmlFor="new-password">Mật khẩu mới</label>
                         <input 
                             type="password" 
                             id="new-password" 
                             className="form-input" 
                             required 
-                            placeholder="Enter new password"
+                            placeholder="Nhập mật khẩu mới"
                             value={newPassword}
                             onChange={(e) => setNewPassword(e.target.value)}
                         />
                     </div>
                     
                     <div className="form-group">
-                        <label className="form-label" htmlFor="confirm-password">Confirm New Password</label>
+                        <label className="form-label" htmlFor="confirm-password">Xác nhận Mật khẩu Mới</label>
                         <input 
                             type="password" 
                             id="confirm-password" 
                             className="form-input" 
                             required 
-                            placeholder="Re-enter new password"
+                            placeholder="Xác nhận mật khẩu mới"
                             value={confirmPassword}
                             onChange={(e) => setConfirmPassword(e.target.value)}
                         />
                     </div>
                     
                     <div className="form-actions">
-                        <button type="button" className="btn-secondary" onClick={handleCancel}>Cancel</button>
-                        <button type="submit" className="btn-primary">Save Changes</button>
+                        <button type="button" className="btn-secondary" onClick={handleCancel}>Hủy</button>
+                        <button type="submit" className="btn-primary">Lưu Thay Đổi</button>
                     </div>
                 </form>
             </div>
