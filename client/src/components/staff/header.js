@@ -16,41 +16,44 @@ function Header() {
     return (
         <>
         <aside className="sidebar">
-            <div className="sidebar-logo"><h1>TASKFLOW</h1></div>
+             <div className="sidebar-logo-box">
+                <img src="/favicon.svg" alt="TaskFlow Logo" className="sidebar-logo-img" />
+                <h1 className="sidebar-logo-text">TASKFLOW</h1>
+            </div>
             <nav className="sidebar-nav">
                 <NavLink to="/staff/dashboard" className="nav-item">
                     <svg className="nav-icon" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M4 6a2 2 0 012-2h2a2 2 0 012 2v4a2 2 0 01-2 2H6a2 2 0 01-2-2V6zM14 6a2 2 0 012-2h2a2 2 0 012 2v4a2 2 0 01-2 2h-2a2 2 0 01-2-2V6zM4 16a2 2 0 012-2h2a2 2 0 012 2v4a2 2 0 01-2 2H6a2 2 0 01-2-2v-4zM14 16a2 2 0 012-2h2a2 2 0 012 2v4a2 2 0 01-2 2h-2a2 2 0 01-2-2v-4z"></path>
                     </svg>
-                    <span className="nav-text">Dashboard</span>
+                    <span className="nav-text">Tổng Quan</span>
                 </NavLink>
     
                 <NavLink to="/staff/events" className="nav-item">
                     <svg className="nav-icon" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M5 5a2 2 0 012-2h10a2 2 0 012 2v16l-7-3.5L5 21V5z"></path>
                     </svg>
-                    <span className="nav-text">My Events</span>
-                </NavLink>
+                    <span className="nav-text">Sự kiện của tôi</span>
+                    </NavLink>
     
                 <NavLink to="/staff/tasks" className="nav-item">
                     <svg className="nav-icon" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-6 9l2 2 4-4"></path>
                     </svg>
-                    <span className="nav-text">My Tasks</span>
+                    <span className="nav-text">Công việc của tôi</span>
                 </NavLink>
 
                 <NavLink to="/staff/calendar" className="nav-item">
                     <svg className="nav-icon" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"></path>
                     </svg>
-                    <span className="nav-text">Calendar</span>
+                    <span className="nav-text">Lịch làm việc</span>
                 </NavLink>
 
                 <NavLink to="/staff/messages" className="nav-item">
                     <svg className="nav-icon" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z"></path>
                     </svg>
-                    <span className="nav-text">Messages</span>
+                    <span className="nav-text">Tin nhắn</span>
                 </NavLink>
             </nav>
         </aside>
@@ -74,10 +77,10 @@ function Header() {
 
                         {isDropdownOpen && (
                             <div className="dropdown-menu" style={{ display: 'block', position: 'absolute', top: '100%', right: 0, zIndex: 100 }}>
-                                <Link to="/staff/profile" className="dropdown-item">My Account</Link>
-                                <Link to="/staff/changepassword" className="dropdown-item">Change Password</Link>
+                                <Link to="/staff/profile" className="dropdown-item">Tài khoản của tôi</Link>
+                                <Link to="/staff/changepassword" className="dropdown-item">Đổi mật khẩu</Link>
                                 <hr className="dropdown-divider" />
-                                <a onClick={handleSignOut} className="dropdown-item text-error">Sign Out</a>
+                                <a onClick={handleSignOut} className="dropdown-item text-error">Đăng xuất</a>
                             </div>
                         )}
                     </div>

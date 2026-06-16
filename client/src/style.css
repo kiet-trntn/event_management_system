@@ -53,8 +53,13 @@ body {
 
 /* 4. MAIN LAYOUT (SIDEBAR & MAIN CONTENT) */
 .sidebar { position: fixed; top: 0; left: 0; width: var(--sidebar-width); height: 100vh; background-color: var(--card-bg); border-right: 1px solid var(--border-neutral); display: flex; flex-direction: column; z-index: 20; }
-.sidebar-logo { height: var(--header-height); display: flex; align-items: center; padding: 0 24px; border-bottom: 1px solid var(--border-neutral); }
-.sidebar-logo h1 { font-size: 24px; font-weight: 700; color: var(--primary-color); }
+
+/* 🌟 ĐÃ THAY THẾ CỤM LOGO MỚI VÀO ĐÂY */
+.sidebar-logo-box { height: var(--header-height); display: flex; align-items: center; gap: 12px; padding: 0 24px; border-bottom: 1px solid var(--border-neutral); box-sizing: border-box; }
+.sidebar-logo-img { width: 32px; height: 32px; object-fit: contain; border-radius: 8px; }
+.sidebar-logo-text { font-size: 22px; font-weight: 900; letter-spacing: 1.5px; color: var(--primary-color); margin: 0; }
+/* ---------------------------------- */
+
 .sidebar-nav { flex: 1; padding: 24px 16px; }
 .nav-item { display: flex; align-items: center; padding: 12px 24px; font-size: 16px; color: var(--text-secondary); text-decoration: none; border-radius: 8px; margin-bottom: 8px; transition: all 0.2s; }
 .nav-item:hover, .nav-item.active { background-color: var(--primary-light); color: var(--primary-color); }

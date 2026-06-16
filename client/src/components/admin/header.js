@@ -17,26 +17,29 @@ function Header() {
     return (
         <>
         <aside className="sidebar">
-            <div className="sidebar-logo"><h1>TASKFLOW</h1></div>
+            <div className="sidebar-logo-box">
+                <img src="/favicon.svg" alt="TaskFlow Logo" className="sidebar-logo-img" />
+                <h1 className="sidebar-logo-text">TASKFLOW</h1>
+            </div>
             <nav className="sidebar-nav">
                     <NavLink to="/admin/event" className="nav-item">
                         <svg className="nav-icon" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"></path></svg>
-                        <span className="nav-text">Event Management</span>
+                        <span className="nav-text">Quản Lý Sự Kiện</span>
                     </NavLink>
                     
                     <NavLink to="/admin/tasks" className="nav-item">
                         <svg className="nav-icon" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-6 9l2 2 4-4"></path></svg>
-                        <span className="nav-text">Task Oversight</span>
+                        <span className="nav-text">Quản Lý Công Việc</span>
                     </NavLink>
                     
                     <NavLink to="/admin/users" className="nav-item">
                         <svg className="nav-icon" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M13 7a4 4 0 11-8 0 4 4 0 018 0z"></path></svg>
-                        <span className="nav-text">Members & Perms</span>
+                        <span className="nav-text">Thành Viên & Quyền Hạn</span>
                     </NavLink>
                     
                     <NavLink to="/admin/reports" className="nav-item">
                         <svg className="nav-icon" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 002 2h2a2 2 0 002-2z"></path></svg>
-                        <span className="nav-text">Reports</span>
+                        <span className="nav-text">Báo Cáo</span>
                     </NavLink>
                 </nav>
         </aside>
@@ -60,9 +63,9 @@ function Header() {
 
                         {isDropdownOpen && (
                             <div className="dropdown-menu" style={{ display: 'block', position: 'absolute', top: '100%', right: 0, zIndex: 100 }}>
-                                <Link to="/admin/changepassword" className="dropdown-item">Change Password</Link>
+                                <Link to="/admin/changepassword" className="dropdown-item">Đổi Mật Khẩu</Link>
                                 <hr className="dropdown-divider" />
-                                <a onClick={handleSignOut} className="dropdown-item text-error">Sign Out</a>
+                                <a onClick={handleSignOut} className="dropdown-item text-error">Đăng Xuất</a>
                             </div>
                         )}
                     </div>

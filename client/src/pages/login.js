@@ -8,7 +8,7 @@ function Login() {
     const navigate = useNavigate();
 
     useEffect(() => {
-      document.title = "Login | TOOF";
+      document.title = "Đăng Nhập  | TOOF";
         const user = JSON.parse(localStorage.getItem('user'));
         if (user) {
             if (user.role === 'admin') {
@@ -68,8 +68,10 @@ function Login() {
         </div>
         <div className="form-card">
           <div className="text-center mb-6">
-            <h2 className="font-semibold text-lg mb-2">Welcome Back</h2>
-            <p className="text-secondary text-sm">Please enter your details to sign in.</p>
+            <h1 className="text-3xl font-bold tracking-tight text-gray-900 mb-2">
+              Đăng Nhập
+            </h1>
+            <p className="text-secondary text-sm">Vui lòng nhập thông tin của bạn để đăng nhập.</p>
           </div>
           {error && (
             <div className="alert-message error" style={{ textAlign: 'center' }}>
@@ -104,10 +106,10 @@ function Login() {
             </div>
 
             <div className="disclaimer-text">
-              By signing in, you agree to our Terms & Privacy Policy.
+              Bằng cách đăng nhập, bạn đồng ý với các Điều khoản & Chính sách Bảo mật của chúng tôi.
             </div>
             
-            <button type="submit" className="btn-submit">Sign In</button>
+            <button type="submit" className="btn-submit">Đăng Nhập</button>
             
           </form>
         </div>
