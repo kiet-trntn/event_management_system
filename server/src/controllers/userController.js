@@ -1,6 +1,25 @@
 const db = require("../config/db"); // Gọi file kết nối db
 const bcrypt = require("bcrypt"); // Gọi thư viện mã hóa mật khẩu
 
+const getAllUsers = async (req, res) => {
+    try {
+        // Thực hiện câu lệnh SQL để lấy các thông tin cần thiết của toàn bộ người dùng từ bảng 'users'
+        // Không lấy cột 'password' để đảm bảo an toàn bảo mật
+        const [users] = await db.query('SELECT id, full_name, email, role, created_at FROM users ORDER BY id DESC');
+
+        // Trả về danh sách người dùng dưới dạng JSON
+        res.json(users);
+    } catch (error) {
+        // In lỗi ra màn hình Terminal của Server để dễ dàng theo dõi và xử lý
+        console.log(error);
+
+        // Nếu lỗi hệ thống trả về 500 kèm nội dung lỗi
+        res.status(500).json({
+            message: error.message || "Đã xảy ra lỗi khi lấy danh sách người dùng"
+        });
+    }
+}
+
 const createUser = async (req, res) => {
     try {
 
@@ -74,5 +93,6 @@ const createUser = async (req, res) => {
 }
 
 module.exports = {
+    getAllUsers,
     createUser
 }
