@@ -1,6 +1,45 @@
 const db = require("../config/db"); // Gọi file kết nối db
 const bcrypt = require("bcrypt"); // Gọi thư viện mã hóa mật khẩu
 
+const getAllUsers = async (req, res) => {
+    try {
+        // Thực hiện câu lệnh SQL để lấy các thông tin cần thiết của toàn bộ người dùng từ bảng 'users'
+        // Không lấy cột 'password' để đảm bảo an toàn bảo mật
+        const [users] = await db.query('SELECT id, full_name, email, role, created_at FROM users ORDER BY id DESC');
+
+        // Trả về danh sách người dùng dưới dạng JSON
+        res.json(users);
+    } catch (error) {
+        // In lỗi ra màn hình Terminal của Server để dễ dàng theo dõi và xử lý
+        console.log(error);
+
+        // Nếu lỗi hệ thống trả về 500 kèm nội dung lỗi
+        res.status(500).json({
+            message: error.message || "Đã xảy ra lỗi khi lấy danh sách người dùng"
+        });
+    }
+}
+
+const getUserById = async (req, res) => {
+    try {
+        const { id } = req.params; // Lấy id người dùng từ tham số đường dẫn
+        const [users] = await db.query('SELECT id, full_name, email, role, created_at FROM users WHERE id = ?', [id]); // Truy vấn người dùng theo id
+
+        if (users.length === 0) {
+            return res.status(404).json({
+                message: "Không tìm thấy thành viên"
+            });
+        }
+
+        res.json(users[0]);
+    } catch (error) {
+        console.log(error);
+        res.status(500).json({
+            message: error.message || "Đã xảy ra lỗi khi lấy thông tin người dùng"
+        });
+    }
+}
+
 const createUser = async (req, res) => {
     try {
 
@@ -73,6 +112,109 @@ const createUser = async (req, res) => {
     }
 }
 
+const updateUser = async (req, res) => {
+    try {
+        const { id } = req.params; // Lấy id người dùng từ tham số đường dẫn
+
+        const {
+            full_name,
+            email,
+            role
+        } = req.body;
+
+        // Kiểm tra user có tồn tại
+        const [users] = await db.query('SELECT * FROM users WHERE id = ?', [id]);
+
+        // Nếu không tìm thấy user nào có id tương ứng thì trả về lỗi 404
+        if (users.length === 0) {
+            return res.status(404).json({
+                message: "Không tìm thấy thành viên"
+            });
+        }
+
+        // Kiểm tra rỗng
+        if (!full_name || !email) {
+            return res.status(400).json({
+                message: "Vui lòng nhập đầy đủ thông tin"
+            });
+        }
+
+        // Kiểm tra email hợp lệ
+        const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+        if (!emailRegex.test(email)) {
+            return res.status(400).json({
+                message: "Email không hợp lệ"
+            });
+        }
+
+        // Kiểm tra role hợp lệ
+        if (
+            role &&
+            role !== "admin" &&
+            role !== "employee"
+        ) {
+            return res.status(400).json({
+                message: "Role không hợp lệ"
+            });
+        }
+
+        // Kiểm tra email trùng
+        const [existingUser] = await db.query("SELECT * FROM users WHERE email = ? AND id != ?", [email, id]);
+        if (existingUser.length > 0) {
+            return res.status(400).json({
+                message: "Email đã tồn tại"
+            });
+        }
+
+        // Cập nhật thông tin người dùng trong database
+        await db.query("UPDATE users SET full_name = ?, email = ?, role = ? WHERE id = ?", [full_name, email, role, id]);
+        res.json({
+            message: "Thông tin thành viên đã được cập nhật thành công"
+        });
+    } catch (error) {
+        console.log(error);
+        res.status(500).json({
+            message: error.message || "Đã xảy ra lỗi khi cập nhật thông tin thành viên"
+        });
+    }
+}
+
+const deleteUser = async (req, res) => {
+    try {
+        const { id } = req.params; // Lấy id người dùng từ tham số đường dẫn
+
+        // Kiểm tra user có tồn tại
+        const [users] = await db.query('SELECT * FROM users WHERE id = ?', [id]);
+
+        if (users.length === 0) {
+            return res.status(404).json({
+                message: "Không tìm thấy thành viên"
+            });
+        }
+
+        if (req.user.id == id) {
+            return res.status(400).json({
+                message: "Không thể xóa chính mình"
+            });
+        }
+
+        // Xóa người dùng khỏi database
+        await db.query("DELETE FROM users WHERE id = ?", [id]);
+        res.json({
+            message: "Thành viên đã được xóa thành công"
+        });
+    } catch (error) {
+        console.log(error);
+        res.status(500).json({
+            message: error.message || "Đã xảy ra lỗi khi xóa thành viên"
+        });
+    }
+}
+
 module.exports = {
-    createUser
+    getAllUsers,
+    getUserById,
+    createUser,
+    updateUser,
+    deleteUser
 }
