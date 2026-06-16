@@ -179,9 +179,42 @@ const updateUser = async (req, res) => {
     }
 }
 
+const deleteUser = async (req, res) => {
+    try {
+        const { id } = req.params; // Lấy id người dùng từ tham số đường dẫn
+
+        // Kiểm tra user có tồn tại
+        const [users] = await db.query('SELECT * FROM users WHERE id = ?', [id]);
+
+        if (users.length === 0) {
+            return res.status(404).json({
+                message: "Không tìm thấy thành viên"
+            });
+        }
+
+        if (req.user.id == id) {
+            return res.status(400).json({
+                message: "Không thể xóa chính mình"
+            });
+        }
+
+        // Xóa người dùng khỏi database
+        await db.query("DELETE FROM users WHERE id = ?", [id]);
+        res.json({
+            message: "Thành viên đã được xóa thành công"
+        });
+    } catch (error) {
+        console.log(error);
+        res.status(500).json({
+            message: error.message || "Đã xảy ra lỗi khi xóa thành viên"
+        });
+    }
+}
+
 module.exports = {
     getAllUsers,
     getUserById,
     createUser,
-    updateUser
+    updateUser,
+    deleteUser
 }
