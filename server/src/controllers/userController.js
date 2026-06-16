@@ -112,8 +112,76 @@ const createUser = async (req, res) => {
     }
 }
 
+const updateUser = async (req, res) => {
+    try {
+        const { id } = req.params; // Lấy id người dùng từ tham số đường dẫn
+
+        const {
+            full_name,
+            email,
+            role
+        } = req.body;
+
+        // Kiểm tra user có tồn tại
+        const [users] = await db.query('SELECT * FROM users WHERE id = ?', [id]);
+
+        // Nếu không tìm thấy user nào có id tương ứng thì trả về lỗi 404
+        if (users.length === 0) {
+            return res.status(404).json({
+                message: "Không tìm thấy thành viên"
+            });
+        }
+
+        // Kiểm tra rỗng
+        if (!full_name || !email) {
+            return res.status(400).json({
+                message: "Vui lòng nhập đầy đủ thông tin"
+            });
+        }
+
+        // Kiểm tra email hợp lệ
+        const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+        if (!emailRegex.test(email)) {
+            return res.status(400).json({
+                message: "Email không hợp lệ"
+            });
+        }
+
+        // Kiểm tra role hợp lệ
+        if (
+            role &&
+            role !== "admin" &&
+            role !== "employee"
+        ) {
+            return res.status(400).json({
+                message: "Role không hợp lệ"
+            });
+        }
+
+        // Kiểm tra email trùng
+        const [existingUser] = await db.query("SELECT * FROM users WHERE email = ? AND id != ?", [email, id]);
+        if (existingUser.length > 0) {
+            return res.status(400).json({
+                message: "Email đã tồn tại"
+            });
+        }
+
+        // Cập nhật thông tin người dùng trong database
+        await db.query("UPDATE users SET full_name = ?, email = ?, role = ? WHERE id = ?", [full_name, email, role, id]);
+        res.json({
+            message: "Thông tin thành viên đã được cập nhật thành công"
+        });
+    } catch (error) {
+        console.log(error);
+        res.status(500).json({
+            message: error.message || "Đã xảy ra lỗi khi cập nhật thông tin thành viên"
+        });
+    }
+}
+
 module.exports = {
     getAllUsers,
     getUserById,
-    createUser
+    createUser,
+    updateUser
 }
