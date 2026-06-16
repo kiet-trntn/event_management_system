@@ -20,6 +20,26 @@ const getAllUsers = async (req, res) => {
     }
 }
 
+const getUserById = async (req, res) => {
+    try {
+        const { id } = req.params; // Lấy id người dùng từ tham số đường dẫn
+        const [users] = await db.query('SELECT id, full_name, email, role, created_at FROM users WHERE id = ?', [id]); // Truy vấn người dùng theo id
+
+        if (users.length === 0) {
+            return res.status(404).json({
+                message: "Không tìm thấy thành viên"
+            });
+        }
+
+        res.json(users[0]);
+    } catch (error) {
+        console.log(error);
+        res.status(500).json({
+            message: error.message || "Đã xảy ra lỗi khi lấy thông tin người dùng"
+        });
+    }
+}
+
 const createUser = async (req, res) => {
     try {
 
@@ -94,5 +114,6 @@ const createUser = async (req, res) => {
 
 module.exports = {
     getAllUsers,
+    getUserById,
     createUser
 }
