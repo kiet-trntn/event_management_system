@@ -1,11 +1,13 @@
 import React from 'react';
-import { BrowserRouter , Router, Routes, Route, Navigate } from 'react-router-dom';
+import { BrowserRouter , Routes, Route, Navigate } from 'react-router-dom';
 
 import Login from './pages/login';
-import ProtectedRouter from './ProtectedRouter';
+import ProtectedRouter from './components/ProtectedRouter';
 import AdminHeader from './components/admin/header';
 import StaffHeader from './components/staff/header';
 import ChangePassword from './pages/changepassword';
+import MembersList from './pages/admin/member/MembersList';
+import AddMember from './pages/admin/member/AddMember';
 
 function App() {
   return (
@@ -23,6 +25,8 @@ function App() {
           }
         >
           <Route path="changepassword" element={<ChangePassword />} />
+          <Route path="members" element={<MembersList />} />
+          <Route path="members/add" element={<AddMember />} />
         </Route>
 
         <Route 

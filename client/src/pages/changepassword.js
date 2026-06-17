@@ -68,74 +68,77 @@ function ChangePassword() {
         }
     };
 
-return (
-    <div className="password-container">
-        <div className="password-settings-layout">
-            <div className="password-card-header">
-                <h3>Đổi Mật Khẩu</h3>
-                <p>Đảm bảo tài khoản của bạn đang sử dụng mật khẩu dài và ngẫu nhiên để giữ an toàn.</p>
-                <p style={{ marginTop: '12px', fontSize: '13px' }}>
-                    Sử dụng tối thiểu 8 ký tự bao gồm chữ cái, số và ký tự đặc biệt để đảm bảo an toàn tối ưu.
-                </p>
-            </div>
-
-            <div className="password-fields-wrapper">
-                {message.text && (
-                    <div className={`alert-message ${message.type}`}>
-                        {message.text}
-                    </div>
-                )}
+    return (
+        <div className="page-container">
+            <div className="password-settings-layout">
                 
-                <form onSubmit={handleSubmit}>
-                    <div className="form-group">
-                        <label className="form-label" htmlFor="current-password">Mật khẩu hiện tại</label>
-                        <input 
-                            type="password" 
-                            id="current-password" 
-                            className="form-input" 
-                            required 
-                            placeholder="Nhập mật khẩu hiện tại"
-                            value={oldPassword}
-                            onChange={(e) => setOldPassword(e.target.value)}
-                        />
-                    </div>
-                    
-                    <div className="form-group">
-                        <label className="form-label" htmlFor="new-password">Mật khẩu mới</label>
-                        <input 
-                            type="password" 
-                            id="new-password" 
-                            className="form-input" 
-                            required 
-                            placeholder="Nhập mật khẩu mới"
-                            value={newPassword}
-                            onChange={(e) => setNewPassword(e.target.value)}
-                        />
-                    </div>
-                    
-                    <div className="form-group">
-                        <label className="form-label" htmlFor="confirm-password">Xác nhận Mật khẩu Mới</label>
-                        <input 
-                            type="password" 
-                            id="confirm-password" 
-                            className="form-input" 
-                            required 
-                            placeholder="Xác nhận mật khẩu mới"
-                            value={confirmPassword}
-                            onChange={(e) => setConfirmPassword(e.target.value)}
-                        />
-                    </div>
-                    
-                    <div className="form-actions">
-                        <button type="button" className="btn-secondary" onClick={handleCancel}>Hủy</button>
-                        <button type="submit" className="btn-primary">Lưu Thay Đổi</button>
-                    </div>
-                </form>
-            </div>
+                {/* --- CỘT TRÁI: TEXT --- */}
+                <div className="password-card-header">
+                    <h3>Đổi Mật Khẩu</h3>
+                    <p>Đảm bảo tài khoản của bạn đang sử dụng mật khẩu dài và ngẫu nhiên để giữ an toàn.</p>
+                    <p style={{ marginTop: '12px', fontSize: '13px' }}>
+                        Sử dụng tối thiểu 8 ký tự bao gồm chữ cái, số và ký tự đặc biệt để đảm bảo an toàn tối ưu.
+                    </p>
+                </div>
 
+                {/* --- CỘT PHẢI: FORM --- */}
+                <div className="form-card">
+                    {message.text && (
+                        <div className={`alert-message ${message.type}`}>
+                            {message.text}
+                        </div>
+                    )}
+                    
+                    <form onSubmit={handleSubmit}>
+                        <div className="form-group">
+                            <label className="form-label" htmlFor="current-password">Mật khẩu hiện tại</label>
+                            <input 
+                                type="password" 
+                                id="current-password" 
+                                className="form-input" 
+                                required 
+                                placeholder="Nhập mật khẩu hiện tại"
+                                value={oldPassword}
+                                onChange={(e) => setOldPassword(e.target.value)}
+                            />
+                        </div>
+                        
+                        <div className="form-group">
+                            <label className="form-label" htmlFor="new-password">Mật khẩu mới</label>
+                            <input 
+                                type="password" 
+                                id="new-password" 
+                                className="form-input" 
+                                required 
+                                placeholder="Nhập mật khẩu mới"
+                                value={newPassword}
+                                onChange={(e) => setNewPassword(e.target.value)}
+                            />
+                        </div>
+                        
+                        <div className="form-group">
+                            <label className="form-label" htmlFor="confirm-password">Xác nhận Mật khẩu Mới</label>
+                            <input 
+                                type="password" 
+                                id="confirm-password" 
+                                className="form-input" 
+                                required 
+                                placeholder="Xác nhận mật khẩu mới"
+                                value={confirmPassword}
+                                onChange={(e) => setConfirmPassword(e.target.value)}
+                            />
+                        </div>
+                        
+                        <div className="form-actions">
+                            <button type="button" className="btn-secondary" onClick={handleCancel}>Hủy</button>
+                            <button type="submit" className="btn-primary">Lưu Thay Đổi</button>
+                        </div>
+                    </form>
+                </div>
+
+            </div>
         </div>
-    </div>
-);
+    );
 }
 
 export default ChangePassword;
