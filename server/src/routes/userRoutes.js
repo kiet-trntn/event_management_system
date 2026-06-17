@@ -1,7 +1,14 @@
 const express = require("express"); // Gọi thư viện Express để dùng các tính năng web
 const router = express.Router(); // Tạo một đối tượng Router để định nghĩa các đường dẫn (API)
 
-const { getAllUsers, getUserById, createUser, updateUser, deleteUser } = require("../controllers/userController"); // Import hàm createUser từ userController
+const { 
+    getAllUsers, 
+    getUserById, 
+    createUser, 
+    updateUser,
+    updateStatus,
+    deleteUser 
+} = require("../controllers/userController"); // Import hàm createUser từ userController
 
 //  Gọi các "người gác cổng" (Middleware) để bảo mật đường dẫn
 const authMiddleware = require("../middlewares/authMiddleware"); // Middleware kiểm tra đã đăng nhập chưa
@@ -37,6 +44,14 @@ router.put(
     authMiddleware,         // Bước 1: Kiểm tra xem đã đăng nhập chưa
     roleMiddleware("admin"),// Bước 2: Kiểm tra xem có phải là "admin" không
     updateUser              // Bước 3: Nếu vượt qua 2 bước trên thì gọi hàm updateUser để xử lý logic cập nhật thông tin người dùng
+);
+
+// CẬP NHẬT TRẠNG THÁI: Đường dẫn cập nhật trạng thái người dùng (Chỉ Admin mới được phép cập nhật trạng thái người dùng)
+router.put(
+    "/:id/status",
+    authMiddleware,
+    roleMiddleware("admin"),
+    updateStatus
 );
 
 // XÓA: Đường dẫn xóa người dùng (Chỉ Admin mới được phép xóa người dùng)

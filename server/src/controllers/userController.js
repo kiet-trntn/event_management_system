@@ -5,7 +5,16 @@ const getAllUsers = async (req, res) => {
     try {
         // Thực hiện câu lệnh SQL để lấy các thông tin cần thiết của toàn bộ người dùng từ bảng 'users'
         // Không lấy cột 'password' để đảm bảo an toàn bảo mật
-        const [users] = await db.query('SELECT id, full_name, email, role, created_at FROM users ORDER BY id DESC');
+        const [users] = await db.query(`
+            SELECT 
+                id, 
+                full_name, 
+                email, 
+                role, 
+                status, 
+                created_at 
+            FROM users 
+            ORDER BY id DESC`);
 
         // Trả về danh sách người dùng dưới dạng JSON
         res.json(users);
@@ -96,7 +105,17 @@ const createUser = async (req, res) => {
         const hashedPassword = await bcrypt.hash(password, 10); // 10 là số lần băm (salt rounds)
 
         // Lưu thông tin thành viên mới vào database
-        await db.query("INSERT INTO users (full_name, email, password, role) VALUES (?, ?, ?, ?)", [full_name, email, hashedPassword, role]); // role mặc định sẽ là employee nếu không được cung cấp
+        await db.query(`
+            INSERT INTO users (
+        full_name, email, password, role, status) 
+            VALUES (?, ?, ?, ?, ?)`, 
+            [
+                full_name, 
+                email, 
+                hashedPassword,
+                role || "employee",
+                "active"
+            ]); // role mặc định sẽ là employee nếu không được cung cấp
 
         // Trả về thông báo thành công (Status 201 - Đã tạo mới thành công)
         res.status(201).json({
@@ -119,7 +138,7 @@ const updateUser = async (req, res) => {
         const {
             full_name,
             email,
-            role
+            role,
         } = req.body;
 
         // Kiểm tra user có tồn tại
@@ -179,6 +198,52 @@ const updateUser = async (req, res) => {
     }
 }
 
+const updateStatus = async (req, res) => {
+    try {
+        const { id } = req.params;
+        const { status } = req.body;
+
+        // Kiểm tra status hợp lệ
+        if (
+            status !== "active" &&
+            status !== "inactive"
+        ) {
+            return res.status(400).json({
+                message: "Status không hợp lệ"
+            });
+        }
+
+        // Kiểm tra user tồn tại
+        const [users] = await db.query(
+            "SELECT * FROM users WHERE id = ?",
+            [id]
+        );
+
+        if (users.length === 0) {
+            return res.status(404).json({
+                message: "Không tìm thấy thành viên"
+            });
+        }
+
+        // Cập nhật status
+        await db.query(
+            "UPDATE users SET status = ? WHERE id = ?",
+            [status, id]
+        );
+
+        res.json({
+            message: "Cập nhật trạng thái thành công"
+        });
+
+    } catch (error) {
+        console.log(error);
+
+        res.status(500).json({
+            message: error.message
+        });
+    }
+};
+
 const deleteUser = async (req, res) => {
     try {
         const { id } = req.params; // Lấy id người dùng từ tham số đường dẫn
@@ -216,5 +281,6 @@ module.exports = {
     getUserById,
     createUser,
     updateUser,
+    updateStatus,
     deleteUser
 }

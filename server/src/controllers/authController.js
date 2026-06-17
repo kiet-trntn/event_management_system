@@ -38,14 +38,14 @@ const login = async (req, res) => {
         // Lấy thông tin đăng nhập từ body của request
         const { email, password } = req.body;
 
-        // 1. Kiểm tra rỗng: Nếu thiếu email hoặc password thì dừng lại và báo lỗi
+        // Kiểm tra rỗng: Nếu thiếu email hoặc password thì dừng lại và báo lỗi
         if (!email || !password) {
             return res.status(400).json({
                 message: "Vui lòng nhập đầy đủ email và mật khẩu"
             });
         }
 
-        // 2. Kiểm tra định dạng email bằng biểu thức chính quy (Regex)
+        // Kiểm tra định dạng email bằng biểu thức chính quy (Regex)
         const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
         if (!emailRegex.test(email)) {
@@ -54,7 +54,7 @@ const login = async (req, res) => {
             });
         }
 
-        // 3. Kiểm tra email trong database: Tìm xem có user nào trùng email không
+        // Kiểm tra email trong database: Tìm xem có user nào trùng email không
         const [users] = await db.query(
             "SELECT * FROM users WHERE email = ?",
             [email]
@@ -67,7 +67,7 @@ const login = async (req, res) => {
             });
         }
 
-        // 4. Kiểm tra mật khẩu
+        // Kiểm tra mật khẩu
         const user = users[0]; // Lấy ra phần tử user đầu tiên tìm thấy
 
         // So sánh mật khẩu text thô (người dùng nhập) với mật khẩu đã mã hóa (trong db)
@@ -75,7 +75,7 @@ const login = async (req, res) => {
             password,
             user.password
         );
-
+        
         // Nếu mật khẩu không khớp, trả về lỗi 401 (Unauthorized)
         if (!match) {
             return res.status(401).json({
