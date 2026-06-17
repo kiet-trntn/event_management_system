@@ -66,6 +66,7 @@ function MembersList() {
                     <tr>
                         <th>HỌ VÀ TÊN</th>
                         <th>VAI TRÒ</th>
+                        <th>TRẠNG THÁI</th>
                         <th>HÀNH ĐỘNG</th>
                     </tr>
                 </thead>
@@ -95,10 +96,16 @@ function MembersList() {
                                 <td>
                                     {member.role === 'admin' ? 'Quản trị viên' : 'Nhân viên'}
                                 </td>
+
+                                <td>
+                                     <span className={`status-badge ${member.status === 'active' ? 'status-active' : 'status-inactive'}`}>
+                                            {member.status === 'active' ? 'Hoạt động' : 'Đã khóa'}
+                                    </span>
+                                </td>
                                 
                                 <td>
-                                    <button className="btn-view" >Xem</button>
-                                    <button className="btn-edit" >Sửa</button>
+                                    <button className="btn-view"  >Xem</button>
+                                    <button className="btn-edit" onClick={() => navigate(`/admin/members/edit/${member.id}`)}>Sửa</button>
                                     <button className="btn-delete">Xóa</button>
                                 </td>
                             </tr>

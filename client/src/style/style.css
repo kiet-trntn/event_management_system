@@ -412,6 +412,38 @@ body {
     border-color: #93c5fd;
 }
 
+.status-badge {
+
+    padding: 4px 12px;
+
+    border-radius: 20px;
+
+    font-size: 12px;
+
+    font-weight: 600;
+
+    display: inline-block;
+
+    text-align: center;
+
+}.status-active {
+
+    background-color: #DEF7EC; /* Xanh nhạt */
+
+    color: #03543F; /* Chữ xanh đậm */
+
+    border: 1px solid #BCF0DA;
+
+}.status-inactive {
+
+    background-color: #FDE8E8; /* Đỏ nhạt */
+
+    color: #9B1C1C; /* Chữ đỏ thẫm */
+
+    border: 1px solid #F8B4B4;
+
+}
+
 /* 8. CÁC THÔNG BÁO LỖI VÀ THÀNH CÔNG */
 .alert-message { 
     padding: 12px 16px; 

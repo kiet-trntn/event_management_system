@@ -1,49 +1,74 @@
-import React, { useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import React, { useState, useEffect } from 'react';
+import { useNavigate, useParams } from 'react-router-dom';
 
-function AddMember() {
+function EditMember() {
+    const { id } = useParams(); 
     const navigate = useNavigate();
+    
     const [formData, setFormData] = useState({ 
         full_name: '', 
         email: '', 
-        password: '', 
-        role: 'employee',
+        role: 'employee', 
         status: 'active'
     });
+    const [loading, setLoading] = useState(true);
+
+    useEffect(() => {
+        const fetchMember = async () => {
+            try {
+                const response = await fetch(`http://localhost:5000/api/users/${id}`, {
+                    headers: { 'Authorization': `Bearer ${localStorage.getItem('my_token')}` }
+                });
+                const data = await response.json();
+                
+                if (response.ok) {
+                    setFormData({
+                        full_name: data.full_name,
+                        email: data.email,
+                        role: data.role,
+                        status: data.status
+                    });
+                }
+            } catch (error) {
+                console.error('Lỗi tải dữ liệu:', error);
+            } finally {
+                setLoading(false);
+            }
+        };
+        fetchMember();
+    }, [id]);
 
     const handleSubmit = async (e) => {
         e.preventDefault();
         try {
-            await fetch('http://localhost:5000/api/users', {
-                method: 'POST',
+            await fetch(`http://localhost:5000/api/users/${id}`, {
+                method: 'PUT',
                 headers: { 
                     'Content-Type': 'application/json',
                     'Authorization': `Bearer ${localStorage.getItem('my_token')}`
                 },
                 body: JSON.stringify(formData)
             });
-            navigate('/admin/members');
+            navigate('/admin/members'); 
         } catch (error) {
-            console.error(error);
+            console.error('Lỗi khi cập nhật:', error);
         }
     };
+
+    if (loading) {
+        return <div className="page-container text-center">Đang tải dữ liệu...</div>;
+    }
 
     return (
         <div className="page-container">
             
-            {/* Header Form thẳng tắp */}
             <div className="page-header-form">
                 <button type="button" className="btn-back" onClick={() => navigate(-1)}>
-                    {/* Icon mũi tên xịn thay cho &larr; */}
-                    <svg width="18" height="18" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth="2">
-                        <path strokeLinecap="round" strokeLinejoin="round" d="M10 19l-7-7m0 0l7-7m-7 7h18"></path>
-                    </svg>
-                    Quay lại
+                    &larr; Quay lại
                 </button>
-                <h3>Thêm thành viên mới</h3>
+                <h3>Sửa thông tin thành viên</h3>
             </div>
 
-            {/* Khung Form nhập liệu */}
             <div className="form-card">
                 <form onSubmit={handleSubmit}>
                     
@@ -53,6 +78,7 @@ function AddMember() {
                             className="form-input" 
                             type="text"
                             required 
+                            value={formData.full_name}
                             onChange={e => setFormData({...formData, full_name: e.target.value})} 
                         />
                     </div>
@@ -63,17 +89,8 @@ function AddMember() {
                             className="form-input" 
                             type="email" 
                             required 
+                            value={formData.email}
                             onChange={e => setFormData({...formData, email: e.target.value})} 
-                        />
-                    </div>
-                    
-                    <div className="form-group">
-                        <label className="form-label">Mật khẩu tạm thời</label>
-                        <input 
-                            className="form-input" 
-                            type="password" 
-                            required 
-                            onChange={e => setFormData({...formData, password: e.target.value})} 
                         />
                     </div>
                     
@@ -88,6 +105,7 @@ function AddMember() {
                             <option value="admin">Quản trị viên</option>
                         </select>
                     </div>
+
                     <div className="form-group">
                         <label className="form-label">Trạng thái tài khoản</label>
                             <select 
@@ -99,12 +117,13 @@ function AddMember() {
                                 <option value="inactive">Khóa / Tạm dừng</option>
                              </select>
                     </div>
+                    
                     <div className="form-actions">
                         <button type="button" className="btn-secondary" onClick={() => navigate(-1)}>
                             Hủy
                         </button>
                         <button type="submit" className="btn-primary">
-                            Lưu thành viên
+                            Cập nhật thay đổi
                         </button>
                     </div>
                     
@@ -115,4 +134,4 @@ function AddMember() {
     );
 }
 
-export default AddMember;
+export default EditMember;

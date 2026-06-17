@@ -8,6 +8,7 @@ import StaffHeader from './components/staff/header';
 import ChangePassword from './pages/changepassword';
 import MembersList from './pages/admin/member/MembersList';
 import AddMember from './pages/admin/member/AddMember';
+import EditMember from './pages/admin/member/EditMember';
 
 function App() {
   return (
@@ -27,6 +28,7 @@ function App() {
           <Route path="changepassword" element={<ChangePassword />} />
           <Route path="members" element={<MembersList />} />
           <Route path="members/add" element={<AddMember />} />
+          <Route path="members/edit/:id" element={<EditMember />} />
         </Route>
 
         <Route 
