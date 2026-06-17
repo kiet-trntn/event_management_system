@@ -7,8 +7,7 @@ function AddMember() {
         full_name: '', 
         email: '', 
         password: '', 
-        role: 'employee',
-        status: 'active'
+        role: 'employee'
     });
 
     const handleSubmit = async (e) => {
@@ -88,17 +87,6 @@ function AddMember() {
                             <option value="admin">Quản trị viên</option>
                         </select>
                     </div>
-                    <div className="form-group">
-                        <label className="form-label">Trạng thái tài khoản</label>
-                            <select 
-                                className="form-input" 
-                                value={formData.status}
-                                onChange={e => setFormData({...formData, status: e.target.value})}
-                            >
-                                <option value="active">Hoạt động</option>
-                                <option value="inactive">Khóa / Tạm dừng</option>
-                             </select>
-                    </div>
                     <div className="form-actions">
                         <button type="button" className="btn-secondary" onClick={() => navigate(-1)}>
                             Hủy
@@ -107,7 +95,6 @@ function AddMember() {
                             Lưu thành viên
                         </button>
                     </div>
-                    
                 </form>
             </div>
             

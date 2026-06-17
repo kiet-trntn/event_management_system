@@ -389,29 +389,73 @@ body {
 
 .data-table th:first-child, .data-table td:first-child { text-align: left; }
 
-.btn-edit { padding: 6px 12px; border: 1px solid #d1d5db; border-radius: 6px; background-color: #ffffff; color: #374151; font-size: 13px; font-weight: 500; cursor: pointer; margin-right: 8px; transition: all 0.2s ease; }
-.btn-delete { padding: 6px 12px; border: 1px solid #fee2e2; border-radius: 6px; background-color: #fff5f5; color: #dc2626; font-size: 13px; font-weight: 500; cursor: pointer; transition: all 0.2s ease; }
-.btn-edit:hover { background: #f9fafb !important; border-color: #9ca3af !important; }
-.btn-delete:hover { background: #fee2e2 !important; border-color: #fca5a5 !important; }
-
-.btn-view {
-    padding: 6px 12px;
+/* =========================================================
+   ĐỊNH DẠNG CHUNG CHO 4 NÚT ICON (HÌNH VUÔNG)
+   ========================================================= */
+.btn-view, .btn-edit, .btn-delete, .btn-restore {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 32px;
+    height: 32px;
+    padding: 0; /* Xóa chữ nên trả padding về 0 để thành hình vuông */
     border-radius: 6px;
+    cursor: pointer;
+    transition: all 0.2s ease;
+}
+
+/* Khoảng cách giữa các nút */
+.btn-view, .btn-edit {
+    margin-right: 8px;
+}
+
+/* =========================================================
+   MÀU SẮC TỪNG NÚT (Giữ nguyên hệ màu cũ của bạn)
+   ========================================================= */
+
+/* 1. Nút Xem (Màu xanh dương) */
+.btn-view {
     border: 1px solid #bfdbfe;     
     background-color: #eff6ff;     
     color: #3b82f6;                
-    font-size: 13px;
-    font-weight: 500;
-    cursor: pointer;
-    margin-right: 8px;             
-    transition: all 0.2s ease;     
 }
-
 .btn-view:hover {
     background-color: #dbeafe;
     border-color: #93c5fd;
 }
 
+/* 2. Nút Sửa (Màu xám) */
+.btn-edit { 
+    border: 1px solid #d1d5db; 
+    background-color: #ffffff; 
+    color: #374151; 
+}
+.btn-edit:hover { 
+    background: #f9fafb !important; 
+    border-color: #9ca3af !important; 
+}
+
+/* 3. Nút Khóa / Xóa (Màu đỏ) */
+.btn-delete { 
+    border: 1px solid #fee2e2; 
+    background-color: #fff5f5; 
+    color: #dc2626; 
+}
+.btn-delete:hover { 
+    background: #fee2e2 !important; 
+    border-color: #fca5a5 !important; 
+}
+
+/* 4. Nút Mở khóa / Khôi phục (Màu xanh lá) */
+.btn-restore { 
+    border: 1px solid #bbf7d0; 
+    background-color: #f0fdf4; 
+    color: #166534; 
+}
+.btn-restore:hover { 
+    background: #dcfce7; 
+    border-color: #86efac; 
+}
 .status-badge {
 
     padding: 4px 12px;
@@ -535,4 +579,44 @@ body {
 .password-settings-layout .form-card {
     margin: 0;
     flex: 1.2;
+}
+
+/* =========================================================
+   13. PHÂN TRANG (PAGINATION)
+   ========================================================= */
+.pagination-container {
+    display: flex;
+    justify-content: flex-end;
+    align-items: center;
+    margin-top: 20px;
+    gap: 8px;
+}
+
+.btn-page {
+    padding: 6px 12px;
+    border: 1px solid var(--border-neutral);
+    background-color: var(--card-bg);
+    color: var(--text-secondary);
+    border-radius: 6px;
+    cursor: pointer;
+    font-size: 14px;
+    font-weight: 500;
+    transition: all 0.2s ease;
+}
+
+.btn-page:hover:not(:disabled) {
+    background-color: var(--bg-neutral);
+    color: var(--primary-color);
+    border-color: var(--primary-color);
+}
+
+.btn-page.active {
+    background-color: var(--primary-color);
+    color: #FFFFFF;
+    border-color: var(--primary-color);
+}
+
+.btn-page:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
 }
