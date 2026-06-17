@@ -74,7 +74,7 @@ function Login() {
             <p className="text-secondary text-sm">Vui lòng nhập thông tin của bạn để đăng nhập.</p>
           </div>
           {error && (
-            <div className="alert-message error" style={{ textAlign: 'center' }}>
+            <div className="alert-message error">
               {error}
             </div>
           )}
