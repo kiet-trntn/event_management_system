@@ -5,8 +5,15 @@ const authMiddleware = require("../middlewares/authMiddleware");
 const roleMiddleware = require("../middlewares/roleMiddleware");
 
 const {
+    getAllEvents,
     createEvent
 } = require("../controllers/eventController");
+
+router.get(
+    "/",
+    authMiddleware,
+    getAllEvents
+);
 
 router.post(
     "/",

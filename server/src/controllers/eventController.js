@@ -1,5 +1,36 @@
 const db = require("../config/db");
 
+const getAllEvents = async (req, res) => {
+    try {
+        const  [events] = await db.query(`
+            SELECT
+                e.id,
+                e.title,
+                e.location,
+                e.start_date,
+                e.end_date,
+                e.max_members,
+                e.status,
+                u.full_name AS leader_name
+            FROM events e
+            LEFT JOIN users u
+                ON e.leader_id = u.id
+            ORDER BY e.id DESC
+        `);
+
+        res.json({ events });
+
+    }  catch (error) {
+        console.log(error);
+
+        res.status(500).json({
+            message: error.message
+        });
+    }
+
+
+}
+
 const createEvent = async (req, res) => {
     try {
         
@@ -86,5 +117,6 @@ const createEvent = async (req, res) => {
 }
 
 module.exports = {
+    getAllEvents,
     createEvent
 }
