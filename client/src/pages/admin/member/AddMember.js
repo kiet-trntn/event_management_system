@@ -15,22 +15,31 @@ function AddMember() {
     }, []);
 
 
-    const handleSubmit = async (e) => {
-        e.preventDefault();
-        try {
-            await fetch('http://localhost:5000/api/users', {
-                method: 'POST',
-                headers: { 
-                    'Content-Type': 'application/json',
-                    'Authorization': `Bearer ${localStorage.getItem('my_token')}`
-                },
-                body: JSON.stringify(formData)
-            });
-            navigate('/admin/members');
-        } catch (error) {
-            console.error(error);
+const handleSubmit = async (e) => {
+    e.preventDefault();
+    try {
+        const response = await fetch('http://localhost:5000/api/users', {
+            method: 'POST',
+            headers: { 
+                'Content-Type': 'application/json',
+                'Authorization': `Bearer ${localStorage.getItem('my_token')}`
+            },
+            body: JSON.stringify(formData)
+        });
+        
+        const data = await response.json();
+        
+        if (response.ok) {
+            alert("Thêm thành viên thành công!"); 
+            navigate('/admin/members'); 
+        } else {
+            alert(data.message || "Đã xảy ra lỗi khi thêm thành viên!");
         }
-    };
+    } catch (error) {
+        console.error('Lỗi hệ thống:', error);
+        alert("Không thể kết nối đến máy chủ Backend!");
+    }
+};
 
     return (
         <div className="page-container">

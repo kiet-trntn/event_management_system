@@ -38,22 +38,30 @@ function EditMember() {
         fetchMember();
     }, [id]);
 
-    const handleSubmit = async (e) => {
-        e.preventDefault();
-        try {
-            await fetch(`http://localhost:5000/api/users/${id}`, {
-                method: 'PUT',
-                headers: { 
-                    'Content-Type': 'application/json',
-                    'Authorization': `Bearer ${localStorage.getItem('my_token')}`
-                },
-                body: JSON.stringify(formData)
-            });
-            navigate('/admin/members'); 
-        } catch (error) {
-            console.error('Lỗi khi cập nhật:', error);
+const handleSubmit = async (e) => {
+    e.preventDefault();
+    try {
+        const response = await fetch(`http://localhost:5000/api/users/${id}`, {
+            method: 'PUT',
+            headers: { 
+                'Content-Type': 'application/json',
+                'Authorization': `Bearer ${localStorage.getItem('my_token')}`
+            },
+            body: JSON.stringify(formData)
+        });
+
+        const data = await response.json();
+        if (response.ok) {
+            alert("Cập nhật thông tin thành công!");
+            navigate('/admin/members');
+        } else {
+            alert(data.message || "Không thể cập nhật thông tin thành viên.");
         }
-    };
+    } catch (error) {
+        console.error('Lỗi khi cập nhật:', error);
+        alert("Đã xảy ra lỗi kết nối với hệ thống!");
+    }
+};
 
     if (loading) {
         return <div className="page-container text-center">Đang tải dữ liệu...</div>;
