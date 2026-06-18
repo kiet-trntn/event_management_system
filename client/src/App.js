@@ -9,6 +9,7 @@ import ChangePassword from './pages/changepassword';
 import MembersList from './pages/admin/member/MembersList';
 import AddMember from './pages/admin/member/AddMember';
 import EditMember from './pages/admin/member/EditMember';
+import ViewMember from './pages/admin/member/ViewMember';
 
 function App() {
   return (
@@ -29,6 +30,7 @@ function App() {
           <Route path="members" element={<MembersList />} />
           <Route path="members/add" element={<AddMember />} />
           <Route path="members/edit/:id" element={<EditMember />} />
+          <Route path="members/view/:id" element={<ViewMember />} />
         </Route>
 
         <Route 

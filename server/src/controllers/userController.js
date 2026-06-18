@@ -32,7 +32,7 @@ const getAllUsers = async (req, res) => {
 const getUserById = async (req, res) => {
     try {
         const { id } = req.params; // Lấy id người dùng từ tham số đường dẫn
-        const [users] = await db.query('SELECT id, full_name, email, role, created_at FROM users WHERE id = ?', [id]); // Truy vấn người dùng theo id
+        const [users] = await db.query('SELECT id, full_name, email, role, status, created_at FROM users WHERE id = ?', [id]); // Truy vấn người dùng theo id
 
         if (users.length === 0) {
             return res.status(404).json({
