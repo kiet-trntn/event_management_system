@@ -8,12 +8,12 @@ function EditMember() {
     const [formData, setFormData] = useState({ 
         full_name: '', 
         email: '', 
-        role: 'employee', 
-        status: 'active'
+        role: 'employee'
     });
     const [loading, setLoading] = useState(true);
 
     useEffect(() => {
+        document.title = "Sửa thông tin thành viên | TOOF";
         const fetchMember = async () => {
             try {
                 const response = await fetch(`http://localhost:5000/api/users/${id}`, {
@@ -105,19 +105,6 @@ function EditMember() {
                             <option value="admin">Quản trị viên</option>
                         </select>
                     </div>
-
-                    <div className="form-group">
-                        <label className="form-label">Trạng thái tài khoản</label>
-                            <select 
-                                className="form-input" 
-                                value={formData.status}
-                                onChange={e => setFormData({...formData, status: e.target.value})}
-                            >
-                                <option value="active">Hoạt động</option>
-                                <option value="inactive">Khóa / Tạm dừng</option>
-                             </select>
-                    </div>
-                    
                     <div className="form-actions">
                         <button type="button" className="btn-secondary" onClick={() => navigate(-1)}>
                             Hủy
