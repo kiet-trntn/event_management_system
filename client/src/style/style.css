@@ -620,3 +620,101 @@ body {
     opacity: 0.5;
     cursor: not-allowed;
 }
+
+/* =========================================================
+   14. TRANG HỒ SƠ CHI TIẾT (VIEW MEMBER)
+   ========================================================= */
+
+/* Thu gọn chiều rộng của Card cho cân đối */
+.profile-card {
+    max-width: 600px;
+    margin: 0 auto;
+}
+
+/* Khu vực Avatar & Tên */
+.profile-header-info {
+    text-align: center;
+    margin-bottom: 30px;
+}
+
+.profile-avatar {
+    width: 80px;
+    height: 80px;
+    border-radius: 50%;
+    background-color: var(--primary-color);
+    color: #FFFFFF;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 32px;
+    font-weight: bold;
+    margin: 0 auto 12px;
+}
+    
+.profile-name {
+    margin: 0 0 8px 0;
+    font-size: 20px;
+    color: var(--text-primary);
+}
+
+/* Khu vực Thông tin chi tiết */
+.profile-details-section {
+    border-top: 1px solid var(--border-neutral);
+    padding-top: 20px;
+}
+
+.profile-info-row {
+    display: flex;
+    margin-bottom: 16px;
+    padding-bottom: 16px;
+    border-bottom: 1px solid #f9fafb;
+}
+
+/* Xóa gạch dưới ở dòng cuối cùng cho đẹp */
+.profile-info-row:last-child {
+    border-bottom: none;
+    margin-bottom: 0;
+    padding-bottom: 0;
+}
+
+.profile-info-label {
+    width: 140px;
+    color: var(--text-secondary);
+    font-size: 14px;
+    font-weight: 500;
+}
+
+.profile-info-value {
+    color: var(--text-primary);
+    font-size: 14px;
+}
+
+.profile-info-value.bold {
+    font-weight: 600;
+}
+
+/* Khu vực Nút bấm */
+.profile-actions {
+    display: flex;
+    justify-content: center;
+    margin-top: 30px;
+    gap: 12px;
+}
+
+/* Biến nút sửa icon vuông thành nút chữ dài */
+.btn-edit-large {
+    background-color: #ffffff; 
+    color: #374151; 
+    border: 1px solid #d1d5db; 
+    border-radius: 6px; 
+    font-size: 13px; 
+    font-weight: 500; 
+    cursor: pointer; 
+    transition: all 0.2s ease;
+    padding: 8px 24px; /* Rộng hơn nút vuông */
+}
+
+.btn-edit-large:hover {
+    background: #f9fafb; 
+    border-color: #9ca3af; 
+}

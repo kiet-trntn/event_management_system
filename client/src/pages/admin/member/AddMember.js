@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect} from 'react';
 import { useNavigate } from 'react-router-dom';
 
 function AddMember() {
@@ -9,6 +9,11 @@ function AddMember() {
         password: '', 
         role: 'employee'
     });
+
+    useEffect(() => {
+        document.title = "Thêm thành viên mới | TOOF";
+    }, []);
+
 
     const handleSubmit = async (e) => {
         e.preventDefault();
