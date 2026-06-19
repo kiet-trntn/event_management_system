@@ -1,5 +1,6 @@
 import React, { useState, useEffect} from 'react';
 import { useNavigate } from 'react-router-dom';
+import Swal from 'sweetalert2';
 
 function AddMember() {
     const navigate = useNavigate();
@@ -30,14 +31,34 @@ const handleSubmit = async (e) => {
         const data = await response.json();
         
         if (response.ok) {
-            alert("Thêm thành viên thành công!"); 
-            navigate('/admin/members'); 
+            // 🌟 THÔNG BÁO THÀNH CÔNG (CÓ TICK XANH)
+            Swal.fire({
+                icon: 'success',
+                title: 'Thành công!',
+                text: 'Đã thêm thành viên mới.',
+                confirmButtonColor: '#3b82f6', 
+                confirmButtonText: 'Tuyệt vời'
+            }).then(() => {
+                navigate('/admin/members'); 
+            });
+
         } else {
-            alert(data.message || "Đã xảy ra lỗi khi thêm thành viên!");
+            Swal.fire({
+                icon: 'error',
+                title: 'Chưa hợp lệ!',
+                text: data.message || "Không thể thêm thành viên.",
+                confirmButtonColor: '#ef4444',
+                confirmButtonText: 'Đã hiểu'
+            });
         }
     } catch (error) {
         console.error('Lỗi hệ thống:', error);
-        alert("Không thể kết nối đến máy chủ Backend!");
+        Swal.fire({
+            icon: 'error',
+            title: 'Lỗi hệ thống',
+            text: 'Không thể kết nối đến máy chủ. Vui lòng thử lại sau!',
+            confirmButtonColor: '#ef4444'
+        });
     }
 };
 
