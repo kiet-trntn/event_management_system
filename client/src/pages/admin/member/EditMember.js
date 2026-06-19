@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
+import Swal from 'sweetalert2';
 
 function EditMember() {
     const { id } = useParams(); 
@@ -52,14 +53,29 @@ const handleSubmit = async (e) => {
 
         const data = await response.json();
         if (response.ok) {
-            alert("Cập nhật thông tin thành công!");
+            Swal.fire({
+                icon: 'success',
+                title: 'Thành công!',
+                text: 'Đã cập nhật thông tin thành viên.',
+                confirmButtonColor: '#3b82f6'
+            });
             navigate('/admin/members');
         } else {
-            alert(data.message || "Không thể cập nhật thông tin thành viên.");
+            Swal.fire({
+                icon: 'error',
+                title: 'Lỗi!',
+                text: data.message || "Không thể cập nhật thông tin thành viên.",
+                confirmButtonColor: '#ef4444'
+            });
         }
     } catch (error) {
         console.error('Lỗi khi cập nhật:', error);
-        alert("Đã xảy ra lỗi kết nối với hệ thống!");
+        Swal.fire({
+            icon: 'error',
+            title: 'Lỗi hệ thống',
+            text: 'Không thể kết nối đến máy chủ. Vui lòng thử lại sau!',
+            confirmButtonColor: '#ef4444'
+        });
     }
 };
 
