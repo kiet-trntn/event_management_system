@@ -31,7 +31,6 @@ const handleSubmit = async (e) => {
         const data = await response.json();
         
         if (response.ok) {
-            // 🌟 THÔNG BÁO THÀNH CÔNG (CÓ TICK XANH)
             Swal.fire({
                 icon: 'success',
                 title: 'Thành công!',

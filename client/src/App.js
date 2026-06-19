@@ -11,6 +11,7 @@ import AddMember from './pages/admin/member/AddMember';
 import EditMember from './pages/admin/member/EditMember';
 import ViewMember from './pages/admin/member/ViewMember';
 import EventList from './pages/admin/event/EventList';
+import AddEvent from './pages/admin/event/AddEvent';
 
 function App() {
   return (
@@ -33,6 +34,7 @@ function App() {
           <Route path="members/edit/:id" element={<EditMember />} />
           <Route path="members/view/:id" element={<ViewMember />} />
           <Route path="events" element={<EventList />} />
+          <Route path="events/add" element={<AddEvent />} />
         </Route>
 
         <Route 
