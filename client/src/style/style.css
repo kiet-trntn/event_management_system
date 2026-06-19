@@ -303,6 +303,10 @@ body {
     margin: 0;
 }
 
+.event-page .page-header-form {
+    max-width: 800px;
+}
+
 /* Style cho nút Quay lại */
 .btn-back {
     background: transparent;
@@ -323,15 +327,21 @@ body {
     color: var(--primary-color, #2563EB); 
 }
 
+/* 1. Class gốc: Chứa toàn bộ "phần hồn" (màu sắc, viền, đổ bóng...) và kích thước mặc định */
 .form-card { 
     background-color: var(--card-bg); 
     padding: 32px; 
     border-radius: 12px; 
     border: 1px solid var(--border-neutral); 
-    max-width: 480px; 
     width: 100%; 
     box-shadow: 0 4px 6px -1px rgba(0,0,0,0.05); 
     margin: 0 auto;
+    max-width: 480px; /* Mặc định form sẽ nhỏ gọn (dành cho Thêm Thành Viên, Đăng Nhập...) */
+}
+
+/* 2. Class biến thể: Chỉ dùng để "ghi đè" độ rộng khi cần thiết */
+.form-card.large {
+    max-width: 800px; /* Dành cho các form nhiều cột (Thêm Sự Kiện) */
 }
 
 .form-group { margin-bottom: 20px; }
