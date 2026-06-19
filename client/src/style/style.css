@@ -718,3 +718,85 @@ body {
     background: #f9fafb; 
     border-color: #9ca3af; 
 }
+
+/* =========================================================
+   15. DANH SÁCH SỰ KIỆN (EVENT LIST CARDS) - CHUẨN DESIGN
+   ========================================================= */
+
+.event-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(240px, 1fr)); 
+    gap: 20px;
+    width: 100%;
+    margin-top: 12px;
+}
+
+.event-card {
+    background-color: var(--card-bg, #ffffff);
+    border: 1px solid #F1F5F9; /* Viền siêu nhạt */
+    border-radius: 12px;
+    padding: 20px;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.05); /* Bóng đổ cực kỳ nhẹ */
+    transition: transform 0.2s ease, box-shadow 0.2s ease;
+    display: flex;
+    flex-direction: column;
+    height: 100%;
+}
+
+.event-card:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 10px 15px -3px rgba(0,0,0,0.08);
+}
+
+.event-card-header {
+    margin-bottom: 14px;
+}
+
+/* Định dạng Badge chuẩn Design */
+.badge-pill {
+    padding: 4px 10px;
+    border-radius: 20px;
+    font-size: 11px;
+    font-weight: 600;
+    display: inline-block;
+}
+
+.badge-yellow { background-color: #FEF3C7; color: #92400E; } /* Sắp diễn ra */
+.badge-blue { background-color: #DBEAFE; color: #1E40AF; }   /* Đang lên kế hoạch */
+.badge-green { background-color: #DCFCE7; color: #166534; }  /* Đã hoàn thành */
+.badge-gray { background-color: #F3F4F6; color: #374151; }   /* Đã hủy */
+
+/* Tiêu đề Sự Kiện */
+.event-title {
+    font-size: 15px;
+    font-weight: 700;
+    color: #111827;
+    margin: 0 0 12px 0;
+    line-height: 1.4;
+}
+
+/* Các dòng thông tin (Location, Date) */
+.event-detail-row {
+    display: flex;
+    align-items: flex-start;
+    gap: 8px;
+    margin-bottom: 8px;
+    font-size: 12px;
+    color: #6B7280;
+    line-height: 1.4;
+}
+
+.event-detail-icon {
+    flex-shrink: 0;
+    margin-top: 2px;
+}
+
+/* Khu vực chứa nút bấm dưới đáy thẻ */
+.event-actions {
+    display: flex;
+    justify-content: flex-end; /* Đẩy toàn bộ nút sang bên phải */
+    align-items: center;
+    gap: 8px; /* Khoảng cách giữa nút sửa và xóa */
+    margin-top: auto; /* Đẩy khu vực này xuống sát đáy thẻ */
+    padding-top: 16px; /* Cách nội dung bên trên ra một chút */
+}
