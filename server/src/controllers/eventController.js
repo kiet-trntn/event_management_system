@@ -74,6 +74,7 @@ const getAllEvents = async (req, res) => {
                 FROM events e
                 LEFT JOIN users u
                     ON e.leader_id = u.id
+                WHERE e.deleted_at IS NULL
                 ORDER BY e.id DESC
             `);
 
@@ -94,7 +95,8 @@ const getAllEvents = async (req, res) => {
                 FROM events e
                 LEFT JOIN users u
                     ON e.leader_id = u.id
-                WHERE e.status <> 'Nháp'
+                WHERE e.deleted_at IS NULL
+                AND e.status <> 'Nháp'
                 ORDER BY e.id DESC
             `);
 
@@ -147,6 +149,7 @@ const getEventById = async (req, res) => {
                 ON e.created_by = u2.id
 
             WHERE e.id = ?
+            AND e.deleted_at IS NULL
             `,
             [id]
         );
@@ -287,7 +290,10 @@ const updateEvent = async (req, res) => {
 
         // Kiểm tra event tồn tại
         const [events] = await db.query(
-            "SELECT * FROM events WHERE id = ?",
+            `SELECT *
+            FROM events
+            WHERE id = ?
+            AND deleted_at IS NULL`,
             [id]
         );
 
@@ -386,10 +392,105 @@ const updateEvent = async (req, res) => {
 
 };
 
+const deleteEvent = async (req, res) => {
+
+    try {
+
+        const { id } = req.params;
+
+        // Kiểm tra event tồn tại
+        const [events] = await db.query(
+            `
+            SELECT *
+            FROM events
+            WHERE id = ?
+            AND deleted_at IS NULL
+            `,
+            [id]
+        );
+
+        if (events.length === 0) {
+            return res.status(404).json({
+                message: "Không tìm thấy sự kiện"
+            });
+        }
+
+        await db.query(
+            `
+            UPDATE events
+            SET deleted_at = NOW()
+            WHERE id = ?
+            `,
+            [id]
+        );
+
+        res.json({
+            message: "Xóa sự kiện thành công"
+        });
+
+    } catch (error) {
+
+        console.log(error);
+
+        res.status(500).json({
+            message: error.message
+        });
+
+    }
+
+};
+
+const restoreEvent = async (req, res) => {
+
+    try {
+
+        const { id } = req.params;
+
+        const [events] = await db.query(
+            `
+            SELECT *
+            FROM events
+            WHERE id = ?
+            AND deleted_at IS NOT NULL
+            `,
+            [id]
+        );
+
+        if (events.length === 0) {
+            return res.status(404).json({
+                message: "Không tìm thấy sự kiện đã xóa"
+            });
+        }
+
+        await db.query(
+            `
+            UPDATE events
+            SET deleted_at = NULL
+            WHERE id = ?
+            `,
+            [id]
+        );
+
+        res.json({
+            message: "Khôi phục sự kiện thành công"
+        });
+
+    } catch (error) {
+
+        res.status(500).json({
+            message: error.message
+        });
+
+    }
+
+};
+
 module.exports = {
     publishEvent,
     getAllEvents,
     getEventById,
     createEvent,
-    updateEvent
+    updateEvent,
+    deleteEvent,
+    restoreEvent
 }

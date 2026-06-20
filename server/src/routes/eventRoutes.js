@@ -9,7 +9,9 @@ const {
     getAllEvents,
     getEventById,
     createEvent,
-    updateEvent
+    updateEvent,
+    deleteEvent,
+    restoreEvent
 } = require("../controllers/eventController");
 
 router.patch(
@@ -43,6 +45,20 @@ router.get(
     "/:id",
     authMiddleware,
     getEventById
+);
+
+router.patch(
+    "/:id/delete",
+    authMiddleware,
+    roleMiddleware("admin"),
+    deleteEvent
+);
+
+router.patch(
+    "/:id/restore",
+    authMiddleware,
+    roleMiddleware("admin"),
+    restoreEvent
 );
 
 module.exports = router;
