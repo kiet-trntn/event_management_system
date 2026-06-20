@@ -392,6 +392,62 @@ const updateEvent = async (req, res) => {
 
 };
 
+const cancelEvent = async (req, res) => {
+
+    try {
+
+        const { id } = req.params;
+
+        const [events] = await db.query(
+            "SELECT * FROM events WHERE id = ?",
+            [id]
+        );
+
+        if (events.length === 0) {
+            return res.status(404).json({
+                message: "Không tìm thấy sự kiện"
+            });
+        }
+
+        const event = events[0];
+
+        if (event.status === "Đã hủy") {
+            return res.status(400).json({
+                message: "Sự kiện đã bị hủy trước đó"
+            });
+        }
+
+        if (event.status === "Đã kết thúc") {
+            return res.status(400).json({
+                message: "Không thể hủy sự kiện đã kết thúc"
+            });
+        }
+
+        await db.query(
+            `
+            UPDATE events
+            SET status = 'Đã hủy'
+            WHERE id = ?
+            `,
+            [id]
+        );
+
+        res.json({
+            message: "Hủy sự kiện thành công"
+        });
+
+    } catch (error) {
+
+        console.log(error);
+
+        res.status(500).json({
+            message: error.message
+        });
+
+    }
+
+};
+
 const deleteEvent = async (req, res) => {
 
     try {
@@ -492,5 +548,6 @@ module.exports = {
     createEvent,
     updateEvent,
     deleteEvent,
-    restoreEvent
+    restoreEvent,
+    cancelEvent
 }

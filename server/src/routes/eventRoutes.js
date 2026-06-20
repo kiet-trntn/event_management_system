@@ -11,7 +11,8 @@ const {
     createEvent,
     updateEvent,
     deleteEvent,
-    restoreEvent
+    restoreEvent,
+    cancelEvent
 } = require("../controllers/eventController");
 
 router.patch(
@@ -59,6 +60,13 @@ router.patch(
     authMiddleware,
     roleMiddleware("admin"),
     restoreEvent
+);
+
+router.patch(
+    "/:id/cancel",
+    authMiddleware,
+    roleMiddleware("admin"),
+    cancelEvent
 );
 
 module.exports = router;
