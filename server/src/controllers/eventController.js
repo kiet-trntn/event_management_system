@@ -541,6 +541,40 @@ const restoreEvent = async (req, res) => {
 
 };
 
+const getTrashEvents = async (req, res) => {
+
+    try {
+
+        const [events] = await db.query(`
+            SELECT
+                e.id,
+                e.title,
+                e.location,
+                e.start_date,
+                e.end_date,
+                e.status,
+                e.deleted_at
+            FROM events e
+            WHERE e.deleted_at IS NOT NULL
+            ORDER BY e.deleted_at DESC
+        `);
+
+        res.json({
+            events
+        });
+
+    } catch (error) {
+
+        console.log(error);
+
+        res.status(500).json({
+            message: error.message
+        });
+
+    }
+
+};
+
 module.exports = {
     publishEvent,
     getAllEvents,
@@ -549,5 +583,6 @@ module.exports = {
     updateEvent,
     deleteEvent,
     restoreEvent,
-    cancelEvent
+    cancelEvent,
+    getTrashEvents
 }
