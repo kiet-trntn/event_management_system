@@ -1,5 +1,6 @@
 import React , { useEffect, useState } from 'react';
 import {useNavigate} from 'react-router-dom';
+import Swal from 'sweetalert2';
 
 function EventList() {
     const navigate = useNavigate();
@@ -11,7 +12,7 @@ function EventList() {
     const eventsPerPage = 6; 
 
     useEffect(() => {
-        document.title = "Quản lý Sự kiện | TOOF";
+        document.title = "Quản lý Sự kiện | TaskFlow";
         const fetchEvents = async () => {
             try {
                 const response = await fetch('http://localhost:5000/api/events', {
@@ -29,8 +30,46 @@ function EventList() {
     }, []);
 
     const handleCardClick = (id) => navigate(`/admin/events/view/${id}`);
-    const handleEdit = (e, id) => { e.stopPropagation(); navigate(`/admin/events/edit/${id}`); };
-    const handleDelete = (e, id) => { e.stopPropagation(); console.log("Xóa sự kiện ID:", id); };
+    const handleEdit = (e, id) => { 
+        e.stopPropagation(); 
+        navigate(`/admin/events/edit/${id}`); 
+    };
+    const handleDelete = async (e, id) => { 
+        e.stopPropagation(); 
+        const result = await Swal.fire({
+            title: 'Chuyển vào thùng rác?',
+            text: "Sự kiện sẽ được chuyển vào thùng rác và có thể khôi phục lại sau này.",
+            icon: 'warning',
+            showCancelButton: true,
+            confirmButtonColor: '#ef4444',
+            cancelButtonColor: '#6b7280',
+            confirmButtonText: 'Đồng ý xóa',
+            cancelButtonText: 'Hủy'
+        });
+        if (result.isConfirmed) {
+            try {
+                const response = await fetch(`http://localhost:5000/api/events/${id}/delete`, {
+                    method: 'PATCH',
+                    headers: { 
+                        'Authorization': `Bearer ${localStorage.getItem('my_token')}`,
+                        'Content-Type': 'application/json'
+                    }
+                });
+
+                const data = await response.json();
+                
+                if (response.ok) {
+                    Swal.fire('Đã xóa!', 'Sự kiện đã được đưa vào thùng rác.', 'success');
+                    setEvents(prevEvents => prevEvents.filter(ev => ev.id !== id));
+                } else {
+                    Swal.fire('Lỗi!', data.message || 'Không thể xóa sự kiện.', 'error');
+                }
+            } catch (error) {
+                console.error("Lỗi xóa:", error);
+                Swal.fire('Lỗi!', 'Không thể kết nối máy chủ.', 'error');
+            }
+        }
+    };
 
     const officialEvents = events.filter(event => event.status !== 'Nháp');
     const draftEvents = events.filter(event => event.status === 'Nháp');
@@ -47,9 +86,18 @@ function EventList() {
         <div className="page-container event-page">
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '24px' }}>
                 <h1 style={{ fontSize: '20px', fontWeight: '700', margin: 0, color: 'var(--text-primary)' }}>Quản lý Sự kiện</h1>
-                <button className="btn-primary" onClick={() => navigate('/admin/events/add')} >
-                    + Thêm sự kiện
-                </button>
+                <div style={{ display: 'flex', gap: '12px' }}>
+                    <button className="btn-trash" onClick={() => navigate('/admin/events/trash')}>
+                        <svg width="18" height="18" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                        </svg>
+                        Thùng rác
+                    </button>
+                    <button className="btn-primary" onClick={() => navigate('/admin/events/add')} >
+                        + Thêm sự kiện
+                    </button>
+                </div>
+                
             </div>
             
             {loading ? (

@@ -10,7 +10,7 @@ function MembersList() {
     const usersPerPage = 5;
 
     useEffect(() => {
-        document.title = "Danh sách thành viên | TOOF";
+        document.title = "Danh sách thành viên | TaskFlow";
         const fetchMembers = async () => {
             try {
                 const response = await fetch('http://localhost:5000/api/users', {

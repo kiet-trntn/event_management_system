@@ -54,16 +54,47 @@ function ViewEvent() {
                         'Content-Type': 'application/json'
                     }
                 });
-                
+
                 const data = await response.json();
 
                 if (response.ok) {
                     Swal.fire('Thành công!', 'Sự kiện đã được công bố.', 'success')
-                        .then(() => {
-                            navigate('/admin/events'); 
-                        });
+                        .then(() => navigate('/admin/events'));
                 } else {
                     Swal.fire('Thất bại!', data.message || 'Có lỗi xảy ra', 'error');
+                }
+            } catch (error) {
+                Swal.fire('Lỗi hệ thống!', 'Không thể kết nối đến máy chủ', 'error');
+            }
+        }
+    };
+
+    const handleCancel = async () => {
+        const result = await Swal.fire({
+            title: 'Hủy sự kiện này?',
+            text: "Sự kiện sẽ chuyển sang trạng thái 'Đã hủy'. Bạn có chắc chắn muốn thực hiện việc này không?",
+            icon: 'warning',
+            showCancelButton: true,
+            confirmButtonColor: '#ef4444', 
+            cancelButtonColor: '#6b7280',
+            confirmButtonText: 'Đồng ý hủy',
+            cancelButtonText: 'Đóng'
+        });
+
+        if (result.isConfirmed) {
+            try {
+                const response = await fetch(`http://localhost:5000/api/events/${id}/cancel`, {
+                    method: 'PATCH',
+                    headers: { 'Authorization': `Bearer ${localStorage.getItem('my_token')}` }
+                });
+
+                const data = await response.json();
+
+                if (response.ok) {
+                    Swal.fire('Đã hủy!', 'Sự kiện đã bị hủy thành công.', 'success')
+                        .then(() => navigate('/admin/events'));
+                } else {
+                    Swal.fire('Lỗi!', data.message || 'Không thể hủy sự kiện.', 'error');
                 }
             } catch (error) {
                 Swal.fire('Lỗi hệ thống!', 'Không thể kết nối đến máy chủ', 'error');
@@ -95,10 +126,11 @@ function ViewEvent() {
                     <h2 className="text-2xl font-semibold" style={{ margin: 0 }}>
                         {event.title}
                     </h2>
-                    <span className={`status-badge ${event.status === 'Nháp' ? 'status-draft' : 'status-active'}`}>
+                    <span className={`status-badge ${event.status === 'Nháp' ? 'status-draft' : event.status === 'Đã hủy' ? 'status-inactive' : 'status-active'}`}>
                         {event.status}
                     </span>
                 </div>
+
                 <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '20px', background: 'var(--bg-neutral)', padding: '20px', borderRadius: '8px', marginBottom: '32px' }}>
                     <div>
                         <p className="text-secondary mb-2" style={{ fontSize: '13px' }}>📍 Địa điểm tổ chức</p>
@@ -133,24 +165,34 @@ function ViewEvent() {
                     </p>
                 </div>
 
-                {event.status === 'Nháp' && (
+                {(event.status === 'Nháp' || event.status === 'Sắp diễn ra' || event.status === 'Đang diễn ra') && (
                     <>
                         <div className="event-divider"></div>
-                        
                         <div className="form-actions">
+                            {event.status === 'Nháp' && (
+                                <button 
+                                    className="btn-secondary" 
+                                    onClick={() => navigate(`/admin/events/edit/${event.id}`)}
+                                >
+                                    Sửa sự kiện
+                                </button>
+                            )}
                             <button 
-                                className="btn-secondary" 
-                                onClick={() => navigate(`/admin/events/edit/${event.id}`)}
+                                className="btn-primary" 
+                                style={{ backgroundColor: '#ef4444', borderColor: '#ef4444' }} 
+                                onClick={handleCancel}
                             >
-                                Sửa sự kiện
+                                Hủy sự kiện
                             </button>
-
-                            <button 
-                                className="btn-publish" 
-                                onClick={handlePublish}
-                            >
-                                Công bố sự kiện
-                            </button>
+                            {event.status === 'Nháp' && (
+                                <button 
+                                    className="btn-publish" 
+                                    onClick={handlePublish}
+                                >
+                                    Công bố sự kiện
+                                </button>
+                            )}
+                            
                         </div>
                     </>
                 )}

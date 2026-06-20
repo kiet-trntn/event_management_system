@@ -14,7 +14,7 @@ function EditMember() {
     const [loading, setLoading] = useState(true);
 
     useEffect(() => {
-        document.title = "Sửa thông tin thành viên | TOOF";
+        document.title = "Sửa thông tin thành viên | TaskFlow";
         const fetchMember = async () => {
             try {
                 const response = await fetch(`http://localhost:5000/api/users/${id}`, {
