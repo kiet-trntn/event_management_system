@@ -1,9 +1,11 @@
 import React, { useState, useEffect } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useParams, useNavigate } from 'react-router-dom';
 import Swal from 'sweetalert2';
 
-function AddEvent() {
+function EditEvent() {
+    const { id } = useParams();
     const navigate = useNavigate();
+    const [loading, setLoading] = useState(true);
     
     const [formData, setFormData] = useState({ 
         title: '', 
@@ -16,29 +18,55 @@ function AddEvent() {
     });
     
     const [users, setUsers] = useState([]);
+    const formatDateForInput = (dateString) => {
+        if (!dateString) return '';
+        const d = new Date(dateString);
+        const pad = (n) => (n < 10 ? '0' + n : n);
+        return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`;
+    };
 
     useEffect(() => {
-        document.title = "Thêm sự kiện mới | TOOF";
+        document.title = "Sửa sự kiện | TOOF";
         
-        const fetchUsers = async () => {
+        const fetchData = async () => {
             try {
-                const response = await fetch('http://localhost:5000/api/users', {
+                const usersResponse = await fetch('http://localhost:5000/api/users', {
                     headers: { 'Authorization': `Bearer ${localStorage.getItem('my_token')}` }
                 });
-                const data = await response.json();
+                const usersData = await usersResponse.json();
+                if (usersResponse.ok) {
+                    setUsers(usersData.data || usersData);
+                }
+
+                const eventResponse = await fetch(`http://localhost:5000/api/events/${id}`, {
+                    headers: { 'Authorization': `Bearer ${localStorage.getItem('my_token')}` }
+                });
+                const eventData = await eventResponse.json();
                 
-                if (response.ok && Array.isArray(data)) {
-                    setUsers(data);
-                } else if (data.data && Array.isArray(data.data)) {
-                    setUsers(data.data);
+                if (eventResponse.ok) {
+                    setFormData({
+                        title: eventData.title || '',
+                        description: eventData.description || '',
+                        location: eventData.location || '',
+                        start_date: formatDateForInput(eventData.start_date),
+                        end_date: formatDateForInput(eventData.end_date),
+                        max_members: eventData.max_members || '',
+                        leader_id: eventData.leader_id || ''
+                    });
+                } else {
+                    Swal.fire('Lỗi!', eventData.message || 'Không tìm thấy sự kiện', 'error')
+                        .then(() => navigate('/admin/events'));
                 }
             } catch (error) {
-                console.error('Lỗi khi tải danh sách nhân viên:', error);
+                console.error('Lỗi khi tải dữ liệu:', error);
+                Swal.fire('Lỗi hệ thống', 'Không thể kết nối với máy chủ.', 'error');
+            } finally {
+                setLoading(false);
             }
         };
 
-        fetchUsers();
-    }, []);
+        fetchData();
+    }, [id, navigate]);
 
     const handleSubmit = async (e) => {
         e.preventDefault();
@@ -54,13 +82,13 @@ function AddEvent() {
         }
 
         try {
-            const response = await fetch('http://localhost:5000/api/events', {
-                method: 'POST',
+            const response = await fetch(`http://localhost:5000/api/events/${id}`, {
+                method: 'PUT',
                 headers: { 
                     'Content-Type': 'application/json',
                     'Authorization': `Bearer ${localStorage.getItem('my_token')}`
                 },
-                body: JSON.stringify({ ...formData, status: 'Nháp' })
+                body: JSON.stringify(formData)
             });
             
             const data = await response.json();
@@ -69,7 +97,7 @@ function AddEvent() {
                 Swal.fire({
                     icon: 'success',
                     title: 'Thành công!',
-                    text: 'Đã lưu bản nháp sự kiện thành công.',
+                    text: 'Đã cập nhật sự kiện thành công.',
                     confirmButtonColor: '#3b82f6', 
                     confirmButtonText: 'Tuyệt vời'
                 }).then(() => {
@@ -79,7 +107,7 @@ function AddEvent() {
                 Swal.fire({
                     icon: 'error',
                     title: 'Chưa hợp lệ!',
-                    text: data.message || "Không thể thêm sự kiện.",
+                    text: data.message || "Không thể cập nhật sự kiện.",
                     confirmButtonColor: '#ef4444'
                 });
             }
@@ -94,6 +122,10 @@ function AddEvent() {
         }
     };
 
+    if (loading) {
+        return <div className="text-center text-secondary mt-6">Đang tải dữ liệu...</div>;
+    }
+
     return (
         <div className="page-container event-page">
             
@@ -104,7 +136,7 @@ function AddEvent() {
                     </svg>
                     Quay lại
                 </button>
-                <h3>Thêm sự kiện mới</h3>
+                <h3>Sửa sự kiện</h3>
             </div>
 
             <div className="form-card large">
@@ -202,7 +234,7 @@ function AddEvent() {
                             Hủy
                         </button>
                         <button type="submit" className="btn-primary">
-                            Lưu sự kiện
+                            Cập nhật sự kiện
                         </button>
                     </div>
                 </form>
@@ -212,4 +244,4 @@ function AddEvent() {
     );
 }
 
-export default AddEvent;
+export default EditEvent;
