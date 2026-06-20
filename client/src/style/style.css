@@ -810,3 +810,46 @@ body {
     margin-top: auto; /* Đẩy khu vực này xuống sát đáy thẻ */
     padding-top: 16px; /* Cách nội dung bên trên ra một chút */
 }
+
+/* =========================================================
+   16. BỔ SUNG CHO TÍNH NĂNG SỰ KIỆN (EVENTS)
+   ========================================================= */
+/* Tiêu đề khu vực (Có vạch màu bên trái) */
+.section-title {
+    font-size: 18px;
+    font-weight: 600;
+    margin-bottom: 16px;
+    color: var(--text-primary);
+    padding-left: 8px;
+    border-left: 4px solid var(--primary-color);
+}
+.section-title.warning { border-left-color: var(--warning-color); }
+
+/* Trạng thái "Nháp" */
+.status-draft {
+    background-color: #FFFBEB; 
+    color: #B45309; 
+    border: 1px solid #FDE68A;
+}
+
+/* Đường kẻ phân cách trong thẻ sự kiện */
+.event-divider {
+    height: 1px;
+    background-color: var(--border-neutral);
+    width: 100%;
+    margin: 12px 0;
+}
+
+/* Nút Công bố sự kiện (Màu xanh lá) */
+.btn-publish {
+    background-color: #10B981;
+    color: #FFFFFF;
+    border: none;
+    font-weight: 600; 
+    border-radius: 8px; 
+    cursor: pointer; 
+    transition: all 0.2s ease;
+    padding: 10px 24px; 
+    font-size: 14px;
+}
+.btn-publish:hover { background-color: #059669; }
