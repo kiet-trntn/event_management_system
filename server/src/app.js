@@ -5,6 +5,7 @@ const authRoutes = require("./routes/authRoutes"); // Lấy danh sách các đư
 const userRoutes = require("./routes/userRoutes"); // Lấy danh sách các đường dẫn liên quan đến thành viên (tạo mới, xem danh sách,...)
 const eventRoutes = require("./routes/eventRoutes"); // Lấy danh sách các đường dẫn liên quan đến sự kiện (tạo mới, xem danh sách,...)
 const eventMemberRoutes = require("./routes/eventMemberRoutes"); 
+const taskRoutes = require("./routes/taskRoutes");
 
 const app = express(); // Tạo ra một ứng dụng server
 
@@ -16,6 +17,7 @@ app.use("/api/auth", authRoutes); // Gắn tiền tố "/api/auth" cho các đư
 app.use("/api/users", userRoutes); // Gắn tiền tố "/api/users" cho các đường dẫn trong userRoutes (Ví dụ: /api/users/create)
 app.use("/api/events", eventRoutes); // Gắn tiền tố "/api/events" cho các đường dẫn trong eventRoutes (Ví dụ: /api/events/create)
 app.use("/api/events", eventMemberRoutes);
+app.use("/api/tasks", taskRoutes);
 
 
 // Đường dẫn kiểm tra xem server có đang hoạt động hay không
