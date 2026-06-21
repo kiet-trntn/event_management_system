@@ -10,7 +10,7 @@ function ViewMember() {
     const [loading, setLoading] = useState(true);
 
     useEffect(() => {
-        document.title = "Xem thông tin thành viên | TOOF";
+        document.title = "Xem thông tin thành viên | TaskFlow";
         const fetchMemberDetails = async () => {
             try {
                 const response = await fetch(`http://localhost:5000/api/users/${id}`, {

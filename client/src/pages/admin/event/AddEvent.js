@@ -18,7 +18,7 @@ function AddEvent() {
     const [users, setUsers] = useState([]);
 
     useEffect(() => {
-        document.title = "Thêm sự kiện mới | TOOF";
+        document.title = "Thêm sự kiện mới | TaskFlow";
         
         const fetchUsers = async () => {
             try {

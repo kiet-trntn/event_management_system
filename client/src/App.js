@@ -14,6 +14,7 @@ import EventList from './pages/admin/event/EventList';
 import AddEvent from './pages/admin/event/AddEvent';
 import ViewEvent from './pages/admin/event/ViewEvent';
 import EditEvent from './pages/admin/event/EditEvent';
+import EventTrash from './pages/admin/event/EventTrash';
 
 function App() {
   return (
@@ -31,14 +32,17 @@ function App() {
           }
         >
           <Route path="changepassword" element={<ChangePassword />} />
+
           <Route path="members" element={<MembersList />} />
           <Route path="members/add" element={<AddMember />} />
           <Route path="members/edit/:id" element={<EditMember />} />
           <Route path="members/view/:id" element={<ViewMember />} />
+
           <Route path="events" element={<EventList />} />
           <Route path="events/add" element={<AddEvent />} />
           <Route path="events/view/:id" element={<ViewEvent />} />
           <Route path="events/edit/:id" element={<EditEvent />} />
+          <Route path="events/trash" element={<EventTrash />} />
         </Route>
 
         <Route 

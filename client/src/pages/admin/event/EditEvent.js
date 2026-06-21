@@ -26,7 +26,7 @@ function EditEvent() {
     };
 
     useEffect(() => {
-        document.title = "Sửa sự kiện | TOOF";
+        document.title = "Sửa sự kiện | TaskFlow";
         
         const fetchData = async () => {
             try {

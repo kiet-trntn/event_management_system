@@ -12,7 +12,7 @@ function AddMember() {
     });
 
     useEffect(() => {
-        document.title = "Thêm thành viên mới | TOOF";
+        document.title = "Thêm thành viên mới | TaskFlow";
     }, []);
 
 
