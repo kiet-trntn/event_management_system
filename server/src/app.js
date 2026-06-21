@@ -4,6 +4,7 @@ const cors = require("cors"); // Cho phép các ứng dụng khác (React, Vue,.
 const authRoutes = require("./routes/authRoutes"); // Lấy danh sách các đường dẫn đăng ký/đăng nhập vào
 const userRoutes = require("./routes/userRoutes"); // Lấy danh sách các đường dẫn liên quan đến thành viên (tạo mới, xem danh sách,...)
 const eventRoutes = require("./routes/eventRoutes"); // Lấy danh sách các đường dẫn liên quan đến sự kiện (tạo mới, xem danh sách,...)
+const eventMemberRoutes = require("./routes/eventMemberRoutes"); 
 
 const app = express(); // Tạo ra một ứng dụng server
 
@@ -13,7 +14,9 @@ app.use(express.json()); // Giúp server đọc được dữ liệu dạng JSON
 
 app.use("/api/auth", authRoutes); // Gắn tiền tố "/api/auth" cho các đường dẫn trong authRoutes (Ví dụ: /api/auth/login)
 app.use("/api/users", userRoutes); // Gắn tiền tố "/api/users" cho các đường dẫn trong userRoutes (Ví dụ: /api/users/create)
-app.use("/api/events",eventRoutes); // Gắn tiền tố "/api/events" cho các đường dẫn trong eventRoutes (Ví dụ: /api/events/create)
+app.use("/api/events", eventRoutes); // Gắn tiền tố "/api/events" cho các đường dẫn trong eventRoutes (Ví dụ: /api/events/create)
+app.use("/api/events", eventMemberRoutes);
+
 
 // Đường dẫn kiểm tra xem server có đang hoạt động hay không
 app.get("/", (req, res) => {
