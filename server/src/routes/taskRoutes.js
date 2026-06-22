@@ -6,6 +6,7 @@ const roleMiddleware = require("../middlewares/roleMiddleware");
 
 const {
     getAllTasks,
+    getTaskById,
     createTask
 } = require("../controllers/taskController");
 
@@ -20,6 +21,12 @@ router.post(
     authMiddleware,
     roleMiddleware("admin"),
     createTask
+);
+
+router.get(
+    "/:id",
+    authMiddleware,
+    getTaskById
 );
 
 
