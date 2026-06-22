@@ -240,9 +240,217 @@ const createTask = async (req, res) => {
 
 };
 
+const updateTask = async (req, res) => {
+
+    try {
+
+        const { id } = req.params;
+
+        const {
+            title,
+            description,
+            assigned_to,
+            priority,
+            due_date
+        } = req.body;
+
+        // Kiểm tra task tồn tại
+        const [tasks] = await db.query(
+            `
+            SELECT *
+            FROM tasks
+            WHERE id = ?
+            `,
+            [id]
+        );
+
+        if (tasks.length === 0) {
+            return res.status(404).json({
+                message: "Không tìm thấy công việc"
+            });
+        }
+
+        const task = tasks[0];
+
+        // Không cho sửa task đã hoàn thành hoặc hủy
+        if (
+            task.status === "completed" ||
+            task.status === "cancelled"
+        ) {
+            return res.status(400).json({
+                message: "Không thể chỉnh sửa công việc này"
+            });
+        }
+
+        // Kiểm tra title
+        if (!title) {
+            return res.status(400).json({
+                message: "Tiêu đề không được để trống"
+            });
+        }
+
+        // Kiểm tra priority
+        if (
+            priority &&
+            priority !== "low" &&
+            priority !== "medium" &&
+            priority !== "high"
+        ) {
+            return res.status(400).json({
+                message: "Độ ưu tiên không hợp lệ"
+            });
+        }
+
+        // Kiểm tra người được giao
+        if (assigned_to) {
+
+            const [members] = await db.query(
+                `
+                SELECT *
+                FROM event_members
+                WHERE event_id = ?
+                AND user_id = ?
+                `,
+                [
+                    task.event_id,
+                    assigned_to
+                ]
+            );
+
+            if (members.length === 0) {
+                return res.status(400).json({
+                    message: "Người được giao không thuộc sự kiện"
+                });
+            }
+
+        }
+
+        await db.query(
+            `
+            UPDATE tasks
+            SET
+                title = ?,
+                description = ?,
+                assigned_to = ?,
+                priority = ?,
+                due_date = ?
+            WHERE id = ?
+            `,
+            [
+                title,
+                description,
+                assigned_to || null,
+                priority || "medium",
+                due_date || null,
+                id
+            ]
+        );
+
+        res.json({
+            message: "Cập nhật công việc thành công"
+        });
+
+    } catch (error) {
+
+        console.log(error);
+
+        res.status(500).json({
+            message: error.message
+        });
+
+    }
+
+};
+
+const updateTaskStatus = async (req, res) => {
+
+    try {
+
+        const { id } = req.params;
+
+        const { status } = req.body;
+
+        // Validate status
+        const validStatus = [
+            "pending",
+            "in_progress",
+            "completed",
+            "cancelled"
+        ];
+
+        if (!validStatus.includes(status)) {
+            return res.status(400).json({
+                message: "Trạng thái không hợp lệ"
+            });
+        }
+
+        // Kiểm tra task tồn tại
+        const [tasks] = await db.query(
+            `
+            SELECT *
+            FROM tasks
+            WHERE id = ?
+            `,
+            [id]
+        );
+
+        if (tasks.length === 0) {
+            return res.status(404).json({
+                message: "Không tìm thấy công việc"
+            });
+        }
+
+        const task = tasks[0];
+
+        if (
+            req.user.role !== "admin" &&
+            req.user.id !== task.assigned_to
+        ) {
+            return res.status(404).json({
+                message: "Bạn không có quyền cập nhật công việc này"
+            });
+        }
+
+        // Không cho đổi khi đã completed hoặc cancelled
+        if (
+            task.status === "completed" ||
+            task.status === "cancelled"
+        ) {
+            return res.status(400).json({
+                message: "Không thể thay đổi trạng thái công việc này"
+            });
+        }
+
+        await db.query(
+            `
+            UPDATE tasks
+            SET status = ?
+            WHERE id = ?
+            `,
+            [status, id]
+        );
+
+        res.json({
+            message: "Cập nhật trạng thái thành công"
+        });
+
+    } catch (error) {
+
+        console.log(error);
+
+        res.status(500).json({
+            message: error.message
+        });
+
+    }
+
+};
+
 
 module.exports = {
     getAllTasks,
     getTaskById,
-    createTask
+    createTask,
+    updateTask,
+    updateTaskStatus
 };
