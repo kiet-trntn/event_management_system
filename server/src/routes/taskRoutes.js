@@ -7,7 +7,9 @@ const roleMiddleware = require("../middlewares/roleMiddleware");
 const {
     getAllTasks,
     getTaskById,
-    createTask
+    createTask,
+    updateTask,
+    updateTaskStatus
 } = require("../controllers/taskController");
 
 router.get(
@@ -29,6 +31,18 @@ router.get(
     getTaskById
 );
 
+router.put(
+    "/:id",
+    authMiddleware,
+    roleMiddleware("admin"),
+    updateTask
+);
+
+router.patch(
+    "/:id/status",
+    authMiddleware,
+    updateTaskStatus
+);
 
 
 module.exports = router;
