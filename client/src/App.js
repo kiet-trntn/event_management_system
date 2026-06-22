@@ -6,15 +6,21 @@ import ProtectedRouter from './components/ProtectedRouter';
 import AdminHeader from './components/admin/header';
 import StaffHeader from './components/staff/header';
 import ChangePassword from './pages/changepassword';
+
 import MembersList from './pages/admin/member/MembersList';
 import AddMember from './pages/admin/member/AddMember';
 import EditMember from './pages/admin/member/EditMember';
 import ViewMember from './pages/admin/member/ViewMember';
+
 import EventList from './pages/admin/event/EventList';
 import AddEvent from './pages/admin/event/AddEvent';
 import ViewEvent from './pages/admin/event/ViewEvent';
 import EditEvent from './pages/admin/event/EditEvent';
 import EventTrash from './pages/admin/event/EventTrash';
+
+import EventMembers from './pages/admin/eventmember/EventMembers';
+import AddEventMember from './pages/admin/eventmember/AddEventMember';
+import EditEventMember from './pages/admin/eventmember/EditEventMember';
 
 function App() {
   return (
@@ -43,6 +49,10 @@ function App() {
           <Route path="events/view/:id" element={<ViewEvent />} />
           <Route path="events/edit/:id" element={<EditEvent />} />
           <Route path="events/trash" element={<EventTrash />} />
+          
+          <Route path="events/:eventId/members" element={<EventMembers />} />
+          <Route path="events/:eventId/members/add" element={<AddEventMember />} />
+          <Route path="events/:eventId/members/edit/:userId" element={<EditEventMember />} />
         </Route>
 
         <Route 
