@@ -22,6 +22,11 @@ import EventMembers from './pages/admin/eventmember/EventMembers';
 import AddEventMember from './pages/admin/eventmember/AddEventMember';
 import EditEventMember from './pages/admin/eventmember/EditEventMember';
 
+import TaskList from './pages/admin/task/TaskList';
+import AddTask from './pages/admin/task/AddTask';
+import ViewTask from './pages/admin/task/ViewTask';
+import EditTask from './pages/admin/task/EditTask';
+
 function App() {
   return (
     <BrowserRouter>
@@ -53,6 +58,12 @@ function App() {
           <Route path="events/:eventId/members" element={<EventMembers />} />
           <Route path="events/:eventId/members/add" element={<AddEventMember />} />
           <Route path="events/:eventId/members/edit/:userId" element={<EditEventMember />} />
+
+          <Route path="tasks" element={<TaskList />} />
+          <Route path="tasks/add" element={<AddTask />} />
+          <Route path="tasks/view/:id" element={<ViewTask />} />
+          <Route path="tasks/edit/:id" element={<EditTask />} />
+
         </Route>
 
         <Route 

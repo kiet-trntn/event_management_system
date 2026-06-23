@@ -185,7 +185,7 @@ function ViewEvent() {
 
                     {/* Các nút hành động: Chỉ hiển thị khi cần thiết */}
                     {event.status === 'Nháp' && (
-                        <button className="btn-secondary" onClick={() => navigate(`/admin/events/edit/${event.id}`)}>
+                        <button className="btn-primary" onClick={() => navigate(`/admin/events/edit/${event.id}`)}>
                             Sửa sự kiện
                         </button>
                     )}

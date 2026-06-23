@@ -88,13 +88,13 @@ function AddEventMember() {
                 <form onSubmit={handleSubmit}>
                     
                     <div className="form-group">
-                        <label className="form-label">Chọn nhân viên <span className="text-error">*</span></label>
+                        <label className="form-label">Nhân viên <span className="text-error">*</span></label>
                         <select 
                             className="form-input" 
                             value={userId}
                             onChange={(e) => setUserId(e.target.value)}
                         >
-                            <option value="">-- Click để chọn nhân viên --</option>
+                            <option value="">Chọn nhân viên</option>
                             {usersList.map((user) => (
                                 <option key={user.id} value={user.id}>
                                     {user.id}. {user.full_name}
@@ -110,8 +110,8 @@ function AddEventMember() {
                             value={roleInEvent}
                             onChange={(e) => setRoleInEvent(e.target.value)}
                         >
-                            <option value="member">Thành viên (Member)</option>
-                            <option value="coordinator">Điều phối viên (Coordinator)</option>
+                            <option value="member">Thành viên</option>
+                            <option value="coordinator">Điều phối viên</option>
                         </select>
                     </div>
 
