@@ -127,11 +127,10 @@ body {
     flex-direction: column; 
 }
 
-/* Khung chứa tổng cho các trang nội dung, tự động co giãn và căn giữa */
 .page-container { 
     width: 100%; 
-    max-width: 1000px; 
-    padding: 32px 40px; 
+    max-width: 1400px;
+    padding: 12px 20px 32px 20px; 
     box-sizing: border-box; 
     margin: 0 auto; 
 }

@@ -6,10 +6,10 @@ function AddEventMember() {
     const { eventId } = useParams();
     const navigate = useNavigate();
 
-    // Khởi tạo state cho form
     const [userId, setUserId] = useState('');
     const [roleInEvent, setRoleInEvent] = useState('member');
     const [loading, setLoading] = useState(false);
+    
     const [usersList, setUsersList] = useState([]);
 
     useEffect(() => {
@@ -86,6 +86,7 @@ function AddEventMember() {
 
             <div className="form-card">
                 <form onSubmit={handleSubmit}>
+                    
                     <div className="form-group">
                         <label className="form-label">Chọn nhân viên <span className="text-error">*</span></label>
                         <select 

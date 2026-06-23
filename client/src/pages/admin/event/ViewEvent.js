@@ -9,7 +9,7 @@ function ViewEvent() {
     const [loading, setLoading] = useState(true);
 
     useEffect(() => {
-        document.title = "Chi tiết sự kiện | TOOF";
+        document.title = "Chi tiết sự kiện | TaskFlow";
         const fetchEventDetail = async () => {
             try {
                 const response = await fetch(`http://localhost:5000/api/events/${id}`, {
@@ -108,11 +108,13 @@ function ViewEvent() {
 
     if (!event) return null;
 
+    const isEditable = (event.status === 'Nháp' || event.status === 'Sắp diễn ra');
+
     return (
         <div className="page-container event-page">
             
             <div className="page-header-form">
-                <button type="button" className="btn-back" onClick={() => navigate(-1)}>
+                <button type="button" className="btn-back" onClick={() => navigate('/admin/events')}>
                     <svg width="18" height="18" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth="2">
                         <path strokeLinecap="round" strokeLinejoin="round" d="M10 19l-7-7m0 0l7-7m-7 7h18"></path>
                     </svg>
@@ -165,53 +167,46 @@ function ViewEvent() {
                     </p>
                 </div>
 
-                {(event.status === 'Nháp' || event.status === 'Sắp diễn ra' || event.status === 'Đang diễn ra') && (
-                    <>
-                        <div className="event-divider"></div>
-                        <div className="form-actions">
-                            
-                            {/* 🌟 NÚT QUẢN LÝ THÀNH VIÊN NẰM Ở GÓC TRÁI */}
-                            <button 
-                                className="btn-secondary" 
-                                style={{ marginRight: 'auto', display: 'flex', alignItems: 'center', gap: '6px' }}
-                                onClick={() => navigate(`/admin/events/${event.id}/members`)}
-                            >
-                                <svg width="18" height="18" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
-                                    <path strokeLinecap="round" strokeLinejoin="round" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z" />
-                                </svg>
-                                Quản lý thành viên
-                            </button>
+                {/* 🌟 ĐÃ XÓA ĐIỀU KIỆN BỌC BÊN NGOÀI ĐỂ LUÔN HIỂN THỊ KHỐI NÀY */}
+                <div className="event-divider"></div>
+                <div className="form-actions">
+                    
+                    {/* Nút Xem Thành Viên: Luôn luôn hiển thị */}
+                    <button 
+                        className="btn-secondary" 
+                        style={{ marginRight: 'auto', display: 'flex', alignItems: 'center', gap: '6px' }}
+                        onClick={() => navigate(`/admin/events/${event.id}/members`)}
+                    >
+                        <svg width="18" height="18" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z" />
+                        </svg>
+                        {isEditable ? "Quản lý thành viên" : "Xem danh sách thành viên"}
+                    </button>
 
-                            {/* Các nút hiện tại của bạn giữ nguyên */}
-                            {event.status === 'Nháp' && (
-                                <button 
-                                    className="btn-secondary" 
-                                    onClick={() => navigate(`/admin/events/edit/${event.id}`)}
-                                >
-                                    Sửa sự kiện
-                                </button>
-                            )}
-                            
-                            <button 
-                                className="btn-primary" 
-                                style={{ backgroundColor: '#ef4444', borderColor: '#ef4444' }} 
-                                onClick={handleCancel}
-                            >
-                                Hủy sự kiện
-                            </button>
-                            
-                            {event.status === 'Nháp' && (
-                                <button 
-                                    className="btn-publish" 
-                                    onClick={handlePublish}
-                                >
-                                    Công bố sự kiện
-                                </button>
-                            )}
-                            
-                        </div>
-                    </>
-                )}
+                    {/* Các nút hành động: Chỉ hiển thị khi cần thiết */}
+                    {event.status === 'Nháp' && (
+                        <button className="btn-secondary" onClick={() => navigate(`/admin/events/edit/${event.id}`)}>
+                            Sửa sự kiện
+                        </button>
+                    )}
+
+                    {/* Nút Hủy: Chỉ hiển thị nếu sự kiện chưa bị hủy và chưa kết thúc */}
+                    {(event.status !== 'Đã hủy' && event.status !== 'Đã kết thúc') && (
+                        <button 
+                            className="btn-primary" 
+                            style={{ backgroundColor: '#ef4444', borderColor: '#ef4444' }} 
+                            onClick={handleCancel}
+                        >
+                            Hủy sự kiện
+                        </button>
+                    )}
+
+                    {event.status === 'Nháp' && (
+                        <button className="btn-publish" onClick={handlePublish}>
+                            Công bố sự kiện
+                        </button>
+                    )}
+                </div>
             </div>
         </div>
     );
