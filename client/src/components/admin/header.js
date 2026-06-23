@@ -1,7 +1,7 @@
 import React, { useState } from "react";
 import { Link, NavLink, useNavigate, Outlet } from "react-router-dom";
 
-function Layout() { // Đổi tên thành Layout sẽ hợp lý hơn vì nó chứa cả Sidebar + Header + Content
+function Layout() { 
     const navigate = useNavigate();
     const [isDropdownOpen, setIsDropdownOpen] = useState(false);
 
@@ -15,7 +15,6 @@ function Layout() { // Đổi tên thành Layout sẽ hợp lý hơn vì nó ch�
 
     return (
         <>
-            {/* 1. SIDEBAR GIỮ NGUYÊN */}
             <aside className="sidebar">
                 <div className="sidebar-logo-box">
                     <img src="/favicon.svg" alt="TaskFlow Logo" className="sidebar-logo-img" />
@@ -44,7 +43,6 @@ function Layout() { // Đổi tên thành Layout sẽ hợp lý hơn vì nó ch�
                 </nav>
             </aside>
 
-            {/* 2. BẮT BUỘC PHẢI BỌC HEADER VÀ OUTLET TRONG MAIN-CONTENT */}
             <main className="main-content">
                 <header className="header">
                     <div className="header-actions">
@@ -63,8 +61,6 @@ function Layout() { // Đổi tên thành Layout sẽ hợp lý hơn vì nó ch�
                                 <p className="user-name">{user?.full_name || "Chưa đăng nhập"}</p>
                                 <p className="user-role">{user?.role || "Staff"}</p>
                             </div>
-                            
-                            {/* Ép CSS hiển thị khi isDropdownOpen = true */}
                             {isDropdownOpen && (
                                 <div className="dropdown-menu" style={{ opacity: 1, visibility: 'visible', transform: 'translateY(0)' }}>
                                     <Link 
@@ -93,7 +89,6 @@ function Layout() { // Đổi tên thành Layout sẽ hợp lý hơn vì nó ch�
                     </div>
                 </header>
 
-                {/* 3. BỌC OUTLET TRONG PAGE-CONTAINER ĐỂ CĂN LỀ */}
                 <div className="page-container">
                     <Outlet />
                 </div>
@@ -102,4 +97,4 @@ function Layout() { // Đổi tên thành Layout sẽ hợp lý hơn vì nó ch�
     );
 }
 
-export default Layout; // Cập nhật tên Export
+export default Layout; 

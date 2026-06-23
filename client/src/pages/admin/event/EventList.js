@@ -138,9 +138,6 @@ function EventList() {
                             </>
                         )}
                     </div>
-
-                    <div className="event-divider mb-6"></div>
-
                     <div>
                         <h3 className="section-title warning">Bản nháp</h3>
                         

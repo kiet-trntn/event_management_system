@@ -90,7 +90,7 @@ function MembersList() {
     return (
         <div className="page-container">
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '24px' }}>
-                <h1 style={{ fontSize: '18px', fontWeight: '600', margin: 0 }}>Danh sách thành viên</h1>
+                <h1 style={{ fontSize: '20px', fontWeight: '700', margin: 0}}>Danh sách thành viên</h1>
                 <button className="btn-primary" onClick={() => navigate('/admin/members/add')} >
                     + Thêm thành viên
                 </button>

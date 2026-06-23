@@ -8,39 +8,51 @@ function EventMembers() {
 
     const [members, setMembers] = useState([]);
     const [totalMembers, setTotalMembers] = useState(0);
+    const [eventStatus, setEventStatus] = useState(''); 
     const [loading, setLoading] = useState(true);
 
-    // 🌟 Đưa fetchMembers ra ngoài và bọc bằng useCallback
-    const fetchMembers = useCallback(async () => {
+    const fetchEventData = useCallback(async () => {
         try {
-            const response = await fetch(`http://localhost:5000/api/events/${eventId}/members`, {
+            // 1. Gọi API lấy chính xác trạng thái sự kiện
+            const eventRes = await fetch(`http://localhost:5000/api/events/${eventId}`, {
                 headers: { 'Authorization': `Bearer ${localStorage.getItem('my_token')}` }
             });
-            const data = await response.json();
-            if (response.ok) {
-                setMembers(data.members || []);
-                setTotalMembers(data.total_members || (data.members ? data.members.length : 0));
+            const eventData = await eventRes.json();
+            if (eventRes.ok) {
+                setEventStatus(eventData.status); // Lưu chữ "Nháp" hoặc "Sắp diễn ra"
+            }
+
+            // 2. Gọi API lấy danh sách thành viên
+            const membersRes = await fetch(`http://localhost:5000/api/events/${eventId}/members`, {
+                headers: { 'Authorization': `Bearer ${localStorage.getItem('my_token')}` }
+            });
+            const membersData = await membersRes.json();
+            if (membersRes.ok) {
+                setMembers(membersData.members || []);
+                setTotalMembers(membersData.total_members || (membersData.members ? membersData.members.length : 0));
             } else {
-                Swal.fire('Lỗi!', data.message || 'Không thể tải danh sách thành viên', 'error');
+                Swal.fire('Lỗi!', membersData.message || 'Không thể tải danh sách', 'error');
             }
         } catch (error) {
-            console.error("Lỗi khi tải thành viên:", error);
+            console.error("Lỗi khi tải dữ liệu:", error);
         } finally {
             setLoading(false);
         }
     }, [eventId]); 
 
-    // 🌟 useEffect bây giờ chỉ gọi hàm một cách sạch sẽ
     useEffect(() => {
         document.title = "Thành viên sự kiện | TaskFlow";
-        fetchMembers();
-    }, [fetchMembers]);
+        fetchEventData();
+    }, [fetchEventData]);
 
     const translateRole = (role) => {
         if(role === 'coordinator') return 'Điều phối viên';
         return 'Thành viên';
     };
     
+    // 🌟 QUYẾT ĐỊNH QUYỀN TRUY CẬP: Nháp và Sắp diễn ra được phép Thêm/Xóa/Sửa
+    const isEditable = (eventStatus === 'Nháp' || eventStatus === 'Sắp diễn ra');
+
     const handleDeleteMember = (memberId) => {
         Swal.fire({
             title: 'Bạn có chắc chắn?',
@@ -62,7 +74,7 @@ function EventMembers() {
                     
                     if (response.ok) {
                         Swal.fire('Đã xóa!', 'Thành viên đã được xóa khỏi sự kiện.', 'success');
-                        fetchMembers(); // 🌟 Bây giờ thì gọi thoải mái, không lo lỗi nữa!
+                        fetchEventData(); // Tải lại danh sách
                     } else {
                         Swal.fire('Lỗi!', data.message, 'error');
                     }
@@ -76,7 +88,6 @@ function EventMembers() {
     return (
         <div className="page-container">
             
-            {/* --- HEADER --- */}
             <div className="page-header-form" style={{ maxWidth: '100%' }}>
                 <button type="button" className="btn-back" onClick={() => navigate(`/admin/events/view/${eventId}`)}>
                     <svg width="18" height="18" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth="2">
@@ -87,13 +98,16 @@ function EventMembers() {
                 
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: '16px' }}>
                     <h3 style={{ margin: 0 }}>Thành viên tham gia ({totalMembers})</h3>
-                    <button className="btn-primary" onClick={() => navigate(`/admin/events/${eventId}/members/add`)}>
-                        + Thêm thành viên
-                    </button>
+                    
+                    {/* 🌟 NÚT THÊM CHỈ HIỆN KHI LÀ NHÁP HOẶC SẮP DIỄN RA */}
+                    {isEditable && (
+                        <button className="btn-primary" onClick={() => navigate(`/admin/events/${eventId}/members/add`)}>
+                            + Thêm thành viên
+                        </button>
+                    )}
                 </div>
             </div>
 
-            {/* --- DANH SÁCH THÀNH VIÊN --- */}
             {loading ? (
                 <div className="text-center text-secondary mb-6 mt-6">Đang tải danh sách...</div>
             ) : members.length === 0 ? (
@@ -109,7 +123,8 @@ function EventMembers() {
                                 <th>Họ và tên</th>
                                 <th style={{ textAlign: 'center' }}>Vai trò</th>
                                 <th style={{ textAlign: 'center' }}>Ngày tham gia</th>
-                                <th style={{ textAlign: 'center' }}>Hành động</th>
+                                {/* 🌟 CỘT HÀNH ĐỘNG ẨN THEO ĐIỀU KIỆN */}
+                                {isEditable && <th style={{ textAlign: 'center' }}>Hành động</th>}
                             </tr>
                         </thead>
                         <tbody>
@@ -130,33 +145,32 @@ function EventMembers() {
                                     <td style={{ textAlign: 'center', color: 'var(--text-secondary)' }}>
                                         {new Date(member.joined_at).toLocaleDateString('vi-VN')}
                                     </td>
-                                    <td style={{ textAlign: 'center' }}>
-                                        <div style={{ display: 'flex', gap: '8px', justifyContent: 'center' }}>
-                                            
-                                            {/* NÚT SỬA */}
-                                            <button 
-                                                className="btn-edit" 
-                                                title="Sửa vai trò"
-                                                onClick={() => navigate(`/admin/events/${eventId}/members/edit/${member.id}`)}
-                                            >
-                                                <svg width="16" height="16" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z" />
-                                                </svg>
-                                            </button>
-                                            
-                                            {/* NÚT XÓA */}
-                                            <button 
-                                                className="btn-delete" 
-                                                title="Xóa khỏi sự kiện"
-                                                onClick={() => handleDeleteMember(member.id)}
-                                            >
-                                                <svg width="16" height="16" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
-                                                </svg>
-                                            </button>
-
-                                        </div>
-                                    </td>
+                                    
+                                    {/* 🌟 NÚT SỬA XÓA ẨN THEO ĐIỀU KIỆN */}
+                                    {isEditable && (
+                                        <td style={{ textAlign: 'center' }}>
+                                            <div style={{ display: 'flex', gap: '8px', justifyContent: 'center' }}>
+                                                <button 
+                                                    className="btn-edit" 
+                                                    title="Sửa vai trò"
+                                                    onClick={() => navigate(`/admin/events/${eventId}/members/edit/${member.id}`)}
+                                                >
+                                                    <svg width="16" height="16" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z" />
+                                                    </svg>
+                                                </button>
+                                                <button 
+                                                    className="btn-delete" 
+                                                    title="Xóa khỏi sự kiện"
+                                                    onClick={() => handleDeleteMember(member.id)}
+                                                >
+                                                    <svg width="16" height="16" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                                                    </svg>
+                                                </button>
+                                            </div>
+                                        </td>
+                                    )}
                                 </tr>
                             ))}
                         </tbody>
