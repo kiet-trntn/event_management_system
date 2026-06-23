@@ -95,7 +95,6 @@ function EditEventMember() {
                     <form onSubmit={handleSubmit}>
                         <div className="form-group">
                             <label className="form-label">Nhân viên đang sửa</label>
-                            {/* 🌟 Đã cập nhật: Hiển thị cả Mã ID và Tên nhân viên */}
                             <input 
                                 type="text" 
                                 className="form-input" 
