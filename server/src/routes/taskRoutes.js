@@ -9,7 +9,10 @@ const {
     getTaskById,
     createTask,
     updateTask,
-    updateTaskStatus
+    updateTaskStatus,
+    deleteTask,
+    restoreTask,
+    getDeletedTasks
 } = require("../controllers/taskController");
 
 router.get(
@@ -23,6 +26,13 @@ router.post(
     authMiddleware,
     roleMiddleware("admin"),
     createTask
+);
+
+router.get(
+    "/deleted",
+    authMiddleware,
+    roleMiddleware("admin"),
+    getDeletedTasks
 );
 
 router.get(
@@ -43,6 +53,22 @@ router.patch(
     authMiddleware,
     updateTaskStatus
 );
+
+router.delete(
+    "/:id",
+    authMiddleware,
+    roleMiddleware("admin"),
+    deleteTask
+);
+
+router.patch(
+    "/:id/restore",
+    authMiddleware,
+    roleMiddleware("admin"),
+    restoreTask
+);
+
+
 
 
 module.exports = router;
