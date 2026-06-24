@@ -29,6 +29,8 @@ const getAllTasks = async (req, res) => {
 
             LEFT JOIN users u
                 ON t.assigned_to = u.id
+
+            WHERE t.is_deleted = FALSE
         `;
 
         let params = [];
@@ -106,6 +108,7 @@ const getTaskById = async (req, res) => {
                 ON t.created_by = u2.id
 
             WHERE t.id = ?
+            AND t.is_deleted = FALSE
             `,
             [id]
         );
@@ -260,6 +263,7 @@ const updateTask = async (req, res) => {
             SELECT *
             FROM tasks
             WHERE id = ?
+            AND is_deleted = FALSE
             `,
             [id]
         );
@@ -362,7 +366,7 @@ const updateTask = async (req, res) => {
 
 };
 
-const updateTaskStatus = async (req, res) => {
+const updateTaskStatus = async (req, res) => {z
 
     try {
 
@@ -390,6 +394,7 @@ const updateTaskStatus = async (req, res) => {
             SELECT *
             FROM tasks
             WHERE id = ?
+            AND is_deleted = FALSE
             `,
             [id]
         );
@@ -446,11 +451,175 @@ const updateTaskStatus = async (req, res) => {
 
 };
 
+const deleteTask = async (req, res) => {
+
+    try {
+
+        const { id } = req.params;
+
+        // Kiểm tra task tồn tại
+        const [tasks] = await db.query(
+            `
+            SELECT *
+            FROM tasks
+            WHERE id = ?
+            AND is_deleted = FALSE
+            `,
+            [id]
+        );
+
+        if (tasks.length === 0) {
+            return res.status(404).json({
+                message: "Không tìm thấy công việc"
+            });
+        }
+
+        // Soft delete
+        await db.query(
+            `
+            UPDATE tasks
+            SET
+                is_deleted = TRUE,
+                deleted_at = NOW()
+            WHERE id = ?
+            `,
+            [id]
+        );
+
+        res.json({
+            message: "Xóa công việc thành công"
+        });
+
+    } catch (error) {
+
+        console.log(error);
+
+        res.status(500).json({
+            message: error.message
+        });
+
+    }
+
+};
+
+const restoreTask = async (req, res) => {
+
+    try {
+
+        const { id } = req.params;
+
+        // Kiểm tra task có tồn tại không
+        const [tasks] = await db.query(
+            `
+            SELECT *
+            FROM tasks
+            WHERE id = ?
+            `,
+            [id]
+        );
+
+        if (tasks.length === 0) {
+            return res.status(404).json({
+                message: "Không tìm thấy công việc"
+            });
+        }
+
+        const task = tasks[0];
+
+        // Kiểm tra đã bị xóa chưa
+        if (!task.is_deleted) {
+            return res.status(400).json({
+                message: "Công việc chưa bị xóa"
+            });
+        }
+
+        // Khôi phục
+        await db.query(
+            `
+            UPDATE tasks
+            SET
+                is_deleted = FALSE,
+                deleted_at = NULL
+            WHERE id = ?
+            `,
+            [id]
+        );
+
+        res.json({
+            message: "Khôi phục công việc thành công"
+        });
+
+    } catch (error) {
+
+        console.log(error);
+
+        res.status(500).json({
+            message: error.message
+        });
+
+    }
+
+};
+
+const getDeletedTasks = async (req, res) => {
+
+    try {
+
+        const [tasks] = await db.query(
+            `
+            SELECT
+                t.id,
+                t.title,
+                t.description,
+                t.status,
+                t.priority,
+                t.due_date,
+                t.deleted_at,
+
+                e.id AS event_id,
+                e.title AS event_title,
+
+                u.id AS assigned_to,
+                u.full_name AS assigned_name
+
+            FROM tasks t
+
+            INNER JOIN events e
+                ON t.event_id = e.id
+
+            LEFT JOIN users u
+                ON t.assigned_to = u.id
+
+            WHERE t.is_deleted = TRUE
+
+            ORDER BY t.id DESC
+            `
+        );
+
+        res.json({
+            total: tasks.length,
+            tasks
+        });
+
+    } catch (error) {
+
+        console.log(error);
+
+        res.status(500).json({
+            message: error.message
+        });
+
+    }
+
+};
 
 module.exports = {
     getAllTasks,
     getTaskById,
     createTask,
     updateTask,
-    updateTaskStatus
+    updateTaskStatus,
+    deleteTask,
+    restoreTask,
+    getDeletedTasks
 };
