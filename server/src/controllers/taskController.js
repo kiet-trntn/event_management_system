@@ -366,7 +366,7 @@ const updateTask = async (req, res) => {
 
 };
 
-const updateTaskStatus = async (req, res) => {z
+const updateTaskStatus = async (req, res) => {
 
     try {
 

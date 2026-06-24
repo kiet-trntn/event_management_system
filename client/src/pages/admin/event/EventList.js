@@ -1,6 +1,5 @@
 import React , { useEffect, useState } from 'react';
 import {useNavigate} from 'react-router-dom';
-import Swal from 'sweetalert2';
 
 function EventList() {
     const navigate = useNavigate();
@@ -30,46 +29,6 @@ function EventList() {
     }, []);
 
     const handleCardClick = (id) => navigate(`/admin/events/view/${id}`);
-    const handleEdit = (e, id) => { 
-        e.stopPropagation(); 
-        navigate(`/admin/events/edit/${id}`); 
-    };
-    const handleDelete = async (e, id) => { 
-        e.stopPropagation(); 
-        const result = await Swal.fire({
-            title: 'Chuyển vào thùng rác?',
-            text: "Sự kiện sẽ được chuyển vào thùng rác và có thể khôi phục lại sau này.",
-            icon: 'warning',
-            showCancelButton: true,
-            confirmButtonColor: '#ef4444',
-            cancelButtonColor: '#6b7280',
-            confirmButtonText: 'Đồng ý xóa',
-            cancelButtonText: 'Hủy'
-        });
-        if (result.isConfirmed) {
-            try {
-                const response = await fetch(`http://localhost:5000/api/events/${id}/delete`, {
-                    method: 'PATCH',
-                    headers: { 
-                        'Authorization': `Bearer ${localStorage.getItem('my_token')}`,
-                        'Content-Type': 'application/json'
-                    }
-                });
-
-                const data = await response.json();
-                
-                if (response.ok) {
-                    Swal.fire('Đã xóa!', 'Sự kiện đã được đưa vào thùng rác.', 'success');
-                    setEvents(prevEvents => prevEvents.filter(ev => ev.id !== id));
-                } else {
-                    Swal.fire('Lỗi!', data.message || 'Không thể xóa sự kiện.', 'error');
-                }
-            } catch (error) {
-                console.error("Lỗi xóa:", error);
-                Swal.fire('Lỗi!', 'Không thể kết nối máy chủ.', 'error');
-            }
-        }
-    };
 
     const officialEvents = events.filter(event => event.status !== 'Nháp');
     const draftEvents = events.filter(event => event.status === 'Nháp');
@@ -119,7 +78,7 @@ function EventList() {
                                                     {event.status}
                                                 </span>
                                             </div>
-                                            <h4 className="event-title">{event.title}</h4>
+                                            <h2 className="event-title">{event.title}</h2>
                                             <p className="event-detail-row">📍 {event.location}</p>
                                             <p className="event-detail-row">🕒 {new Date(event.start_date).toLocaleDateString('vi-VN')}</p>
                                         </div>
@@ -148,18 +107,9 @@ function EventList() {
                                 <div className="event-grid">
                                     {currentDraftEvents.map(event => (
                                         <div key={event.id} className="event-card" onClick={() => handleCardClick(event.id)} style={{ cursor: 'pointer' }}>
-                                            <h4 className="event-title">{event.title}</h4>
+                                            <h2 className="event-title">{event.title}</h2>
                                             <p className="event-detail-row">📍 {event.location}</p>
                                             <p className="event-detail-row">🕒 {new Date(event.start_date).toLocaleDateString('vi-VN')}</p>
-                                            
-                                            <div className="event-actions">
-                                                <button className="btn-edit" title="Sửa sự kiện" onClick={(e) => handleEdit(e, event.id)}>
-                                                    <svg width="16" height="16" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z" /></svg>
-                                                </button>
-                                                <button className="btn-delete" title="Xóa sự kiện" onClick={(e) => handleDelete(e, event.id)}>
-                                                    <svg width="16" height="16" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" /></svg>
-                                                </button>
-                                            </div>
                                         </div>
                                     ))}
                                 </div>
