@@ -69,6 +69,43 @@ function ViewEvent() {
         }
     };
 
+    const handleDelete = async () => { 
+        const result = await Swal.fire({
+            title: 'Chuyển vào thùng rác?',
+            text: "Sự kiện sẽ được chuyển vào thùng rác và có thể khôi phục lại sau này.",
+            icon: 'warning',
+            showCancelButton: true,
+            confirmButtonColor: '#ef4444',
+            cancelButtonColor: '#6b7280',
+            confirmButtonText: 'Đồng ý xóa',
+            cancelButtonText: 'Hủy'
+        });
+
+        if (result.isConfirmed) {
+            try {
+                const response = await fetch(`http://localhost:5000/api/events/${id}/delete`, {
+                    method: 'PATCH',
+                    headers: { 
+                        'Authorization': `Bearer ${localStorage.getItem('my_token')}`,
+                        'Content-Type': 'application/json'
+                    }
+                });
+    
+                const data = await response.json();
+                
+                if (response.ok) {
+                    Swal.fire('Đã xóa!', 'Sự kiện đã được đưa vào thùng rác.', 'success')
+                        .then(() => navigate('/admin/events'));
+                } else {
+                    Swal.fire('Lỗi!', data.message || 'Không thể xóa sự kiện.', 'error');
+                }
+            } catch (error) {
+                console.error("Lỗi xóa:", error);
+                Swal.fire('Lỗi!', 'Không thể kết nối máy chủ.', 'error');
+            }
+        }
+    };
+
     const handleCancel = async () => {
         const result = await Swal.fire({
             title: 'Hủy sự kiện này?',
@@ -167,11 +204,9 @@ function ViewEvent() {
                     </p>
                 </div>
 
-                {/* 🌟 ĐÃ XÓA ĐIỀU KIỆN BỌC BÊN NGOÀI ĐỂ LUÔN HIỂN THỊ KHỐI NÀY */}
                 <div className="event-divider"></div>
-                <div className="form-actions">
-                    
-                    {/* Nút Xem Thành Viên: Luôn luôn hiển thị */}
+                
+                <div className="form-actions" style={{ display: 'flex', gap: '10px', alignItems: 'center' }}>
                     <button 
                         className="btn-secondary" 
                         style={{ marginRight: 'auto', display: 'flex', alignItems: 'center', gap: '6px' }}
@@ -180,29 +215,45 @@ function ViewEvent() {
                         <svg width="18" height="18" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
                             <path strokeLinecap="round" strokeLinejoin="round" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z" />
                         </svg>
-                        {isEditable ? "Quản lý thành viên" : "Xem danh sách thành viên"}
+                        {isEditable ? "Quản lý thành viên" : "Xem thành viên"}
                     </button>
 
-                    {/* Các nút hành động: Chỉ hiển thị khi cần thiết */}
                     {event.status === 'Nháp' && (
-                        <button className="btn-primary" onClick={() => navigate(`/admin/events/edit/${event.id}`)}>
-                            Sửa sự kiện
+                        <button 
+                            className="btn-primary" 
+                            style={{ backgroundColor: '#3B82F6', borderColor: '#3B82F6', color: '#fff' }} 
+                            onClick={() => navigate(`/admin/events/edit/${event.id}`)}
+                        >
+                            Sửa
                         </button>
                     )}
 
-                    {/* Nút Hủy: Chỉ hiển thị nếu sự kiện chưa bị hủy và chưa kết thúc */}
+                    {event.status === 'Nháp' && (
+                        <button 
+                            className="btn-primary" 
+                            style={{ backgroundColor: '#6B7280', borderColor: '#6B7280', color: '#fff' }} 
+                            onClick={handleDelete}
+                        >
+                            Xóa
+                        </button>
+                    )}
+
                     {(event.status !== 'Đã hủy' && event.status !== 'Đã kết thúc') && (
                         <button 
                             className="btn-primary" 
-                            style={{ backgroundColor: '#ef4444', borderColor: '#ef4444' }} 
+                            style={{ backgroundColor: '#EF4444', borderColor: '#EF4444', color: '#fff' }} 
                             onClick={handleCancel}
                         >
-                            Hủy sự kiện
+                            Hủy
                         </button>
                     )}
 
                     {event.status === 'Nháp' && (
-                        <button className="btn-publish" onClick={handlePublish}>
+                        <button 
+                            className="btn-primary" 
+                            style={{ backgroundColor: '#10B981', borderColor: '#10B981', color: '#fff' }} 
+                            onClick={handlePublish}
+                        >
                             Công bố sự kiện
                         </button>
                     )}

@@ -30,8 +30,45 @@ function ViewTask() {
         fetchTaskDetail();
     }, [fetchTaskDetail]);
 
+    const handleDelete = async () => { 
+        const result = await Swal.fire({
+            title: 'Chuyển vào thùng rác?',
+            text: "Công việc sẽ được chuyển vào thùng rác và có thể khôi phục lại sau này.",
+            icon: 'warning',
+            showCancelButton: true,
+            confirmButtonColor: '#ef4444',
+            cancelButtonColor: '#6b7280',
+            confirmButtonText: 'Đồng ý xóa',
+            cancelButtonText: 'Hủy'
+        });
+
+        if (result.isConfirmed) {
+            try {
+                const response = await fetch(`http://localhost:5000/api/tasks/${id}`, {
+                    method: 'DELETE',
+                    headers: { 
+                        'Authorization': `Bearer ${localStorage.getItem('my_token')}`,
+                        'Content-Type': 'application/json'
+                     }
+                });
+        
+                const data = await response.json();
+                    
+                if (response.ok) {
+                     Swal.fire('Đã xóa!', 'Công việc đã được đưa vào thùng rác.', 'success')
+                        .then(() => navigate('/admin/tasks'));
+                } else {
+                    Swal.fire('Lỗi!', data.message || 'Không thể xóa công việc.', 'error');
+                }
+                } catch (error) {
+                    console.error("Lỗi xóa:", error);
+                    Swal.fire('Lỗi!', 'Không thể kết nối máy chủ.', 'error');
+                }
+            }
+    };
+
+
     const handleStatusUpdate = async (newStatus) => {
-        // Thêm hộp thoại xác nhận cho chắc chắn vì ô này giờ luôn mở
         const result = await Swal.fire({
             title: 'Cập nhật trạng thái?',
             text: "Bạn có chắc muốn đổi trạng thái công việc này?",
@@ -59,7 +96,6 @@ function ViewTask() {
     if (loading) return <div className="text-center py-6">Đang tải...</div>;
     if (!task) return null;
 
-    // Biến kiểm tra xem có bị khóa hay không
     const isLocked = task.status === 'completed' || task.status === 'cancelled';
 
     return (
@@ -120,14 +156,24 @@ function ViewTask() {
                     </p>
                 </div>
 
-                {/* 🌟 KIỂM TRA ĐIỀU KIỆN: Nếu KHÔNG BỊ KHÓA (!isLocked) thì mới render Nút Sửa */}
                 {!isLocked && (
                     <>
                         <div className="event-divider" style={{ marginTop: '24px' }}></div>
                         <div className="form-actions">
-                            <button className="btn-primary" onClick={() => navigate(`/admin/tasks/edit/${task.id}`)}>
-                                Sửa Công Việc
+                            <button 
+                                className="btn-primary" 
+                                style={{ backgroundColor: '#6B7280', borderColor: '#6B7280', color: '#fff' }} 
+                                onClick={handleDelete}
+                            >
+                                Xóa
                             </button>
+                            <button 
+                                className="btn-primary" 
+                                style={{ backgroundColor: '#3B82F6', borderColor: '#3B82F6', color: '#fff' }} 
+                                onClick={() => navigate(`/admin/tasks/edit/${task.id}`)}
+                            >
+                                Sửa
+                            </button>    
                         </div>
                     </>
                 )}
