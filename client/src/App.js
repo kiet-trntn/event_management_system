@@ -28,6 +28,11 @@ import ViewTask from './pages/admin/task/ViewTask';
 import EditTask from './pages/admin/task/EditTask';
 import TaskTrash from './pages/admin/task/TaskTrash';
 
+import Dashboard from './pages/staff/Dashboard';
+
+import EventListStaff from './pages/staff/event/EventList';
+import ViewEventStaff from './pages/staff/event/ViewEvent';
+
 function App() {
   return (
     <BrowserRouter>
@@ -76,6 +81,11 @@ function App() {
           }
         >  
           <Route path="changepassword" element={<ChangePassword />} />
+
+          <Route path="dashboard" element={<Dashboard />} />
+
+          <Route path="events" element={<EventListStaff />} />
+          <Route path="events/view/:id" element={<ViewEventStaff />} />
         </Route>
 
         <Route path="*" element={<h2>404 - Trang không tồn tại</h2>} />
