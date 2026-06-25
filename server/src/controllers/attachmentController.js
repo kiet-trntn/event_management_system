@@ -131,6 +131,7 @@ const getAttachmentsByTask = async (req, res) => {
                 a.file_name,
                 a.file_size,
                 a.file_type,
+                a.file_path,
                 a.created_at,
 
                 u.id AS uploaded_by_id,
