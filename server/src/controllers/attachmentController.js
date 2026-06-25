@@ -141,7 +141,7 @@ const getAttachmentsByTask = async (req, res) => {
                 ON a.uploaded_by = u.id
 
             WHERE a.task_id = ?
-            AND a.is_deleted = FALSE
+            AND a.deleted_at IS NULL
 
             ORDER BY a.id DESC
             `,
@@ -164,7 +164,88 @@ const getAttachmentsByTask = async (req, res) => {
 
 };
 
+const deleteAttachment = async (req, res) => {
+
+    try {
+
+        const { id } = req.params;
+
+        const [attachments] = await db.query(
+            `
+            SELECT *
+            FROM attachments
+            WHERE id = ?
+            AND deleted_at IS NULL
+            `,
+            [id]
+        );
+
+        if (attachments.length === 0) {
+            return res.status(404).json({
+                message: "Không tìm thấy file"
+            });
+        }
+
+        const attachment = attachments[0];
+
+        if (req.user.role !== "admin") {
+
+            const [events] = await db.query(
+                `
+                SELECT
+                    e.leader_id
+                FROM attachments a
+
+                INNER JOIN tasks t
+                    ON a.task_id = t.id
+
+                INNER JOIN events e
+                    ON t.event_id = e.id
+
+                WHERE a.id = ?
+                `,
+                [id]
+            );
+
+            if (
+                events.length === 0 ||
+                events[0].leader_id !== req.user.id
+            ) {
+                return res.status(403).json({
+                    message:
+                        "Bạn không có quyền xóa file này"
+                });
+            }
+
+        }
+
+        await db.query(
+            `
+            UPDATE attachments
+            SET deleted_at = NOW()
+            WHERE id = ?
+            `,
+            [id]
+        );
+
+        res.json({
+            message: "Xóa file thành công"
+        });
+
+    } catch (error) {
+
+        console.log(error);
+
+        res.status(500).json({
+            message: error.message
+        });
+
+    }
+
+};
+
 module.exports = {
     uploadAttachment,
-    getAttachmentsByTask
+    getAttachmentsByTask,
+    deleteAttachment
 };

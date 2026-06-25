@@ -10,7 +10,8 @@ require("../middlewares/uploadAttachment");
 
 const {
     uploadAttachment,
-    getAttachmentsByTask
+    getAttachmentsByTask,
+    deleteAttachment
 } = require(
     "../controllers/attachmentController"
 );
@@ -26,6 +27,12 @@ router.get(
     "/task/:id",
     authMiddleware,
     getAttachmentsByTask
+);
+
+router.delete(
+    "/:id",
+    authMiddleware,
+    deleteAttachment
 );
 
 module.exports = router;
