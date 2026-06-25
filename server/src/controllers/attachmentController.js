@@ -1,5 +1,6 @@
 const db = require("../config/db");
 const path = require("path");
+const fs = require("fs");
 
 const uploadAttachment = async (req, res) => {
 
@@ -288,10 +289,154 @@ const getDeletedAttachments = async (req, res) => {
 
 };
 
+const restoreAttachment = async (req, res) => {
+
+    try {
+
+        const { id } = req.params;
+
+        const [attachments] = await db.query(
+            `
+            SELECT *
+            FROM attachments
+            WHERE id = ?
+            AND deleted_at IS NOT NULL
+            `,
+            [id]
+        );
+
+        if (attachments.length === 0) {
+            return res.status(404).json({
+                message: "Không tìm thấy file đã xóa"
+            });
+        }
+
+        await db.query(
+            `
+            UPDATE attachments
+            SET deleted_at = NULL
+            WHERE id = ?
+            `,
+            [id]
+        );
+
+        res.json({
+            message: "Khôi phục file thành công"
+        });
+
+    } catch (error) {
+
+        console.log(error);
+
+        res.status(500).json({
+            message: error.message
+        });
+
+    }
+
+};
+
+const downloadAttachment = async (req, res) => {
+
+    try {
+
+        const { id } = req.params;
+
+        const [attachments] = await db.query(
+            `
+            SELECT
+                a.*,
+                t.event_id,
+                e.leader_id
+
+            FROM attachments a
+
+            INNER JOIN tasks t
+                ON a.task_id = t.id
+
+            INNER JOIN events e
+                ON t.event_id = e.id
+
+            WHERE a.id = ?
+            AND a.deleted_at IS NULL
+            `,
+            [id]
+        );
+
+        if (attachments.length === 0) {
+            return res.status(404).json({
+                message: "Không tìm thấy file"
+            });
+        }
+
+        const attachment = attachments[0];
+
+        // Admin tải mọi file
+        if (req.user.role !== "admin") {
+
+            const [members] = await db.query(
+                `
+                SELECT *
+                FROM event_members
+                WHERE event_id = ?
+                AND user_id = ?
+                `,
+                [
+                    attachment.event_id,
+                    req.user.id
+                ]
+            );
+
+            const isLeader =
+                attachment.leader_id === req.user.id;
+
+            if (
+                members.length === 0 &&
+                !isLeader
+            ) {
+                return res.status(403).json({
+                    message:
+                    "Bạn không có quyền tải file này"
+                });
+            }
+        }
+
+        console.log("file_path:", attachment.file_path);
+
+        const filePath = attachment.file_path;
+
+        console.log(filePath);
+
+        if (!fs.existsSync(filePath)) {
+            return res.status(404).json({
+                message:
+                "File không tồn tại trên server"
+            });
+        }
+
+        res.download(
+            filePath,
+            attachment.file_name
+        );
+
+    } catch (error) {
+
+        console.log(error);
+
+        res.status(500).json({
+            message: error.message
+        });
+
+    }
+
+};
+
 
 module.exports = {
     uploadAttachment,
     getAttachmentsByTask,
     deleteAttachment,
-    getDeletedAttachments
+    getDeletedAttachments,
+    restoreAttachment,
+    downloadAttachment
 };

@@ -12,7 +12,9 @@ const {
     uploadAttachment,
     getAttachmentsByTask,
     deleteAttachment,
-    getDeletedAttachments
+    getDeletedAttachments,
+    restoreAttachment,
+    downloadAttachment
 } = require(
     "../controllers/attachmentController"
 );
@@ -40,6 +42,18 @@ router.delete(
     "/:id",
     authMiddleware,
     deleteAttachment
+);
+
+router.patch(
+    "/:id/restore",
+    authMiddleware,
+    restoreAttachment
+);
+
+router.get(
+    "/:id/download",
+    authMiddleware,
+    downloadAttachment
 );
 
 module.exports = router;
