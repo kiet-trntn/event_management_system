@@ -35,10 +35,34 @@ const getAllTasks = async (req, res) => {
 
         let params = [];
 
+        if (req.user.role !== "admin") {
+
+            sql += `
+                AND (
+                    EXISTS (
+                        SELECT 1
+                        FROM event_members em
+                        WHERE em.event_id = e.id
+                        AND em.user_id = ?
+                    )
+
+                    OR
+
+                    e.leader_id = ?
+                )
+            `;
+
+            params.push(
+                req.user.id,
+                req.user.id
+            );
+
+        }
+
         if (event_id) {
 
             sql += `
-                WHERE t.event_id = ?
+                AND t.event_id = ?
             `;
 
             params.push(event_id);
@@ -119,7 +143,43 @@ const getTaskById = async (req, res) => {
             });
         }
 
-        res.json(tasks[0]);
+        const task = tasks[0];
+
+        // Admin xem tất cả
+        if (req.user.role === "admin") {
+            return res.json(task);
+        }
+
+        // Kiểm tra user có thuộc Event không
+        const [members] = await db.query(
+            `
+            SELECT *
+            FROM event_members
+            WHERE event_id = ?
+            AND user_id = ?
+            `,
+            [
+                task.event_id,
+                req.user.id
+            ]
+        );
+
+        // Leader Event
+        const isLeader =
+            task.leader_id === req.user.id;
+
+        // Không phải member và không phải leader
+        if (
+            members.length === 0 &&
+            !isLeader
+        ) {
+            return res.status(403).json({
+                message:
+                    "Bạn không có quyền xem công việc này"
+            });
+        }
+
+        res.json(task);
 
     } catch (error) {
 

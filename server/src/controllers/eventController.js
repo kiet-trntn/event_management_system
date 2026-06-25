@@ -175,6 +175,7 @@ const getEventById = async (req, res) => {
             [id]
         );
 
+        // Không tìm thấy Event
         if (events.length === 0) {
             return res.status(404).json({
                 message: "Không tìm thấy sự kiện"
@@ -183,13 +184,45 @@ const getEventById = async (req, res) => {
 
         const event = events[0];
 
-        // Employee không được xem sự kiện Nháp
+        // Admin xem tất cả
+        if (req.user.role === "admin") {
+            return res.json(event);
+        }
+
+        // Kiểm tra Employee có thuộc Event không
+        const [members] = await db.query(
+            `
+            SELECT *
+            FROM event_members
+            WHERE event_id = ?
+            AND user_id = ?
+            `,
+            [
+                id,
+                req.user.id
+            ]
+        );
+
+        // Kiểm tra Leader
+        const isLeader =
+            event.leader_id === req.user.id;
+
+        // Không phải Member và không phải Leader
         if (
-            event.status === "Nháp" &&
-            req.user.role !== "admin"
+            members.length === 0 &&
+            !isLeader
         ) {
             return res.status(403).json({
-                message: "Bạn không có quyền xem sự kiện này"
+                message:
+                    "Bạn không có quyền xem sự kiện này"
+            });
+        }
+
+        // Employee không được xem Event Nháp
+        if (event.status === "Nháp") {
+            return res.status(403).json({
+                message:
+                    "Bạn không có quyền xem sự kiện này"
             });
         }
 
