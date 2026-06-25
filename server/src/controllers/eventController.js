@@ -106,8 +106,6 @@ const getAllEvents = async (req, res) => {
                 WHERE
                     e.deleted_at IS NULL
 
-                    AND e.status <> 'Nháp'
-
                     AND (
                         em.user_id = ?
                         OR
@@ -219,12 +217,12 @@ const getEventById = async (req, res) => {
         }
 
         // Employee không được xem Event Nháp
-        if (event.status === "Nháp") {
-            return res.status(403).json({
-                message:
-                    "Bạn không có quyền xem sự kiện này"
-            });
-        }
+        // if (event.status === "Nháp") {
+        //     return res.status(403).json({
+        //         message:
+        //             "Bạn không có quyền xem sự kiện này"
+        //     });
+        // }
 
         res.json(event);
 
