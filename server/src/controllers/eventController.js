@@ -79,11 +79,12 @@ const getAllEvents = async (req, res) => {
             `);
 
         }
-        // Employee không xem được sự kiện Nháp
+        // Employee không xem được sự kiện Nháp và chỉ xem được sự kiện tham gia
         else {
 
             [events] = await db.query(`
-                SELECT
+                SELECT DISTINCT
+
                     e.id,
                     e.title,
                     e.location,
@@ -91,14 +92,34 @@ const getAllEvents = async (req, res) => {
                     e.end_date,
                     e.max_members,
                     e.status,
+
                     u.full_name AS leader_name
+
                 FROM events e
+
                 LEFT JOIN users u
                     ON e.leader_id = u.id
-                WHERE e.deleted_at IS NULL
-                AND e.status <> 'Nháp'
+
+                LEFT JOIN event_members em
+                    ON e.id = em.event_id
+
+                WHERE
+                    e.deleted_at IS NULL
+
+                    AND e.status <> 'Nháp'
+
+                    AND (
+                        em.user_id = ?
+                        OR
+                        e.leader_id = ?
+                    )
+
                 ORDER BY e.id DESC
-            `);
+            `,
+            [
+                req.user.id,
+                req.user.id
+            ]);
 
         }
 
