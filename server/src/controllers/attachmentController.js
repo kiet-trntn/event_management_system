@@ -288,10 +288,58 @@ const getDeletedAttachments = async (req, res) => {
 
 };
 
+const restoreAttachment = async (req, res) => {
+
+    try {
+
+        const { id } = req.params;
+
+        const [attachments] = await db.query(
+            `
+            SELECT *
+            FROM attachments
+            WHERE id = ?
+            AND deleted_at IS NOT NULL
+            `,
+            [id]
+        );
+
+        if (attachments.length === 0) {
+            return res.status(404).json({
+                message: "Không tìm thấy file đã xóa"
+            });
+        }
+
+        await db.query(
+            `
+            UPDATE attachments
+            SET deleted_at = NULL
+            WHERE id = ?
+            `,
+            [id]
+        );
+
+        res.json({
+            message: "Khôi phục file thành công"
+        });
+
+    } catch (error) {
+
+        console.log(error);
+
+        res.status(500).json({
+            message: error.message
+        });
+
+    }
+
+};
+
 
 module.exports = {
     uploadAttachment,
     getAttachmentsByTask,
     deleteAttachment,
-    getDeletedAttachments
+    getDeletedAttachments,
+    restoreAttachment
 };
