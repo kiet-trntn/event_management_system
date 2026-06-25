@@ -341,7 +341,7 @@ const updateTask = async (req, res) => {
             task.status === "completed" ||
             task.status === "cancelled"
         ) {
-            return res.status(400).json({
+            return res.status(403).json({
                 message: "Không thể chỉnh sửa công việc này"
             });
         }
@@ -467,29 +467,64 @@ const updateTaskStatus = async (req, res) => {
 
         const task = tasks[0];
 
+        // Chỉ Admin hoặc người được giao việc mới được đổi trạng thái
         if (
             req.user.role !== "admin" &&
             req.user.id !== task.assigned_to
         ) {
-            return res.status(404).json({
+            return res.status(403).json({
                 message: "Bạn không có quyền cập nhật công việc này"
             });
         }
 
-        // Không cho đổi khi đã completed hoặc cancelled
+        // Không cho đổi khi task đã hoàn thành hoặc hủy
         if (
             task.status === "completed" ||
             task.status === "cancelled"
         ) {
-            return res.status(400).json({
-                message: "Không thể thay đổi trạng thái công việc này"
+            return res.status(403).json({
+                message:
+                    "Công việc đã hoàn thành hoặc đã hủy"
             });
+        }
+
+        // Không cho cập nhật cùng trạng thái
+        if (task.status === status) {
+            return res.status(400).json({
+                message:
+                    "Trạng thái mới trùng với trạng thái hiện tại"
+            });
+        }
+
+        // Khi hoàn thành công việc
+        if (status === "completed") {
+
+            const [attachments] = await db.query(
+                `
+                SELECT id
+                FROM attachments
+                WHERE task_id = ?
+                AND deleted_at IS NULL
+                LIMIT 1
+                `,
+                [id]
+            );
+
+            if (attachments.length === 0) {
+                return res.status(400).json({
+                    message:
+                        "Vui lòng tải lên ít nhất 1 file trước khi hoàn thành công việc"
+                });
+            }
+
         }
 
         await db.query(
             `
             UPDATE tasks
-            SET status = ?
+            SET
+                status = ?,
+                updated_at = NOW()
             WHERE id = ?
             `,
             [status, id]
