@@ -88,6 +88,38 @@ function TaskDetail() {
         }
     };
 
+    const handleDownload = async (fileId, fileName) => {
+        try {
+            // Hiện thông báo đang tải...
+            Swal.fire({ toast: true, position: 'top-end', icon: 'info', title: 'Đang chuẩn bị file...', showConfirmButton: false, timer: 1500 });
+            
+            const token = localStorage.getItem('my_token');
+            const response = await fetch(`http://localhost:5000/api/attachments/${fileId}/download`, {
+                method: 'GET',
+                headers: { 'Authorization': `Bearer ${token}` }
+            });
+            
+            if (response.ok) {
+                // Nhận dữ liệu file (blob) và tạo đường dẫn ảo để tự động tải xuống
+                const blob = await response.blob();
+                const url = window.URL.createObjectURL(blob);
+                const a = document.createElement('a');
+                a.href = url;
+                a.download = fileName; // Lấy tên file gốc
+                document.body.appendChild(a);
+                a.click();
+                a.remove();
+                window.URL.revokeObjectURL(url); // Dọn rác
+            } else {
+                const data = await response.json();
+                Swal.fire('Lỗi', data.message || 'Không thể tải file', 'error');
+            }
+        } catch (error) {
+            console.error("Lỗi khi tải file:", error);
+            Swal.fire('Lỗi', 'Mất kết nối máy chủ', 'error');
+        }
+    };
+
     // --- 3. XỬ LÝ NÚT CHỐT HOÀN THÀNH ---
     const handleCompleteTask = async () => {
         if (attachments.length === 0) {
@@ -238,9 +270,12 @@ function TaskDetail() {
                                             {(file.file_size / 1024 / 1024).toFixed(2)} MB
                                         </p>
                                     </div>
-                                    <a href={`http://localhost:5000/${file.file_path}`} target="_blank" rel="noreferrer" style={{ color: '#4f46e5', fontSize: '13px', fontWeight: '600', textDecoration: 'none' }}>
+                                   <button 
+                                        onClick={() => handleDownload(file.id, file.file_name)} 
+                                        style={{ background: 'none', border: 'none', color: '#4f46e5', fontSize: '13px', fontWeight: '600', cursor: 'pointer', padding: 0 }}
+                                    >
                                         Tải
-                                    </a>
+                                    </button>
                                 </div>
                             ))}
                         </div>
