@@ -13,7 +13,8 @@ const {
     getAttachmentsByTask,
     deleteAttachment,
     getDeletedAttachments,
-    restoreAttachment
+    restoreAttachment,
+    downloadAttachment
 } = require(
     "../controllers/attachmentController"
 );
@@ -47,6 +48,12 @@ router.patch(
     "/:id/restore",
     authMiddleware,
     restoreAttachment
+);
+
+router.get(
+    "/:id/download",
+    authMiddleware,
+    downloadAttachment
 );
 
 module.exports = router;
