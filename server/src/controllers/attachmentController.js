@@ -244,8 +244,54 @@ const deleteAttachment = async (req, res) => {
 
 };
 
+const getDeletedAttachments = async (req, res) => {
+
+    try {
+
+        const [attachments] = await db.query(
+            `
+            SELECT
+                a.id,
+                a.file_name,
+                a.file_size,
+                a.file_type,
+                a.deleted_at,
+
+                u.id AS uploaded_by_id,
+                u.full_name AS uploaded_by_name
+
+            FROM attachments a
+
+            LEFT JOIN users u
+                ON a.uploaded_by = u.id
+
+            WHERE a.deleted_at IS NOT NULL
+
+            ORDER BY a.deleted_at DESC
+            `
+        );
+
+        res.json({
+            total: attachments.length,
+            attachments
+        });
+
+    } catch (error) {
+
+        console.log(error);
+
+        res.status(500).json({
+            message: error.message
+        });
+
+    }
+
+};
+
+
 module.exports = {
     uploadAttachment,
     getAttachmentsByTask,
-    deleteAttachment
+    deleteAttachment,
+    getDeletedAttachments
 };

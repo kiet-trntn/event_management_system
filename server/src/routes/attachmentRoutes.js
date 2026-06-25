@@ -11,7 +11,8 @@ require("../middlewares/uploadAttachment");
 const {
     uploadAttachment,
     getAttachmentsByTask,
-    deleteAttachment
+    deleteAttachment,
+    getDeletedAttachments
 } = require(
     "../controllers/attachmentController"
 );
@@ -21,6 +22,12 @@ router.post(
     authMiddleware,
     upload.single("file"),
     uploadAttachment
+);
+
+router.get(
+    "/deleted",
+    authMiddleware,
+    getDeletedAttachments
 );
 
 router.get(
