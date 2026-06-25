@@ -47,7 +47,7 @@ function Login() {
       }
       else if (data.user.role === 'employee') 
       { 
-          navigate('/staff');
+          navigate('/staff/dashboard');
       }
     } catch (error) {
       console.error('Login error:', error);
