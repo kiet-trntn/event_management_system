@@ -18,6 +18,7 @@ const getAllTasks = async (req, res) => {
 
                 e.id AS event_id,
                 e.title AS event_title,
+                e.status AS event_status,
 
                 u.id AS assigned_to,
                 u.full_name AS assigned_name
@@ -35,9 +36,12 @@ const getAllTasks = async (req, res) => {
 
         let params = [];
 
+        // Employee / Leader
         if (req.user.role !== "admin") {
 
             sql += `
+                AND e.status <> 'Nháp'
+
                 AND (
                     EXISTS (
                         SELECT 1
@@ -59,6 +63,7 @@ const getAllTasks = async (req, res) => {
 
         }
 
+        // Lọc theo Event
         if (event_id) {
 
             sql += `
