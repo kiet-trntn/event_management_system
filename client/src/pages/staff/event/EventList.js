@@ -8,9 +8,8 @@ function EventList() {
     const [tasks, setTasks] = useState([]);
     const [loading, setLoading] = useState(true);
 
-    // --- CÁC THÀNH PHẦN PHÂN TRANG (MỚI) ---
     const [currentPage, setCurrentPage] = useState(1);
-    const eventsPerPage = 8; // Số lượng sự kiện hiển thị trên mỗi trang
+    const eventsPerPage = 8;
 
     const fetchData = useCallback(async () => {
         try {

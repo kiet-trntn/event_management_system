@@ -33,6 +33,9 @@ import Dashboard from './pages/staff/Dashboard';
 import EventListStaff from './pages/staff/event/EventList';
 import ViewEventStaff from './pages/staff/event/ViewEvent';
 
+import TaskListStaff from './pages/staff/task/TaskList';
+import ViewTaskStaff from './pages/staff/task/ViewTask';
+
 function App() {
   return (
     <BrowserRouter>
@@ -86,6 +89,9 @@ function App() {
 
           <Route path="events" element={<EventListStaff />} />
           <Route path="events/view/:id" element={<ViewEventStaff />} />
+
+          <Route path="tasks" element={<TaskListStaff />} />
+          <Route path="tasks/view/:id" element={<ViewTaskStaff />} />
         </Route>
 
         <Route path="*" element={<h2>404 - Trang không tồn tại</h2>} />
