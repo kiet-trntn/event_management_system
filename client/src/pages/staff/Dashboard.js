@@ -150,7 +150,7 @@ function Dashboard() {
                                     {urgentTasks.map(task => (
                                         <div 
                                             key={task.id} 
-                                            onClick={() => navigate(`/staff/events/view/${task.event_id}`)}
+                                            onClick={() => navigate(`/staff/tasks/view/${task.id}`)}
                                             style={{ 
                                                 display: 'flex', 
                                                 justifyContent: 'space-between', 
@@ -168,18 +168,17 @@ function Dashboard() {
                                             <div>
                                                 <h4 style={{ margin: '0 0 4px 0', fontSize: '15px', color: 'var(--text-primary)', fontWeight: '600' }}>{task.title}</h4>
                                                 <p style={{ margin: 0, fontSize: '12px', color: 'var(--text-secondary)' }}>
-                                                    🎯 Sự kiện: <span className="text-brand font-medium">{task.event_title || 'Tên sự kiện'}</span>
+                                                    Sự kiện: <span className="text-brand font-medium">{task.event_title || 'Tên sự kiện'}</span>
                                                 </p>
                                             </div>
 
                                             <div style={{ display: 'flex', alignItems: 'center', gap: '16px' }}>
-                                                {/* Hiển thị Trạng thái (Status Badge) thay vì độ ưu tiên */}
                                                 <span className={getStatusBadgeClass(task.status)} style={{ fontSize: '12px', fontWeight: 'normal' }}>
                                                     {getStatusLabel(task.status)}
                                                 </span>
                                                 
                                                 <span style={{ fontSize: '12px', color: 'var(--text-secondary)' }}>
-                                                    ⏳ {task.due_date ? new Date(task.due_date).toLocaleDateString('vi-VN') : 'Không hạn'}
+                                                    {task.due_date ? new Date(task.due_date).toLocaleDateString('vi-VN') : 'Không hạn'}
                                                 </span>
                                             </div>
                                         </div>
