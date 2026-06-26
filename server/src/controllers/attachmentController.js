@@ -1,6 +1,8 @@
 const db = require("../config/db");
 const path = require("path");
 const fs = require("fs");
+const addTaskHistory =
+require("../utils/taskHistory");
 
 const uploadAttachment = async (req, res) => {
 
@@ -62,6 +64,12 @@ const uploadAttachment = async (req, res) => {
                 fileType,
                 req.user.id
             ]
+        );
+
+        await addTaskHistory(
+            task_id,
+            `Tải lên tệp ${file.originalname}`,
+            req.user.id
         );
 
         res.status(201).json({
@@ -230,6 +238,12 @@ const deleteAttachment = async (req, res) => {
             [id]
         );
 
+        await addTaskHistory(
+            attachment.task_id,
+            `Xóa tệp "${attachment.file_name}"`,
+            req.user.id
+        );
+
         res.json({
             message: "Xóa file thành công"
         });
@@ -319,6 +333,12 @@ const restoreAttachment = async (req, res) => {
             WHERE id = ?
             `,
             [id]
+        );
+
+        await addTaskHistory(
+            attachment.task_id,
+            `Khôi phục tệp "${attachment.file_name}"`,
+            req.user.id
         );
 
         res.json({

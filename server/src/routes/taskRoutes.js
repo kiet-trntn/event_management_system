@@ -13,8 +13,15 @@ const {
     updateTaskStatus,
     deleteTask,
     restoreTask,
-    getDeletedTasks
+    getDeletedTasks,
+    getTaskHistory
 } = require("../controllers/taskController");
+
+router.get(
+    "/:id/history",
+    authMiddleware,
+    getTaskHistory
+);
 
 router.get(
     "/",
@@ -75,6 +82,7 @@ router.patch(
     roleMiddleware("admin"),
     restoreTask
 );
+
 
 
 module.exports = router;
