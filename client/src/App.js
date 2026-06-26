@@ -16,7 +16,6 @@ import EventList from './pages/admin/event/EventList';
 import AddEvent from './pages/admin/event/AddEvent';
 import ViewEvent from './pages/admin/event/ViewEvent';
 import EditEvent from './pages/admin/event/EditEvent';
-import EventTrash from './pages/admin/event/EventTrash';
 
 import EventMembers from './pages/admin/eventmember/EventMembers';
 import AddEventMember from './pages/admin/eventmember/AddEventMember';
@@ -26,7 +25,10 @@ import TaskList from './pages/admin/task/TaskList';
 import AddTask from './pages/admin/task/AddTask';
 import ViewTask from './pages/admin/task/ViewTask';
 import EditTask from './pages/admin/task/EditTask';
-import TaskTrash from './pages/admin/task/TaskTrash';
+
+import AttachmentList from './pages/admin/attachment/AttachmentList';
+
+import Trash from './pages/admin/Trash';
 
 import Dashboard from './pages/staff/Dashboard';
 
@@ -62,7 +64,6 @@ function App() {
           <Route path="events/add" element={<AddEvent />} />
           <Route path="events/view/:id" element={<ViewEvent />} />
           <Route path="events/edit/:id" element={<EditEvent />} />
-          <Route path="events/trash" element={<EventTrash />} />
           
           <Route path="events/:eventId/members" element={<EventMembers />} />
           <Route path="events/:eventId/members/add" element={<AddEventMember />} />
@@ -72,7 +73,10 @@ function App() {
           <Route path="tasks/add" element={<AddTask />} />
           <Route path="tasks/view/:id" element={<ViewTask />} />
           <Route path="tasks/edit/:id" element={<EditTask />} />
-          <Route path="tasks/trash" element={<TaskTrash />} />
+
+          <Route path="/admin/tasks/:id/attachments" element={<AttachmentList />} />
+
+          <Route path="trash" element={<Trash />} />
         </Route>
 
         <Route 

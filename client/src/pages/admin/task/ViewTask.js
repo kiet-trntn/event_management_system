@@ -161,6 +161,17 @@ function ViewTask() {
                         <div className="event-divider" style={{ marginTop: '24px' }}></div>
                         <div className="form-actions">
                             <button 
+                                className="btn-secondary" 
+                                style={{ marginRight: 'auto', display: 'flex', alignItems: 'center', gap: '6px' }}
+                                onClick={() => navigate(`/admin/tasks/${task.id}/attachments`)}
+                                title="Xem và quản lý tài liệu công việc này"
+                            >
+                                <svg width="18" height="18" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
+                                    <path strokeLinecap="round" strokeLinejoin="round" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                                </svg>
+                                Xem file
+                            </button>
+                            <button 
                                 className="btn-primary" 
                                 style={{ backgroundColor: '#6B7280', borderColor: '#6B7280', color: '#fff' }} 
                                 onClick={handleDelete}
