@@ -7,6 +7,7 @@ const roleMiddleware = require("../middlewares/roleMiddleware");
 const {
     getAllTasks,
     getTaskById,
+    getMyTasks,
     createTask,
     updateTask,
     updateTaskStatus,
@@ -36,10 +37,17 @@ router.get(
 );
 
 router.get(
+    "/my-tasks",
+    authMiddleware,
+    getMyTasks
+);
+
+router.get(
     "/:id",
     authMiddleware,
     getTaskById
 );
+
 
 router.put(
     "/:id",
