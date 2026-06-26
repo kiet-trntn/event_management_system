@@ -52,77 +52,15 @@ function ViewEvent() {
         fetchViewEvent();
     }, [fetchViewEvent]);
 
-    const handleStatusChange = async (taskId, newStatus) => {
-        const originalTask = tasks.find(t => t.id.toString() === taskId.toString());
-        if (!originalTask || originalTask.status === newStatus) return;
-
-        // --- LUẬT 1: KHÔNG CHO TỰ Ý HỦY ---
-        if (newStatus === 'cancelled') {
-            Swal.fire('Từ chối', 'Bạn không thể tự ý hủy công việc.', 'warning');
-            // Reset lại UI về trạng thái cũ
-            setTasks(prev => [...prev]); 
-            return;
-        }
-
-        // --- LUẬT 2: KIỂM TRA FILE TRƯỚC KHI HOÀN THÀNH ---
-        if (newStatus === 'completed') {
-            Swal.fire({ title: 'Đang kiểm tra dữ liệu...', allowOutsideClick: false, didOpen: () => Swal.showLoading() });
-
-            try {
-                const token = localStorage.getItem('my_token');
-                const attachRes = await fetch(`http://localhost:5000/api/attachments/task/${taskId}`, {
-                    headers: { 'Authorization': `Bearer ${token}` }
-                });
-                
-                if (attachRes.ok) {
-                    const attachData = await attachRes.json();
-                    if (!attachData.attachments || attachData.attachments.length === 0) {
-                        Swal.fire('Chưa nộp file!', 'Vui lòng bấm vào công việc để nộp file kết quả trước khi đánh dấu hoàn thành!', 'warning');
-                        // Reset lại UI về trạng thái cũ
-                        setTasks(prev => [...prev]);
-                        return; 
-                    }
-                }
-            } catch (error) {
-                Swal.fire('Lỗi', 'Không thể kết nối để kiểm tra file.', 'error');
-                setTasks(prev => [...prev]);
-                return;
-            }
-        }
-
-        try {
-            const token = localStorage.getItem('my_token');
-            Swal.fire({ toast: true, position: 'top-end', icon: 'info', title: 'Đang cập nhật...', showConfirmButton: false, timer: 1000 });
-
-            const response = await fetch(`http://localhost:5000/api/tasks/${taskId}/status`, {
-                method: 'PATCH',
-                headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
-                body: JSON.stringify({ status: newStatus })
-            });
-
-            if (response.ok) {
-                // Đã fix lỗi chuyển kiểu dữ liệu .toString() tại đây
-                setTasks(prev => prev.map(t => t.id.toString() === taskId.toString() ? { ...t, status: newStatus } : t));
-                Swal.fire({ toast: true, position: 'top-end', icon: 'success', title: 'Đã lưu trạng thái', showConfirmButton: false, timer: 1500 });
-            } else {
-                Swal.fire('Lỗi', 'Không thể cập nhật trạng thái', 'error');
-                setTasks(prev => [...prev]);
-            }
-        } catch (error) {
-            console.error(error);
-            Swal.fire('Lỗi', 'Lỗi kết nối mạng', 'error');
-            setTasks(prev => [...prev]);
-        }
-    };
-
     const getSelectStyle = (status) => {
-        switch(status) {
-            case 'pending': return { color: 'var(--warning-color)', backgroundColor: '#FEF3C7', borderColor: '#FDE68A' };
-            case 'in_progress': return { color: 'var(--primary-color)', backgroundColor: 'var(--primary-light)', borderColor: '#BFDBFE' };
-            case 'completed': return { color: 'var(--success-color)', backgroundColor: '#DCFCE7', borderColor: '#A7F3D0' };
-            case 'cancelled': return { color: 'var(--text-secondary)', backgroundColor: '#F3F4F6', borderColor: 'var(--border-neutral)' };
-            default: return {};
-        }
+        const styles = {
+            'pending': { color: 'var(--warning-color)', backgroundColor: '#FEF3C7', borderColor: '#FDE68A' },
+            'in_progress': { color: 'var(--primary-color)', backgroundColor: 'var(--primary-light)', borderColor: '#BFDBFE' },
+            'completed': { color: 'var(--success-color)', backgroundColor: '#DCFCE7', borderColor: '#A7F3D0' },
+            'cancelled': { color: 'var(--text-secondary)', backgroundColor: '#F3F4F6', borderColor: 'var(--border-neutral)' }
+        };
+        
+        return styles[status] || {};
     };
 
     if (loading) return <div className="page-container event-page"><div className="form-card text-center text-secondary">Đang tải chi tiết sự kiện...</div></div>;
@@ -162,6 +100,7 @@ function ViewEvent() {
 
             <div style={{ display: 'flex', gap: '24px', flexWrap: 'wrap' }}>
                 <div style={{ flex: '2 1 65%', display: 'flex', flexDirection: 'column', gap: '24px' }}>
+                    {/* Phần Mô tả sự kiện */}
                     <div className="form-card large" style={{ maxWidth: '100%', margin: 0 }}>
                         <h3 className="section-title">Mô tả sự kiện</h3>
                         <p className="text-secondary" style={{ lineHeight: '1.6', marginBottom: '16px' }}>
@@ -177,55 +116,61 @@ function ViewEvent() {
                                 <strong>📍 Địa điểm: </strong> 
                                 {event.location}
                             </div>
-                            
                             <div>
                                 <strong>📅 Thời gian: </strong> 
                                 {new Date(event.start_date).toLocaleDateString('vi-VN')} - {new Date(event.end_date).toLocaleDateString('vi-VN')}
                             </div>
-                            
                         </div>
                     </div>
 
+                    {/* Phần Công việc của tôi */}
                     <div className="form-card large" style={{ maxWidth: '100%', margin: 0 }}>
                         <h3 className="section-title">Công việc của tôi ({tasks.length})</h3>
                         
                         {tasks.length === 0 ? (
-                            <p className="text-center text-secondary" style={{ padding: '24px 0' }}>Chưa có công việc nào được phân công trong sự kiện này.</p>
+                            <p className="text-center text-secondary" style={{ padding: '16px 0', margin: 0, fontSize: '14px' }}>
+                                Chưa có công việc nào được phân công trong sự kiện này.
+                            </p>
                         ) : (
-                            <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
-                                {tasks.map(task => (
+                            <div style={{ display: 'flex', flexDirection: 'column' }}>
+                                {tasks.map((task, index) => (
                                     <div 
                                         key={task.id} 
-                                        onClick={() => navigate(`/staff/tasks/view/${task.id}`)}
                                         style={{ 
-                                            display: 'flex', justifyContent: 'space-between', alignItems: 'center', 
-                                            padding: '16px 20px', border: '1px solid var(--border-neutral)', 
-                                            borderRadius: '8px', backgroundColor: 'var(--bg-neutral)',
-                                            cursor: 'pointer', transition: 'transform 0.1s'
+                                            display: 'flex', 
+                                            justifyContent: 'space-between', 
+                                            alignItems: 'center', 
+                                            padding: '12px 0',
+                                            borderBottom: index === tasks.length - 1 ? 'none' : '1px solid var(--border-neutral)'
                                         }}
-                                        onMouseEnter={(e) => e.currentTarget.style.transform = 'scale(1.01)'}
-                                        onMouseLeave={(e) => e.currentTarget.style.transform = 'scale(1)'}
                                     >
                                         <div>
-                                            <h4 style={{ margin: '0 0 6px 0', fontSize: '16px', color: 'var(--text-primary)', fontWeight: '600' }}>{task.title}</h4>
+                                            {/* ĐÃ CẬP NHẬT: fontWeight thành 'bold' */}
+                                            <h4 style={{ margin: '0 0 4px 0', fontSize: '15px', color: 'var(--text-primary)', fontWeight: 'bold' }}>
+                                                {task.title}
+                                            </h4>
                                             <p style={{ margin: 0, fontSize: '13px', color: 'var(--text-secondary)' }}>
                                                 Hạn chót: {task.due_date ? new Date(task.due_date).toLocaleDateString('vi-VN') : 'Không có hạn'}
                                             </p>
                                         </div>
                                         
-                                        <select 
-                                            className="form-input font-semibold" 
-                                            value={task.status}
-                                            onClick={(e) => e.stopPropagation()}
-                                            onChange={(e) => handleStatusChange(task.id, e.target.value)}
-                                            disabled={task.status === 'completed' || task.status === 'cancelled'}
-                                            style={{ width: 'auto', padding: '8px 16px', cursor: 'pointer', ...getSelectStyle(task.status) }}
+                                        <span 
+                                            style={{ 
+                                                display: 'inline-block',
+                                                padding: '4px 10px',
+                                                borderRadius: '4px',
+                                                border: '1px solid',
+                                                fontSize: '12px',
+                                                fontWeight: '500',
+                                                whiteSpace: 'nowrap',
+                                                ...getSelectStyle(task.status) 
+                                            }}
                                         >
-                                            <option value="pending">Chờ xử lý</option>
-                                            <option value="in_progress">Đang tiến hành</option>
-                                            <option value="completed">Đã hoàn thành</option>
-                                            <option value="cancelled">Đã hủy</option>
-                                        </select>
+                                            {task.status === 'pending' ? 'Chờ xử lý' :
+                                            task.status === 'in_progress' ? 'Đang tiến hành' :
+                                            task.status === 'completed' ? 'Đã hoàn thành' :
+                                            task.status === 'cancelled' ? 'Đã hủy' : task.status}
+                                        </span>
                                     </div>
                                 ))}
                             </div>
@@ -234,7 +179,7 @@ function ViewEvent() {
                 </div>
 
                 <div style={{ flex: '1 1 28%', minWidth: '300px', margin: 0 }}>
-                    
+                    {/* Phần Thành viên tham gia */}
                     <div className="form-card" style={{ maxWidth: '100%', margin: 0, padding: '24px', height: 'fit-content' }}>
                         <h3 className="section-title">Thành viên tham gia ({members.length})</h3>
                         
@@ -258,9 +203,7 @@ function ViewEvent() {
                             </div>
                         )}
                     </div>
-
                 </div>
-
             </div>
         </div>
     );
