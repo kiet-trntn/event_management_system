@@ -321,6 +321,10 @@ body {
     max-width: 800px;
 }
 
+.task-page .page-header-form {
+    max-width: 1000px;
+}
+
 /* Style cho nút Quay lại */
 .btn-back {
     background: transparent;

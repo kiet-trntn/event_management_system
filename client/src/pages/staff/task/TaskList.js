@@ -12,7 +12,7 @@ function MyTasks() {
         try {
             setLoading(true);
             const token = localStorage.getItem('my_token');
-            const response = await fetch('http://localhost:5000/api/tasks', {
+            const response = await fetch('http://localhost:5000/api/tasks/my-tasks', {
                 headers: { 'Authorization': `Bearer ${token}` }
             });
 
@@ -34,8 +34,6 @@ function MyTasks() {
         document.title = "Công việc của tôi | TaskFlow";
         fetchTasks();
     }, [fetchTasks]);
-
-    // --- LOGIC KÉO THẢ (DRAG & DROP) ---
 
     const handleDragStart = (e, task) => {
         if (task.status === 'completed') {
@@ -69,13 +67,11 @@ function MyTasks() {
         const taskToMove = tasks.find(t => t.id.toString() === taskId);
         if (!taskToMove || taskToMove.status === newStatus) return; 
 
-        // --- LUẬT 1: KHÔNG CHO TỰ Ý HỦY ---
         if (newStatus === 'cancelled') {
             Swal.fire('Từ chối', 'Nhân viên không thể tự ý hủy công việc.', 'warning');
             return;
         }
 
-        // --- LUẬT 2: KIỂM TRA FILE TRƯỚC KHI HOÀN THÀNH ---
         if (newStatus === 'completed') {
             Swal.fire({ title: 'Đang kiểm tra dữ liệu...', allowOutsideClick: false, didOpen: () => Swal.showLoading() });
 
@@ -98,7 +94,6 @@ function MyTasks() {
             }
         }
 
-        // --- THỰC HIỆN ĐỔI TRẠNG THÁI ---
         const oldStatus = taskToMove.status;
         setTasks(prev => prev.map(t => t.id.toString() === taskId ? { ...t, status: newStatus } : t));
 

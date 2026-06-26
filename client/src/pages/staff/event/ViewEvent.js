@@ -123,9 +123,8 @@ function ViewEvent() {
                         </div>
                     </div>
 
-                    {/* Phần Công việc của tôi */}
                     <div className="form-card large" style={{ maxWidth: '100%', margin: 0 }}>
-                        <h3 className="section-title">Công việc của tôi ({tasks.length})</h3>
+                        <h3 className="section-title">Công việc trong sự kiện ({tasks.length})</h3>
                         
                         {tasks.length === 0 ? (
                             <p className="text-center text-secondary" style={{ padding: '16px 0', margin: 0, fontSize: '14px' }}>
@@ -136,16 +135,21 @@ function ViewEvent() {
                                 {tasks.map((task, index) => (
                                     <div 
                                         key={task.id} 
+                                        onClick={() => navigate(`/staff/tasks/view/${task.id}`)} 
                                         style={{ 
                                             display: 'flex', 
                                             justifyContent: 'space-between', 
                                             alignItems: 'center', 
-                                            padding: '12px 0',
-                                            borderBottom: index === tasks.length - 1 ? 'none' : '1px solid var(--border-neutral)'
+                                            padding: '12px 16px', // Tăng padding 2 bên để bấm thoải mái hơn
+                                            borderBottom: index === tasks.length - 1 ? 'none' : '1px solid var(--border-neutral)',
+                                            cursor: 'pointer', // Đổi con trỏ chuột thành bàn tay chỉ
+                                            transition: 'background-color 0.2s', // Hiệu ứng mượt mà
+                                            borderRadius: '8px' // Bo góc khi hover
                                         }}
+                                        onMouseEnter={(e) => e.currentTarget.style.backgroundColor = '#f8fafc'}
+                                        onMouseLeave={(e) => e.currentTarget.style.backgroundColor = 'transparent'}
                                     >
                                         <div>
-                                            {/* ĐÃ CẬP NHẬT: fontWeight thành 'bold' */}
                                             <h4 style={{ margin: '0 0 4px 0', fontSize: '15px', color: 'var(--text-primary)', fontWeight: 'bold' }}>
                                                 {task.title}
                                             </h4>
@@ -179,7 +183,6 @@ function ViewEvent() {
                 </div>
 
                 <div style={{ flex: '1 1 28%', minWidth: '300px', margin: 0 }}>
-                    {/* Phần Thành viên tham gia */}
                     <div className="form-card" style={{ maxWidth: '100%', margin: 0, padding: '24px', height: 'fit-content' }}>
                         <h3 className="section-title">Thành viên tham gia ({members.length})</h3>
                         

@@ -13,15 +13,16 @@ function Dashboard() {
             setLoading(true);
             const token = localStorage.getItem('my_token');
 
-            // Gọi song song 2 API sẵn có để lấy số liệu tính toán ở Frontend
+            // 🚨 ĐÃ SỬA: Thay /api/tasks thành /api/tasks/my-tasks để lấy đúng việc của nhân viên này
             const [eventsRes, tasksRes] = await Promise.all([
                 fetch('http://localhost:5000/api/events', { headers: { 'Authorization': `Bearer ${token}` } }),
-                fetch('http://localhost:5000/api/tasks', { headers: { 'Authorization': `Bearer ${token}` } })
+                fetch('http://localhost:5000/api/tasks/my-tasks', { headers: { 'Authorization': `Bearer ${token}` } })
             ]);
 
             if (eventsRes.ok && tasksRes.ok) {
                 const eventsData = await eventsRes.json();
                 const tasksData = await tasksRes.json();
+                
                 setEvents(eventsData.events || []);
                 setTasks(tasksData.tasks || []);
             } else {
@@ -110,7 +111,7 @@ function Dashboard() {
                         </div>
 
                         <div className="form-card" style={{ margin: 0, padding: '20px', maxWidth: '100%' }}>
-                            <div className="text-secondary" style={{ fontSize: '13px', fontWeight: '600' }}>VIỆC ĐA HOÀN THÀNH</div>
+                            <div className="text-secondary" style={{ fontSize: '13px', fontWeight: '600' }}>VIỆC ĐÃ HOÀN THÀNH</div>
                             <div className="text-2xl font-semibold text-success" style={{ marginTop: '8px' }}>{completedTasks}</div>
                         </div>
 
