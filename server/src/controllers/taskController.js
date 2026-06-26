@@ -1,4 +1,6 @@
 const db = require("../config/db");
+const addTaskHistory =
+require("../utils/taskHistory");
 
 const getAllTasks = async (req, res) => {
 
@@ -324,7 +326,7 @@ const createTask = async (req, res) => {
         }
 
         // Tạo task
-        await db.query(
+        const [result] = await db.query(
             `
             INSERT INTO tasks (
                 event_id,
@@ -346,6 +348,13 @@ const createTask = async (req, res) => {
                 due_date || null,
                 req.user.id
             ]
+        );
+
+        // Ghi lịch sử
+        await addTaskHistory(
+            result.insertId,
+            `${req.user.full_name} đã tạo công việc`,
+            req.user.id
         );
 
         res.status(201).json({
@@ -471,6 +480,45 @@ const updateTask = async (req, res) => {
             ]
         );
 
+        let assignedName = null;
+
+        if (assigned_to) {
+
+            const [users] = await db.query(
+                `
+                SELECT full_name
+                FROM users
+                WHERE id = ?
+                `,
+                [assigned_to]
+            );
+
+            if (users.length > 0) {
+                assignedName = users[0].full_name;
+            }
+
+        }
+
+        if (
+            assigned_to &&
+            assigned_to != task.assigned_to
+        ) {
+
+            await addTaskHistory(
+                id,
+                `${req.user.full_name} đã giao công việc cho ${assignedName}`,
+                req.user.id
+            );
+
+        }
+
+        // Ghi lịch sử
+        await addTaskHistory(
+            id,
+            `${req.user.full_name} đã cập nhật công việc`,
+            req.user.id
+        );
+
         res.json({
             message: "Cập nhật công việc thành công"
         });
@@ -591,6 +639,12 @@ const updateTaskStatus = async (req, res) => {
             [status, id]
         );
 
+        await addTaskHistory(
+            id,
+            `Chuyển trạng thái thành ${status}`,
+            req.user.id
+        );
+
         res.json({
             message: "Cập nhật trạng thái thành công"
         });
@@ -640,6 +694,12 @@ const deleteTask = async (req, res) => {
             WHERE id = ?
             `,
             [id]
+        );
+
+        await addTaskHistory(
+            id,
+            "Xóa công việc",
+            req.user.id
         );
 
         res.json({
@@ -699,6 +759,12 @@ const restoreTask = async (req, res) => {
             WHERE id = ?
             `,
             [id]
+        );
+
+        await addTaskHistory(
+            id,
+            "Khôi phục công việc",
+            req.user.id
         );
 
         res.json({
@@ -769,6 +835,52 @@ const getDeletedTasks = async (req, res) => {
 
 };
 
+const getTaskHistory = async (req, res) => {
+
+    try {
+
+        const { id } = req.params;
+
+        const [history] = await db.query(
+            `
+            SELECT
+
+                th.id,
+                th.action,
+                th.created_at,
+
+                u.id AS user_id,
+                u.full_name
+
+            FROM task_history th
+
+            INNER JOIN users u
+                ON th.performed_by = u.id
+
+            WHERE th.task_id = ?
+
+            ORDER BY th.created_at DESC
+            `,
+            [id]
+        );
+
+        res.json({
+            total: history.length,
+            history
+        });
+
+    } catch (error) {
+
+        console.log(error);
+
+        res.status(500).json({
+            message: error.message
+        });
+
+    }
+
+};
+
 module.exports = {
     getAllTasks,
     getTaskById,
@@ -778,5 +890,6 @@ module.exports = {
     updateTaskStatus,
     deleteTask,
     restoreTask,
-    getDeletedTasks
+    getDeletedTasks,
+    getTaskHistory
 };
