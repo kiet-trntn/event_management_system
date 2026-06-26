@@ -198,6 +198,62 @@ const getTaskById = async (req, res) => {
 
 };
 
+const getMyTasks = async (req, res) => {
+
+    try {
+
+        const [tasks] = await db.query(
+            `
+            SELECT
+                t.id,
+                t.title,
+                t.description,
+                t.status,
+                t.priority,
+                t.due_date,
+                t.created_at,
+
+                e.id AS event_id,
+                e.title AS event_title,
+
+                u.id AS assigned_to,
+                u.full_name AS assigned_name
+
+            FROM tasks t
+
+            INNER JOIN events e
+                ON t.event_id = e.id
+
+            LEFT JOIN users u
+                ON t.assigned_to = u.id
+
+            WHERE
+                t.is_deleted = FALSE
+                AND t.assigned_to = ?
+                AND e.deleted_at IS NULL
+
+            ORDER BY t.id DESC
+            `,
+            [req.user.id]
+        );
+
+        res.json({
+            total: tasks.length,
+            tasks
+        });
+
+    } catch (error) {
+
+        console.log(error);
+
+        res.status(500).json({
+            message: error.message
+        });
+
+    }
+
+};
+
 const createTask = async (req, res) => {
 
     try {
@@ -716,6 +772,7 @@ const getDeletedTasks = async (req, res) => {
 module.exports = {
     getAllTasks,
     getTaskById,
+    getMyTasks,
     createTask,
     updateTask,
     updateTaskStatus,
