@@ -7,12 +7,19 @@ const {
     createUser, 
     updateUser,
     updateStatus,
-    deleteUser 
+    deleteUser,
+    getAvailableUsersForEvent
 } = require("../controllers/userController"); // Import hàm createUser từ userController
 
 //  Gọi các "người gác cổng" (Middleware) để bảo mật đường dẫn
 const authMiddleware = require("../middlewares/authMiddleware"); // Middleware kiểm tra đã đăng nhập chưa
 const roleMiddleware = require("../middlewares/roleMiddleware"); // Middleware kiểm tra quyền (Admin/User)
+
+router.get(
+    "/available/:eventId",
+    authMiddleware,
+    getAvailableUsersForEvent
+);
 
 // XEM: Đường dẫn lấy danh sách tất cả người dùng (Chỉ Admin mới được phép xem danh sách người dùng)
 router.get(
@@ -61,5 +68,7 @@ router.delete(
     roleMiddleware("admin"),
     deleteUser
 );
+
+
 
 module.exports = router; // Xuất router này ra để file server chính (thường là app.js hoặc server.js) sử dụng
