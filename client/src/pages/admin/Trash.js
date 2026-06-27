@@ -5,24 +5,20 @@ import Swal from 'sweetalert2';
 function Trash() {
     const navigate = useNavigate();
     
-    // Mặc định vào thùng rác sẽ mở Tab Sự kiện trước
     const [activeTab, setActiveTab] = useState('events'); 
     const [items, setItems] = useState([]);
     const [loading, setLoading] = useState(true);
 
-    // Tự động gọi API khi vào trang hoặc khi chuyển Tab
     useEffect(() => {
         document.title = "Thùng rác hệ thống | TOOF";
         fetchTrashData(activeTab);
     }, [activeTab]);
 
-    // --- HÀM GỌI API ĐƯỢC NÂNG CẤP ---
     const fetchTrashData = async (tab) => {
         setLoading(true);
-        setItems([]); // 🧹 Xóa sạch dữ liệu cũ trên màn hình trước khi tải cái mới để tránh bị "ngáo" giao diện
+        setItems([]); 
 
         try {
-            // 🎯 TÁCH RIÊNG ĐƯỜNG DẪN: Chỗ này cực kỳ quan trọng!
             let url = '';
             if (tab === 'events') {
                 url = 'http://localhost:5000/api/events/trash';
@@ -41,17 +37,13 @@ function Trash() {
             });
             
             const data = await response.json();
-            
-            // In ra console để bạn dễ F12 kiểm tra
             console.log(`Dữ liệu nhận được từ tab ${tab}:`, data);
             
             if (response.ok) {
-                // Tự động gắp đúng mảng dữ liệu trả về từ Backend
                 if (tab === 'events') setItems(data.events || []);
                 if (tab === 'tasks') setItems(data.tasks || []);
                 if (tab === 'attachments') setItems(data.attachments || []);
             } else {
-                console.error("Backend báo lỗi:", data.message);
                 setItems([]);
             }
         } catch (err) {
@@ -62,11 +54,11 @@ function Trash() {
         }
     };
 
-    // Hàm xử lý bấm nút Khôi phục
+    // Hàm xử lý bấm nút Khôi phục tự động theo cấu trúc Route Backend
     const handleRestore = async (id) => {
         const result = await Swal.fire({
             title: 'Khôi phục dữ liệu?',
-            text: "Dữ liệu này sẽ được đưa trở lại hệ thống.",
+            text: "Dữ liệu này sẽ được đưa trở lại hệ thống hoạt động.",
             icon: 'question',
             showCancelButton: true,
             confirmButtonColor: '#10b981', 
@@ -77,7 +69,7 @@ function Trash() {
 
         if (result.isConfirmed) {
             try {
-                // Gọi API khôi phục tự động theo tab hiện tại
+                // Tạo endpoint động thông minh dựa trên activeTab: /api/events/:id/restore , /api/tasks/:id/restore...
                 const response = await fetch(`http://localhost:5000/api/${activeTab}/${id}/restore`, {
                     method: 'PATCH',
                     headers: { 'Authorization': `Bearer ${localStorage.getItem('my_token')}` }
@@ -86,14 +78,12 @@ function Trash() {
                 const data = await response.json();
 
                 if (response.ok) {
-                    Swal.fire('Thành công!', 'Đã khôi phục thành công.', 'success');
-                    // Xóa item vừa khôi phục khỏi màn hình
+                    Swal.fire('Thành công!', 'Đã khôi phục thành công dữ liệu.', 'success');
                     setItems(prevItems => prevItems.filter(item => item.id !== id));
                 } else {
                     Swal.fire('Lỗi!', data.message || 'Không thể khôi phục.', 'error');
                 }
             } catch (error) {
-                console.error("Lỗi khôi phục:", error);
                 Swal.fire('Lỗi!', 'Không thể kết nối đến máy chủ.', 'error');
             }
         }
@@ -111,7 +101,6 @@ function Trash() {
                 <h3>Thùng rác hệ thống</h3>
             </div>
 
-            {/* TẠO 3 TABS DƯỚI DẠNG NÚT BẤM */}
             <div style={{ display: 'flex', gap: '16px', marginBottom: '24px', borderBottom: '2px solid #E5E7EB', paddingBottom: '12px' }}>
                 <button 
                     onClick={() => setActiveTab('events')}
@@ -133,7 +122,6 @@ function Trash() {
                 </button>
             </div>
 
-            {/* HIỂN THỊ DỮ LIỆU */}
             {loading ? (
                 <div className="text-center text-secondary mb-6">Đang tải dữ liệu thùng rác...</div>
             ) : items.length === 0 ? (
@@ -145,12 +133,9 @@ function Trash() {
                     {items.map(item => (
                         <div key={item.id} className="event-card" style={{ opacity: 0.75 }}>
                             <div className="event-card-header">
-                                <span className="status-badge status-inactive">
-                                    Đã xóa
-                                </span>
+                                <span className="status-badge status-inactive">Đã xóa</span>
                             </div>
                             
-                            {/* Tên item có Fallback an toàn */}
                             <h4 className="event-title text-secondary" style={{ wordBreak: 'break-all' }}>
                                 {activeTab === 'events' && '🎉 '}
                                 {activeTab === 'tasks' && '✅ '}
@@ -158,7 +143,6 @@ function Trash() {
                                 {item.title || item.file_name || 'Không có tiêu đề'}
                             </h4>
                             
-                            {/* DỮ LIỆU HIỂN THỊ TÙY THEO TAB */}
                             {activeTab === 'events' && (
                                 <>
                                     <p className="event-detail-row">📍 {item.location || 'Chưa xác định'}</p>
@@ -183,7 +167,7 @@ function Trash() {
                             <div className="event-divider"></div>
                             
                             <div className="event-actions">
-                                <button className="btn-restore" title="Khôi phục" onClick={() => handleRestore(item.id)}>
+                                <button className="btn-restore" title="Khôi phục ngay" onClick={() => handleRestore(item.id)}>
                                     <svg width="16" height="16" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
                                     </svg>
