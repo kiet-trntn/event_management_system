@@ -276,11 +276,97 @@ const deleteUser = async (req, res) => {
     }
 }
 
+const getAvailableUsersForEvent = async (req, res) => {
+
+    try {
+
+        const { eventId } = req.params;
+
+        // Kiểm tra sự kiện tồn tại
+        const [events] = await db.query(
+            `
+            SELECT
+                id,
+                leader_id
+            FROM events
+            WHERE id = ?
+            AND deleted_at IS NULL
+            `,
+            [eventId]
+        );
+
+        if (events.length === 0) {
+            return res.status(404).json({
+                message: "Không tìm thấy sự kiện"
+            });
+        }
+
+        const event = events[0];
+
+        // Chỉ Admin hoặc Leader của Event mới được xem danh sách nhân viên để thêm
+        if (
+            req.user.role !== "admin" &&
+            req.user.id !== event.leader_id
+        ) {
+            return res.status(403).json({
+                message: "Bạn không có quyền xem danh sách nhân viên"
+            });
+        }
+
+        // Lấy danh sách nhân viên chưa thuộc sự kiện
+        const [users] = await db.query(
+            `
+            SELECT
+                u.id,
+                u.full_name,
+                u.email,
+                u.role,
+                u.status
+
+            FROM users u
+
+            WHERE u.role = 'employee'
+            AND u.status = 'active'
+
+            AND u.id <> ?
+
+            AND u.id NOT IN (
+                SELECT em.user_id
+                FROM event_members em
+                WHERE em.event_id = ?
+            )
+
+            ORDER BY u.full_name ASC
+            `,
+            [
+                event.leader_id,
+                eventId
+            ]
+        );
+
+        res.json({
+            total: users.length,
+            users
+        });
+
+    } catch (error) {
+
+        console.log(error);
+
+        res.status(500).json({
+            message: error.message
+        });
+
+    }
+
+};
+
 module.exports = {
     getAllUsers,
     getUserById,
     createUser,
     updateUser,
     updateStatus,
-    deleteUser
+    deleteUser,
+    getAvailableUsersForEvent
 }

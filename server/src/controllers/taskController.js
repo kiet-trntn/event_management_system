@@ -21,6 +21,7 @@ const getAllTasks = async (req, res) => {
                 e.id AS event_id,
                 e.title AS event_title,
                 e.status AS event_status,
+                e.leader_id AS event_leader_id,
 
                 u.id AS assigned_to,
                 u.full_name AS assigned_name
@@ -34,6 +35,7 @@ const getAllTasks = async (req, res) => {
                 ON t.assigned_to = u.id
 
             WHERE t.is_deleted = FALSE
+            AND e.deleted_at IS NULL
         `;
 
         let params = [];
@@ -42,7 +44,10 @@ const getAllTasks = async (req, res) => {
         if (req.user.role !== "admin") {
 
             sql += `
-                AND e.status <> 'Nháp'
+                AND (
+                    e.status <> 'Nháp'
+                    OR e.leader_id = ?
+                )
 
                 AND (
                     EXISTS (
@@ -59,8 +64,9 @@ const getAllTasks = async (req, res) => {
             `;
 
             params.push(
-                req.user.id,
-                req.user.id
+                req.user.id, // Leader được xem task của Event Nháp
+                req.user.id, // Là thành viên của Event
+                req.user.id  // Là Leader của Event
             );
 
         }
@@ -80,8 +86,7 @@ const getAllTasks = async (req, res) => {
             ORDER BY t.id DESC
         `;
 
-        const [tasks] =
-            await db.query(sql, params);
+        const [tasks] = await db.query(sql, params);
 
         res.json({
             total: tasks.length,
@@ -869,8 +874,9 @@ const getDeletedTasks = async (req, res) => {
 
     try {
 
-        const [tasks] = await db.query(
-            `
+        const { event_id } = req.query;
+
+        let sql = `
             SELECT
                 t.id,
                 t.title,
@@ -882,6 +888,7 @@ const getDeletedTasks = async (req, res) => {
 
                 e.id AS event_id,
                 e.title AS event_title,
+                e.leader_id AS event_leader_id,
 
                 u.id AS assigned_to,
                 u.full_name AS assigned_name
@@ -895,10 +902,33 @@ const getDeletedTasks = async (req, res) => {
                 ON t.assigned_to = u.id
 
             WHERE t.is_deleted = TRUE
+            AND t.deleted_at IS NOT NULL
+            AND e.deleted_at IS NULL
+        `;
 
-            ORDER BY t.id DESC
-            `
-        );
+        let params = [];
+
+        if (req.user.role !== "admin") {
+            sql += `
+                AND e.leader_id = ?
+            `;
+
+            params.push(req.user.id);
+        }
+
+        if (event_id) {
+            sql += `
+                AND t.event_id = ?
+            `;
+
+            params.push(event_id);
+        }
+
+        sql += `
+            ORDER BY t.deleted_at DESC
+        `;
+
+        const [tasks] = await db.query(sql, params);
 
         res.json({
             total: tasks.length,

@@ -2,7 +2,6 @@ const express = require("express");
 const router = express.Router();
 
 const authMiddleware = require("../middlewares/authMiddleware");
-const roleMiddleware = require("../middlewares/roleMiddleware");
 
 const {
     getAllTasks,
@@ -16,6 +15,18 @@ const {
     getDeletedTasks,
     getTaskHistory
 } = require("../controllers/taskController");
+
+router.get(
+    "/deleted",
+    authMiddleware,
+    getDeletedTasks
+);
+
+router.get(
+    "/my-tasks",
+    authMiddleware,
+    getMyTasks
+);
 
 router.get(
     "/:id/history",
@@ -36,24 +47,10 @@ router.post(
 );
 
 router.get(
-    "/deleted",
-    authMiddleware,
-    roleMiddleware("admin"),
-    getDeletedTasks
-);
-
-router.get(
-    "/my-tasks",
-    authMiddleware,
-    getMyTasks
-);
-
-router.get(
     "/:id",
     authMiddleware,
     getTaskById
 );
-
 
 router.put(
     "/:id",
@@ -76,10 +73,7 @@ router.delete(
 router.patch(
     "/:id/restore",
     authMiddleware,
-    roleMiddleware("admin"),
     restoreTask
 );
-
-
 
 module.exports = router;
