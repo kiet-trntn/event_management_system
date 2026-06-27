@@ -321,10 +321,21 @@ const restoreAttachment = async (req, res) => {
 
         const { id } = req.params;
 
+        // Lấy file đã bị xóa + lấy leader_id của sự kiện chứa task đó
         const [attachments] = await db.query(
             `
             SELECT
-                a.*,
+                a.id,
+                a.task_id,
+                a.file_name,
+                a.file_path,
+                a.deleted_at,
+
+                t.id AS task_id,
+                t.title AS task_title,
+
+                e.id AS event_id,
+                e.title AS event_title,
                 e.leader_id
 
             FROM attachments a
@@ -349,7 +360,7 @@ const restoreAttachment = async (req, res) => {
 
         const attachment = attachments[0];
 
-        // Chỉ Admin hoặc Leader mới được khôi phục file
+        // Chỉ Admin hoặc Leader của sự kiện mới được khôi phục file
         if (
             req.user.role !== "admin" &&
             req.user.id !== attachment.leader_id
@@ -359,6 +370,7 @@ const restoreAttachment = async (req, res) => {
             });
         }
 
+        // Khôi phục file
         await db.query(
             `
             UPDATE attachments
@@ -368,6 +380,7 @@ const restoreAttachment = async (req, res) => {
             [id]
         );
 
+        // Ghi lịch sử nếu bạn đang dùng task_history
         await addTaskHistory(
             attachment.task_id,
             `${req.user.full_name} đã khôi phục tệp "${attachment.file_name}"`,
