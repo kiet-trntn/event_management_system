@@ -10,61 +10,74 @@ function Header() {
     const handleSignOut = (e) => {
         e.preventDefault();
         localStorage.removeItem('user');
+        localStorage.removeItem('my_token');
         navigate('/login');
     };
 
     return (
         <>
-            <aside className="sidebar">
+            {/* THANH SIDEBAR CHO STAFF THEO ĐÚNG THIẾT KẾ CỦA BẠN */}
+            <aside className="sidebar" style={{ display: 'flex', flexDirection: 'column' }}>
                 <div className="sidebar-logo-box">
                     <img src="/favicon.svg" alt="TaskFlow Logo" className="sidebar-logo-img" />
                     <h1 className="sidebar-logo-text">TASKFLOW</h1>
                 </div>
-                <nav className="sidebar-nav">
+                
+                <nav className="sidebar-nav" style={{ flexGrow: 1, display: 'flex', flexDirection: 'column' }}>
                     <NavLink to="/staff/dashboard" className="nav-item">
-                        <svg className="nav-icon" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M4 6a2 2 0 012-2h2a2 2 0 012 2v4a2 2 0 01-2 2H6a2 2 0 01-2-2V6zM14 6a2 2 0 012-2h2a2 2 0 012 2v4a2 2 0 01-2 2h-2a2 2 0 01-2-2V6zM4 16a2 2 0 012-2h2a2 2 0 012 2v4a2 2 0 01-2 2H6a2 2 0 01-2-2v-4zM14 16a2 2 0 012-2h2a2 2 0 012 2v4a2 2 0 01-2 2h-2a2 2 0 01-2-2v-4z"></path>
+                        <svg className="nav-icon" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth="2">
+                            <path strokeLinecap="round" strokeLinejoin="round" d="M4 6a2 2 0 012-2h2a2 2 0 012 2v4a2 2 0 01-2 2H6a2 2 0 01-2-2V6zM14 6a2 2 0 012-2h2a2 2 0 012 2v4a2 2 0 01-2 2h-2a2 2 0 01-2-2V6zM4 16a2 2 0 012-2h2a2 2 0 012 2v4a2 2 0 01-2 2H6a2 2 0 01-2-2v-4zM14 16a2 2 0 012-2h2a2 2 0 012 2v4a2 2 0 01-2 2h-2a2 2 0 01-2-2v-4z"></path>
                         </svg>
                         <span className="nav-text">Tổng Quan</span>
                     </NavLink>
     
                     <NavLink to="/staff/events" className="nav-item">
-                        <svg className="nav-icon" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M5 5a2 2 0 012-2h10a2 2 0 012 2v16l-7-3.5L5 21V5z"></path>
+                        <svg className="nav-icon" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth="2">
+                            <path strokeLinecap="round" strokeLinejoin="round" d="M5 5a2 2 0 012-2h10a2 2 0 012 2v16l-7-3.5L5 21V5z"></path>
                         </svg>
                         <span className="nav-text">Sự kiện của tôi</span>
                     </NavLink>
     
                     <NavLink to="/staff/tasks" className="nav-item">
-                        <svg className="nav-icon" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-6 9l2 2 4-4"></path>
+                        <svg className="nav-icon" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth="2">
+                            <path strokeLinecap="round" strokeLinejoin="round" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-6 9l2 2 4-4"></path>
                         </svg>
                         <span className="nav-text">Công việc của tôi</span>
                     </NavLink>
 
                     <NavLink to="/staff/calendar" className="nav-item">
-                        <svg className="nav-icon" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"></path>
+                        <svg className="nav-icon" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth="2">
+                            <path strokeLinecap="round" strokeLinejoin="round" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"></path>
                         </svg>
                         <span className="nav-text">Lịch làm việc</span>
                     </NavLink>
 
                     <NavLink to="/staff/messages" className="nav-item">
-                        <svg className="nav-icon" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z"></path>
+                        <svg className="nav-icon" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth="2">
+                            <path strokeLinecap="round" strokeLinejoin="round" d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z"></path>
                         </svg>
                         <span className="nav-text">Tin nhắn</span>
                     </NavLink>
+
+                    {/* NÚT THÙNG RÁC NẰM Ở GÓC DƯỚI CÙNG CỦA STAFF SIDEBAR */}
+                    <div style={{ marginTop: 'auto', paddingTop: '16px', borderTop: '1px solid #E5E7EB' }}>
+                        <NavLink to="/staff/trash" className="nav-item" style={{ color: '#EF4444' }}>
+                            <svg className="nav-icon" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth="2">
+                                <path strokeLinecap="round" strokeLinejoin="round" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"></path>
+                            </svg>
+                            <span className="nav-text">Thùng Rác</span>
+                        </NavLink>
+                    </div>
                 </nav>
             </aside>
 
-            {/* BỌC TOÀN BỘ HEADER VÀ NỘI DUNG VÀO main-content */}
+            {/* PHẦN MAIN CONTENT HIỂN THỊ HEADER VÀ TRANG CON */}
             <main className="main-content">
                 <header className="header">
                     <div className="header-actions">
                         <button className="notification-btn">
-                            <svg className="icon" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9"></path>
+                            <svg className="icon" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
+                                <path strokeLinecap="round" strokeLinejoin="round" d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9"></path>
                             </svg>
                             <span className="notification-badge"></span>
                         </button>
@@ -77,8 +90,7 @@ function Header() {
                                 <p className="user-name">{user?.full_name || "Chưa đăng nhập"}</p>
                                 <p className="user-role">{user?.role || "Staff"}</p>
                             </div>
-
-                            {/* Fix lỗi CSS tàng hình của Dropdown */}
+                            
                             {isDropdownOpen && (
                                 <div className="dropdown-menu" style={{ opacity: 1, visibility: 'visible', transform: 'translateY(0)' }}>
                                     <Link 
@@ -88,9 +100,9 @@ function Header() {
                                     >
                                         Đổi Mật Khẩu
                                     </Link>
-                                                                                       
+                                    
                                     <div className="dropdown-divider" />
-                                                                                       
+                                    
                                     <button 
                                         onClick={(e) => {
                                             setIsDropdownOpen(false);
@@ -99,7 +111,7 @@ function Header() {
                                         className="dropdown-item text-error"
                                         style={{ width: '100%', textAlign: 'left', background: 'none', border: 'none', cursor: 'pointer' }}
                                     >
-                                         Đăng Xuất
+                                        Đăng Xuất
                                     </button>
                                 </div>
                             )}
@@ -107,7 +119,6 @@ function Header() {
                     </div>
                 </header>
 
-                {/* BỌC OUTLET VÀO TRONG page-container */}
                 <div className="page-container">
                     <Outlet />
                 </div>

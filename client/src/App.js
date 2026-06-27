@@ -1,5 +1,5 @@
 import React from 'react';
-import { BrowserRouter , Routes, Route, Navigate } from 'react-router-dom';
+import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
 
 import Login from './pages/login';
 import ProtectedRouter from './components/ProtectedRouter';
@@ -28,6 +28,7 @@ import EditTask from './pages/admin/task/EditTask';
 
 import AttachmentList from './pages/admin/attachment/AttachmentList';
 
+// Import Thùng rác dùng chung nằm ở folder admin
 import Trash from './pages/admin/Trash';
 
 import Dashboard from './pages/staff/Dashboard';
@@ -42,9 +43,12 @@ function App() {
   return (
     <BrowserRouter>
       <Routes> 
-        <Route path="/" element= {<Navigate to="/login" replace />} />
+        <Route path="/" element={<Navigate to="/login" replace />} />
         <Route path="/login" element={<Login />} />
 
+        {/* =========================================================
+            1. PHÂN HỆ ROUTE DÀNH CHO ADMIN
+           ========================================================= */}
         <Route 
           path="/admin"
           element={ 
@@ -76,9 +80,13 @@ function App() {
 
           <Route path="/admin/tasks/:id/attachments" element={<AttachmentList />} />
 
+          {/* Thùng rác của Admin */}
           <Route path="trash" element={<Trash />} />
         </Route>
 
+        {/* =========================================================
+            2. PHÂN HỆ ROUTE DÀNH CHO STAFF / EMPLOYEE / LEADER
+           ========================================================= */}
         <Route 
           path="/staff"
           element={ 
@@ -96,6 +104,13 @@ function App() {
 
           <Route path="tasks" element={<TaskListStaff />} />
           <Route path="tasks/view/:id" element={<ViewTaskStaff />} />
+
+          {/* ĐẶC QUYỀN LEADER: Các Form thao tác gộp chung xử lý động */}
+          <Route path="events/:eventId/tasks/add" element={<AddTask />} />
+          <Route path="tasks/edit/:id" element={<EditTask />} />
+          <Route path="events/:eventId/members/add" element={<AddEventMember />} />
+          
+          <Route path="trash" element={<Trash />} />
         </Route>
 
         <Route path="*" element={<h2>404 - Trang không tồn tại</h2>} />

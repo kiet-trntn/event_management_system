@@ -10,6 +10,22 @@ function ViewEvent() {
     const [tasks, setTasks] = useState([]);
     const [members, setMembers] = useState([]);
     const [loading, setLoading] = useState(true);
+    const [currentUser, setCurrentUser] = useState(null); 
+
+    // Giải mã token lấy thông tin User đang đăng nhập
+    useEffect(() => {
+        try {
+            const token = localStorage.getItem('my_token');
+            if (token) {
+                const base64Url = token.split('.')[1];
+                const base64 = base64Url.replace(/-/g, '+').replace(/_/g, '/');
+                const payload = JSON.parse(window.atob(base64));
+                setCurrentUser(payload);
+            }
+        } catch (error) {
+            console.error("Lỗi giải mã token:", error);
+        }
+    }, []);
 
     const fetchViewEvent = useCallback(async () => {
         try {
@@ -29,7 +45,8 @@ function ViewEvent() {
                 
                 setEvent(eventData.event || eventData);
                 
-                const filteredTasks = (tasksData.tasks || []).filter(t => t.event_id.toString() === id);
+                // Chỉ hiển thị các công việc CHƯA BỊ XÓA (is_deleted = 0)
+                const filteredTasks = (tasksData.tasks || []).filter(t => t.event_id.toString() === id && !t.is_deleted);
                 setTasks(filteredTasks);
 
                 if (membersRes && membersRes.ok) {
@@ -52,6 +69,74 @@ function ViewEvent() {
         fetchViewEvent();
     }, [fetchViewEvent]);
 
+    // --- CHỨC NĂNG XÓA MỀM CÔNG VIỆC ---
+    const handleDeleteTask = async (e, taskId) => {
+        e.stopPropagation(); // Ngăn hành vi nhảy vào trang chi tiết công việc khi bấm nút xóa
+        
+        const result = await Swal.fire({
+            title: 'Xóa công việc này?',
+            text: "Công việc sẽ được chuyển vào Thùng rác hệ thống.",
+            icon: 'warning',
+            showCancelButton: true,
+            confirmButtonColor: '#ef4444',
+            cancelButtonColor: '#6b7280',
+            confirmButtonText: 'Xóa ngay',
+            cancelButtonText: 'Hủy'
+        });
+
+        if (result.isConfirmed) {
+            try {
+                const response = await fetch(`http://localhost:5000/api/tasks/${taskId}`, {
+                    method: 'DELETE',
+                    headers: { 'Authorization': `Bearer ${localStorage.getItem('my_token')}` }
+                });
+
+                if (response.ok) {
+                    Swal.fire('Thành công!', 'Công việc đã được chuyển vào Thùng rác.', 'success');
+                    fetchViewEvent(); 
+                } else {
+                    const data = await response.json();
+                    Swal.fire('Thất bại!', data.message || 'Không thể xóa công việc', 'error');
+                }
+            } catch (err) {
+                Swal.fire('Lỗi', 'Mất kết nối server', 'error');
+            }
+        }
+    };
+
+    // --- CHỨC NĂNG XÓA THÀNH VIÊN SỰ KIỆN ---
+    const handleRemoveMember = async (userId) => {
+        const result = await Swal.fire({
+            title: 'Loại bỏ thành viên?',
+            text: "Nhân viên này sẽ bị loại hoàn toàn khỏi danh sách sự kiện.",
+            icon: 'warning',
+            showCancelButton: true,
+            confirmButtonColor: '#ef4444',
+            cancelButtonColor: '#6b7280',
+            confirmButtonText: 'Xác nhận loại',
+            cancelButtonText: 'Hủy'
+        });
+
+        if (result.isConfirmed) {
+            try {
+                const response = await fetch(`http://localhost:5000/api/events/${id}/members/${userId}`, {
+                    method: 'DELETE',
+                    headers: { 'Authorization': `Bearer ${localStorage.getItem('my_token')}` }
+                });
+
+                if (response.ok) {
+                    Swal.fire('Thành công!', 'Đã xóa thành viên khỏi sự kiện.', 'success');
+                    fetchViewEvent();
+                } else {
+                    const data = await response.json();
+                    Swal.fire('Thất bại!', data.message || 'Không thể xóa thành viên', 'error');
+                }
+            } catch (err) {
+                Swal.fire('Lỗi', 'Mất kết nối server', 'error');
+            }
+        }
+    };
+
     const getSelectStyle = (status) => {
         const styles = {
             'pending': { color: 'var(--warning-color)', backgroundColor: '#FEF3C7', borderColor: '#FDE68A' },
@@ -59,12 +144,23 @@ function ViewEvent() {
             'completed': { color: 'var(--success-color)', backgroundColor: '#DCFCE7', borderColor: '#A7F3D0' },
             'cancelled': { color: 'var(--text-secondary)', backgroundColor: '#F3F4F6', borderColor: 'var(--border-neutral)' }
         };
-        
         return styles[status] || {};
+    };
+
+    // Helper hàm dịch trạng thái hiển thị text
+    const renderTaskStatusText = (status) => {
+        if (status === 'pending') return 'Chờ xử lý';
+        if (status === 'in_progress') return 'Đang tiến hành';
+        if (status === 'completed') return 'Đã hoàn thành';
+        return 'Đã hủy';
     };
 
     if (loading) return <div className="page-container event-page"><div className="form-card text-center text-secondary">Đang tải chi tiết sự kiện...</div></div>;
     if (!event) return null;
+
+    const isAdmin = currentUser?.role === 'admin';
+    const isLeader = currentUser && event && (Number(event.leader_id) === Number(currentUser.id));
+    const hasManagerRights = isAdmin || isLeader; 
 
     const leaderName = event.leader_name || 'Chưa cập nhật';
 
@@ -77,59 +173,41 @@ function ViewEvent() {
                 Quay lại
             </button>
             
-            <div className="page-header-form" style={{ maxWidth: '100%', display: 'flex', flexDirection: 'row', alignItems: 'center', gap: '16px', marginTop: '8px', marginBottom: '24px', flexWrap: 'wrap' }}>
-                <h3 style={{ fontSize: '26px', fontWeight: 'normal', margin: 0, color: 'var(--text-primary)', lineHeight: '1.2' }}>
-                    {event.title}
-                </h3>
-                
-                <span 
-                    className={
-                        event.status === 'Đã kết thúc' ? 'badge-pill badge-green' :
-                        event.status === 'Đang diễn ra' ? 'badge-pill badge-blue' :
-                        event.status === 'Đã hủy' ? 'badge-pill badge-gray' :
-                        event.status === 'Nháp' ? 'badge-pill status-draft' : 'badge-pill badge-yellow'
-                    } 
-                    style={{ 
-                        padding: '4px 12px', fontSize: '13px', fontWeight: 'normal',
-                        display: 'inline-flex', alignItems: 'center', height: 'fit-content'
-                    }}
-                >
-                    {event.status}
-                </span>
+            <div className="page-header-form" style={{ maxWidth: '100%', display: 'flex', flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: '16px', marginTop: '8px', marginBottom: '24px', flexWrap: 'wrap' }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '16px' }}>
+                    <h3 style={{ fontSize: '26px', margin: 0, color: 'var(--text-primary)', lineHeight: '1.2' }}>{event.title}</h3>
+                    <span className={event.status === 'Đã kết thúc' ? 'badge-pill badge-green' : event.status === 'Đang diễn ra' ? 'badge-pill badge-blue' : event.status === 'Đã hủy' ? 'badge-pill badge-gray' : 'badge-pill badge-yellow'}>
+                        {event.status}
+                    </span>
+                </div>
             </div>
 
             <div style={{ display: 'flex', gap: '24px', flexWrap: 'wrap' }}>
                 <div style={{ flex: '2 1 65%', display: 'flex', flexDirection: 'column', gap: '24px' }}>
-                    {/* Phần Mô tả sự kiện */}
+                    
                     <div className="form-card large" style={{ maxWidth: '100%', margin: 0 }}>
                         <h3 className="section-title">Mô tả sự kiện</h3>
-                        <p className="text-secondary" style={{ lineHeight: '1.6', marginBottom: '16px' }}>
-                            {event.description || 'Không có mô tả chi tiết cho sự kiện này.'}
-                        </p>
+                        <p className="text-secondary" style={{ lineHeight: '1.6', marginBottom: '16px' }}>{event.description || 'Không có mô tả chi tiết cho sự kiện này.'}</p>
                         <div className="event-divider"></div>
                         <div style={{ display: 'flex', gap: '24px', marginTop: '16px', fontSize: '14px', color: 'var(--text-secondary)', flexWrap: 'wrap' }}>
-                            <div>
-                                <strong>👑 Phụ trách: </strong> 
-                                <span className="text-brand font-medium">{leaderName}</span>
-                            </div>
-                            <div>
-                                <strong>📍 Địa điểm: </strong> 
-                                {event.location}
-                            </div>
-                            <div>
-                                <strong>📅 Thời gian: </strong> 
-                                {new Date(event.start_date).toLocaleDateString('vi-VN')} - {new Date(event.end_date).toLocaleDateString('vi-VN')}
-                            </div>
+                            <div><strong>Phụ trách: </strong> <span className="text-brand font-medium">{leaderName}</span></div>
+                            <div><strong>Địa điểm: </strong> {event.location}</div>
+                            <div><strong>Thời gian: </strong> {new Date(event.start_date).toLocaleDateString('vi-VN')} - {new Date(event.end_date).toLocaleDateString('vi-VN')}</div>
                         </div>
                     </div>
 
                     <div className="form-card large" style={{ maxWidth: '100%', margin: 0 }}>
-                        <h3 className="section-title">Công việc trong sự kiện ({tasks.length})</h3>
+                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px' }}>
+                            <h3 className="section-title" style={{ margin: 0 }}>Công việc trong sự kiện ({tasks.length})</h3>
+                            {hasManagerRights && (
+                                <button className="btn-primary" style={{ padding: '6px 12px', fontSize: '14px' }} onClick={() => navigate(`/staff/events/${id}/tasks/add`)}>
+                                    + Thêm công việc
+                                </button>
+                            )}
+                        </div>
                         
                         {tasks.length === 0 ? (
-                            <p className="text-center text-secondary" style={{ padding: '16px 0', margin: 0, fontSize: '14px' }}>
-                                Chưa có công việc nào được phân công trong sự kiện này.
-                            </p>
+                            <p className="text-center text-secondary" style={{ padding: '16px 0', margin: 0, fontSize: '14px' }}>Chưa có công việc nào.</p>
                         ) : (
                             <div style={{ display: 'flex', flexDirection: 'column' }}>
                                 {tasks.map((task, index) => (
@@ -137,44 +215,33 @@ function ViewEvent() {
                                         key={task.id} 
                                         onClick={() => navigate(`/staff/tasks/view/${task.id}`)} 
                                         style={{ 
-                                            display: 'flex', 
-                                            justifyContent: 'space-between', 
-                                            alignItems: 'center', 
-                                            padding: '12px 16px', // Tăng padding 2 bên để bấm thoải mái hơn
+                                            display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '14px 16px', 
                                             borderBottom: index === tasks.length - 1 ? 'none' : '1px solid var(--border-neutral)',
-                                            cursor: 'pointer', // Đổi con trỏ chuột thành bàn tay chỉ
-                                            transition: 'background-color 0.2s', // Hiệu ứng mượt mà
-                                            borderRadius: '8px' // Bo góc khi hover
+                                            cursor: 'pointer', transition: 'background-color 0.2s', borderRadius: '8px'
                                         }}
                                         onMouseEnter={(e) => e.currentTarget.style.backgroundColor = '#f8fafc'}
                                         onMouseLeave={(e) => e.currentTarget.style.backgroundColor = 'transparent'}
                                     >
                                         <div>
-                                            <h4 style={{ margin: '0 0 4px 0', fontSize: '15px', color: 'var(--text-primary)', fontWeight: 'bold' }}>
-                                                {task.title}
-                                            </h4>
-                                            <p style={{ margin: 0, fontSize: '13px', color: 'var(--text-secondary)' }}>
-                                                Hạn chót: {task.due_date ? new Date(task.due_date).toLocaleDateString('vi-VN') : 'Không có hạn'}
-                                            </p>
+                                            <h4 style={{ margin: '0 0 4px 0', fontSize: '15px', color: 'var(--text-primary)', fontWeight: 'bold' }}>{task.title}</h4>
+                                            <p style={{ margin: 0, fontSize: '13px', color: 'var(--text-secondary)' }}>Hạn: {task.due_date ? new Date(task.due_date).toLocaleDateString('vi-VN') : 'Không có hạn'}</p>
                                         </div>
                                         
-                                        <span 
-                                            style={{ 
-                                                display: 'inline-block',
-                                                padding: '4px 10px',
-                                                borderRadius: '4px',
-                                                border: '1px solid',
-                                                fontSize: '12px',
-                                                fontWeight: '500',
-                                                whiteSpace: 'nowrap',
-                                                ...getSelectStyle(task.status) 
-                                            }}
-                                        >
-                                            {task.status === 'pending' ? 'Chờ xử lý' :
-                                            task.status === 'in_progress' ? 'Đang tiến hành' :
-                                            task.status === 'completed' ? 'Đã hoàn thành' :
-                                            task.status === 'cancelled' ? 'Đã hủy' : task.status}
-                                        </span>
+                                        {/* Sử dụng hàm helper bọc ngoặc để triệt tiêu lỗi biên dịch ESLint Type Cast */}
+                                        <div style={{ display: 'flex', alignItems: 'center', gap: '20px', minWidth: '160px', justifyContent: 'flex-end' }}>
+                                            <span style={{ display: 'inline-block', padding: '4px 12px', borderRadius: '4px', border: '1px solid', fontSize: '12px', fontWeight: '500', whiteSpace: 'nowrap', ...getSelectStyle(task.status) }}>
+                                                {renderTaskStatusText(task.status)}
+                                            </span>
+                                            
+                                            {hasManagerRights && (
+                                                <button 
+                                                    onClick={(e) => handleDeleteTask(e, task.id)}
+                                                    style={{ background: 'none', border: 'none', color: '#ef4444', cursor: 'pointer', fontSize: '14px', fontWeight: '500', padding: 0 }}
+                                                >
+                                                    Xóa
+                                                </button>
+                                            )}
+                                        </div>
                                     </div>
                                 ))}
                             </div>
@@ -184,23 +251,41 @@ function ViewEvent() {
 
                 <div style={{ flex: '1 1 28%', minWidth: '300px', margin: 0 }}>
                     <div className="form-card" style={{ maxWidth: '100%', margin: 0, padding: '24px', height: 'fit-content' }}>
-                        <h3 className="section-title">Thành viên tham gia ({members.length})</h3>
+                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px' }}>
+                            <h3 className="section-title" style={{ margin: 0 }}>Thành viên tham gia ({members.length})</h3>
+                            {hasManagerRights && (
+                                <button className="btn-secondary" style={{ padding: '4px 8px', fontSize: '12px' }} onClick={() => navigate(`/staff/events/${id}/members/add`)}>
+                                    + Thêm
+                                </button>
+                            )}
+                        </div>
                         
                         {members.length === 0 ? (
-                            <p className="text-secondary text-center" style={{ fontSize: '13px' }}>Chưa có thông tin thành viên.</p>
+                            <p className="text-secondary text-center" style={{ fontSize: '13px' }}>Chưa có thành viên.</p>
                         ) : (
                             <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
                                 {members.map((member, index) => (
-                                    <div key={index} style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-                                        <div className="user-avatar" style={{ backgroundColor: 'var(--primary-color)' }}>
-                                            {member.full_name ? member.full_name.charAt(0).toUpperCase() : 'U'}
+                                    <div key={index} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                                        <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+                                            <div className="user-avatar" style={{ backgroundColor: 'var(--primary-color)' }}>
+                                                {member.full_name ? member.full_name.charAt(0).toUpperCase() : 'U'}
+                                            </div>
+                                            <div>
+                                                <p className="user-name" style={{ margin: 0, fontSize: '14px', fontWeight: '500' }}>{member.full_name}</p>
+                                                <p className="user-role" style={{ margin: '2px 0 0 0', color: 'var(--text-secondary)', fontSize: '12px' }}>
+                                                    {member.role_in_event === 'coordinator' ? 'Điều phối viên' : 'Thành viên'}
+                                                </p>
+                                            </div>
                                         </div>
-                                        <div>
-                                            <p className="user-name" style={{ margin: 0 }}>{member.full_name}</p>
-                                            <p className="user-role" style={{ margin: '2px 0 0 0', color: 'var(--text-secondary)' }}>
-                                                {member.role_in_event === 'coordinator' ? 'Điều phối viên' : 'Thành viên'}
-                                            </p>
-                                        </div>
+                                        
+                                        {hasManagerRights && (
+                                            <button 
+                                                onClick={() => handleRemoveMember(member.id)}
+                                                style={{ background: 'none', border: 'none', color: '#ef4444', cursor: 'pointer', fontSize: '13px', fontWeight: '500', padding: 0 }}
+                                            >
+                                                Xóa
+                                            </button>
+                                        )}
                                     </div>
                                 ))}
                             </div>
