@@ -302,7 +302,7 @@ function TaskDetail() {
                                     >
                                         Tải về
                                     </button>
-                                    {(hasManagerRights || isAssignedUser) && !isTaskClosed && (
+                                    {hasManagerRights && !isTaskClosed && (
                                         <button 
                                             onClick={() => handleDeleteFile(file.id)}
                                             style={{ color: '#ef4444', background: 'none', border: 'none', fontWeight: '500', cursor: 'pointer', fontSize: '13px', padding: 0 }}

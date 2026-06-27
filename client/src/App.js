@@ -39,6 +39,8 @@ import ViewEventStaff from './pages/staff/event/ViewEvent';
 import TaskListStaff from './pages/staff/task/TaskList';
 import ViewTaskStaff from './pages/staff/task/ViewTask';
 
+import WorkCalendar from './pages/staff/WorkCalendar';
+
 function App() {
   return (
     <BrowserRouter>
@@ -100,6 +102,7 @@ function App() {
 
           <Route path="tasks" element={<TaskListStaff />} />
           <Route path="tasks/view/:id" element={<ViewTaskStaff />} />
+          <Route path="calendar" element={<WorkCalendar />} />
 
           <Route path="events/:eventId/tasks/add" element={<AddTask />} />
           <Route path="tasks/edit/:id" element={<EditTask />} />

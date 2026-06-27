@@ -156,7 +156,10 @@ function Trash() {
                     Thùng rác hiện tại đang trống.
                 </div>
             ) : (
+
+                
                 <div className="event-grid">
+                    
                     {items.map(item => (
                         <div key={item.id} className="event-card" style={{ opacity: 0.75 }}>
                             <div className="event-card-header">

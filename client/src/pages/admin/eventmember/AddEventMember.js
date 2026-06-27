@@ -15,9 +15,9 @@ function AddEventMember() {
         document.title = "Thêm thành viên mới | TaskFlow";
         const fetchAllUsers = async () => {
             try {
-                const response = await fetch(`http://localhost:5000/api/users`, {
-                    headers: { 'Authorization': `Bearer ${localStorage.getItem('my_token')}` }
-                });
+                const response = await fetch(`http://localhost:5000/api/users/available/${eventId}`, {
+    headers: { 'Authorization': `Bearer ${localStorage.getItem('my_token')}` }
+});
                 const data = await response.json();
                 if (response.ok) {
                     setUsersList(data.users || data.data || data || []);
