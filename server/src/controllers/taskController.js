@@ -233,6 +233,7 @@ const getMyTasks = async (req, res) => {
                 t.is_deleted = FALSE
                 AND t.assigned_to = ?
                 AND e.deleted_at IS NULL
+                AND e.status <> 'Nháp'
 
             ORDER BY t.id DESC
             `,
