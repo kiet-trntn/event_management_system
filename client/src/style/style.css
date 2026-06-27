@@ -1087,3 +1087,112 @@ body {
     background-color: #dbeafe;
     border-color: #93c5fd;
 }
+
+/* =========================================================
+   17. VIEW TASK DETAIL COMPONENT (Trang chi tiết công việc)
+   ========================================================= */
+.task-view-wrapper {
+    display: flex; 
+    gap: 24px; 
+    flex-wrap: wrap; 
+    align-items: flex-start; 
+}
+
+.task-info-grid {
+    display: grid; 
+    grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); 
+    gap: 16px 24px;
+    margin-bottom: 32px; 
+    padding: 20px; 
+    background-color: var(--bg-neutral);
+    border-radius: 12px;
+    font-size: 14px;
+}
+
+.task-grid-item {
+    display: flex; 
+    align-items: center; 
+    gap: 8px; 
+    color: var(--text-secondary);
+}
+
+.task-grid-label {
+    font-weight: 600; 
+    color: var(--text-primary);
+}
+
+/* Các nhãn trạng thái đặc trưng (Sử dụng hệ màu token từ Trello/TaskFlow) */
+.badge-creator {
+    color: var(--primary-color); 
+    background-color: var(--primary-light); 
+    padding: 4px 10px; 
+    border-radius: 6px; 
+    font-weight: 500;
+}
+
+.badge-assignee {
+    color: #059669; 
+    background-color: #ecfdf5; 
+    padding: 4px 10px; 
+    border-radius: 6px; 
+    font-weight: 500;
+}
+
+.badge-priority-high {
+    color: #dc2626; 
+    background-color: #fef2f2; 
+    padding: 4px 10px; 
+    border-radius: 6px; 
+    font-weight: 600;
+}
+
+.badge-priority-medium {
+    color: #d97706; 
+    background-color: #fffbeb; 
+    padding: 4px 10px; 
+    border-radius: 6px; 
+    font-weight: 600;
+}
+
+.badge-priority-low {
+    color: #4b5563; 
+    background-color: #f3f4f6; 
+    padding: 4px 10px; 
+    border-radius: 6px; 
+    font-weight: 600;
+}
+
+.badge-deadline-empty {
+    color: var(--text-secondary);
+    background-color: var(--border-neutral);
+    padding: 4px 10px; 
+    border-radius: 6px; 
+    font-weight: 600;
+}
+
+/* Phần hiển thị mô tả */
+.task-desc-title {
+    font-size: 16px; 
+    font-weight: 600; 
+    color: var(--text-primary); 
+    margin: 0 0 12px 0;
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.task-desc-box {
+    color: #334155; 
+    line-height: 1.7; 
+    white-space: pre-wrap; 
+    font-size: 15px;
+    background-color: var(--card-bg);
+    border: 1px solid var(--border-neutral);
+    padding: 16px;
+    border-radius: 8px;
+}
+
+.task-desc-empty {
+    color: var(--text-secondary);
+    font-style: italic;
+}

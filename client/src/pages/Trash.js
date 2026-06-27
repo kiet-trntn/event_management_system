@@ -5,14 +5,37 @@ import Swal from 'sweetalert2';
 function Trash() {
     const navigate = useNavigate();
     
+    const [currentUser, setCurrentUser] = useState(null);
     const [activeTab, setActiveTab] = useState('events'); 
     const [items, setItems] = useState([]);
     const [loading, setLoading] = useState(true);
 
+    // 1. Giải mã token lấy thông tin và quyền (role) người dùng đang đăng nhập
     useEffect(() => {
-        document.title = "Thùng rác hệ thống | TOOF";
-        fetchTrashData(activeTab);
-    }, [activeTab]);
+        try {
+            const token = localStorage.getItem('my_token');
+            if (token) {
+                const base64Url = token.split('.')[1];
+                const base64 = base64Url.replace(/-/g, '+').replace(/_/g, '/');
+                const payload = JSON.parse(window.atob(base64));
+                setCurrentUser(payload);
+                
+                // Nếu không phải Admin (tức là Leader/Employee), tự động chuyển sang Tab 'tasks' vì không có quyền xem Event
+                if (payload.role !== 'admin') {
+                    setActiveTab('tasks');
+                }
+            }
+        } catch (error) {
+            console.error("Lỗi giải mã token tại Thùng rác:", error);
+        }
+    }, []);
+
+    // 2. Tự động tải lại dữ liệu khi chuyển Tab hoặc khi thông tin User sẵn sàng
+    useEffect(() => {
+        if (currentUser) {
+            fetchTrashData(activeTab);
+        }
+    }, [activeTab, currentUser]);
 
     const fetchTrashData = async (tab) => {
         setLoading(true);
@@ -37,7 +60,6 @@ function Trash() {
             });
             
             const data = await response.json();
-            console.log(`Dữ liệu nhận được từ tab ${tab}:`, data);
             
             if (response.ok) {
                 if (tab === 'events') setItems(data.events || []);
@@ -54,7 +76,6 @@ function Trash() {
         }
     };
 
-    // Hàm xử lý bấm nút Khôi phục tự động theo cấu trúc Route Backend
     const handleRestore = async (id) => {
         const result = await Swal.fire({
             title: 'Khôi phục dữ liệu?',
@@ -69,7 +90,6 @@ function Trash() {
 
         if (result.isConfirmed) {
             try {
-                // Tạo endpoint động thông minh dựa trên activeTab: /api/events/:id/restore , /api/tasks/:id/restore...
                 const response = await fetch(`http://localhost:5000/api/${activeTab}/${id}/restore`, {
                     method: 'PATCH',
                     headers: { 'Authorization': `Bearer ${localStorage.getItem('my_token')}` }
@@ -89,6 +109,8 @@ function Trash() {
         }
     };
 
+    const isAdmin = currentUser?.role === 'admin';
+
     return (
         <div className="page-container">
             <div className="page-header-form" style={{ maxWidth: '100%' }}>
@@ -101,19 +123,24 @@ function Trash() {
                 <h3>Thùng rác hệ thống</h3>
             </div>
 
+            {/* THANH TAB ĐIỀU KHIỂN: Chỉ hiển thị Tab Sự Kiện nếu là tài khoản Admin */}
             <div style={{ display: 'flex', gap: '16px', marginBottom: '24px', borderBottom: '2px solid #E5E7EB', paddingBottom: '12px' }}>
-                <button 
-                    onClick={() => setActiveTab('events')}
-                    style={{ padding: '8px 16px', fontSize: '15px', fontWeight: '600', cursor: 'pointer', background: 'transparent', border: 'none', borderBottom: activeTab === 'events' ? '3px solid #3B82F6' : '3px solid transparent', color: activeTab === 'events' ? '#3B82F6' : '#6B7280' }}
-                >
-                    Sự kiện
-                </button>
+                {isAdmin && (
+                    <button 
+                        onClick={() => setActiveTab('events')}
+                        style={{ padding: '8px 16px', fontSize: '15px', fontWeight: '600', cursor: 'pointer', background: 'transparent', border: 'none', borderBottom: activeTab === 'events' ? '3px solid #3B82F6' : '3px solid transparent', color: activeTab === 'events' ? '#3B82F6' : '#6B7280' }}
+                    >
+                        Sự kiện
+                    </button>
+                )}
+                
                 <button 
                     onClick={() => setActiveTab('tasks')}
                     style={{ padding: '8px 16px', fontSize: '15px', fontWeight: '600', cursor: 'pointer', background: 'transparent', border: 'none', borderBottom: activeTab === 'tasks' ? '3px solid #3B82F6' : '3px solid transparent', color: activeTab === 'tasks' ? '#3B82F6' : '#6B7280' }}
                 >
                     Công việc
                 </button>
+                
                 <button 
                     onClick={() => setActiveTab('attachments')}
                     style={{ padding: '8px 16px', fontSize: '15px', fontWeight: '600', cursor: 'pointer', background: 'transparent', border: 'none', borderBottom: activeTab === 'attachments' ? '3px solid #3B82F6' : '3px solid transparent', color: activeTab === 'attachments' ? '#3B82F6' : '#6B7280' }}

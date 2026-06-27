@@ -186,14 +186,15 @@ function TaskDetail() {
     const isTaskClosed = task.status === 'completed' || task.status === 'cancelled';
 
     return (
-        <div className="page-container" style={{ maxWidth: '1000px', margin: '0 auto' }}>
+        <div className="page-container" style={{ maxWidth: '1400px', margin: '0 auto' }}>
+            {/* Cụm Header Điều hướng */}
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px' }}>
-                 <button className="btn-back" onClick={() => navigate('/staff/events')}>
-                <svg width="18" height="18" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" d="M10 19l-7-7m0 0l7-7m-7 7h18" />
-                </svg>
-                Quay lại
-            </button>
+                <button className="btn-back" onClick={() => navigate(-1)}>
+                    <svg width="18" height="18" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" d="M10 19l-7-7m0 0l7-7m-7 7h18" />
+                    </svg>
+                    Quay lại
+                </button>
                 {hasManagerRights && !isTaskClosed && (
                     <button className="btn-primary" onClick={() => navigate(`/staff/tasks/edit/${task.id}`)}>
                         Chỉnh sửa công việc
@@ -201,27 +202,62 @@ function TaskDetail() {
                 )}
             </div>
 
-            <div style={{ display: 'flex', gap: '24px', flexWrap: 'wrap', alignItems: 'flex-start' }}>
-                <div className="form-card" style={{ flex: '2 1 500px', margin: 0, padding: '24px' }}>
-                    <h2 style={{ fontSize: '26px', margin: '0 0 8px 0', fontWeight: '700' }}>{task.title}</h2>
-                    <p style={{ margin: '0 0 24px 0' }}><span style={{ color: '#6b7280' }}>Sự kiện: </span><span style={{ color: '#3b82f6', fontWeight: '500' }}>{task.event_title}</span></p>
+            {/* Khung chính chia cột ngang hàng bằng Flexbox */}
+            <div className="task-view-wrapper">
+                {/* CỘT TRÁI: HIỂN THỊ NỘI DUNG CHI TIẾT TASK (Chiếm diện tích lớn) */}
+                <div className="form-card large" style={{ margin: 0 }}> 
+                    <h2 style={{ fontSize: '28px', margin: '0 0 20px 0', fontWeight: '700', color: 'var(--text-primary)', letterSpacing: '-0.02em' }}>
+                        {task.title}
+                    </h2>
                     
-                    <div style={{ display: 'flex', flexDirection: 'column', gap: '16px', marginBottom: '32px', paddingBottom: '24px', borderBottom: '1px solid #f3f4f6', fontSize: '15px' }}>
-                        <div style={{ display: 'flex', gap: '40px', flexWrap: 'wrap' }}>
-                            <div><strong>Người giao: </strong> <span style={{ color: '#2563eb' }}>{task.created_by_name || 'Hệ thống'}</span></div>
-                            <div><strong>Độ ưu tiên: </strong> {task.priority === 'high' ? <span style={{color: '#dc2626', fontWeight: '600'}}>Cao</span> : task.priority === 'medium' ? <span style={{color: '#d97706', fontWeight: '600'}}>Trung bình</span> : 'Thấp'}</div>
+                    <div className="task-info-grid">
+                        <div className="task-grid-item">
+                            <span className="task-grid-label">Người giao:</span>
+                            <span className="badge-creator">
+                                {task.created_by_name || 'Hệ thống'}
+                            </span>
                         </div>
-                        <div><strong>Hạn chót: </strong> <span style={{ color: '#EF4444', fontWeight: '500' }}>{task.due_date ? new Date(task.due_date).toLocaleDateString('vi-VN') : 'Không có'}</span></div>
+
+                        <div className="task-grid-item">
+                            <span className="task-grid-label">Người thực hiện:</span>
+                            <span className="badge-assignee">
+                                {task.assigned_name || 'Chưa phân công'}
+                            </span>
+                        </div>
+
+                        <div className="task-grid-item">
+                            <span className="task-grid-label">Độ ưu tiên:</span>
+                            {task.priority === 'high' ? (
+                                <span className="badge-priority-high">Cao</span>
+                            ) : task.priority === 'medium' ? (
+                                <span className="badge-priority-medium">Trung bình</span>
+                            ) : (
+                                <span className="badge-priority-low">Thấp</span>
+                            )}
+                        </div>
+
+                        <div className="task-grid-item">
+                            <span className="task-grid-label">Hạn chót:</span>
+                            <span className={task.due_date ? "badge-priority-high" : "badge-deadline-empty"}>
+                                {task.due_date ? new Date(task.due_date).toLocaleDateString('vi-VN') : 'Không có'}
+                            </span>
+                        </div>
                     </div>
 
                     <div>
-                        <h4>Mô tả chi tiết</h4>
-                        <p style={{ color: '#4b5563', lineHeight: '1.6', whiteSpace: 'pre-wrap' }}>{task.description || 'Không có mô tả chi tiết cho công việc này.'}</p>
+                        <h4 className="task-desc-title">
+                            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ color: 'var(--text-secondary)' }}><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><polyline points="14 2 14 8 20 8"></polyline><line x1="16" y1="13" x2="8" y2="13"></line><line x1="16" y1="17" x2="8" y2="17"></line><polyline points="10 9 9 9 8 9"></polyline></svg>
+                            Mô tả chi tiết
+                        </h4>
+                        <div className="task-desc-box">
+                            {task.description || <span className="task-desc-empty">Không có mô tả chi tiết cho công việc này.</span>}
+                        </div>
                     </div>
                 </div>
 
-                <div style={{ flex: '1 1 300px', display: 'flex', flexDirection: 'column', gap: '24px' }}>
-                    <div className="form-card" style={{ margin: 0, padding: '24px' }}>
+                {/* CỘT PHẢI: QUẢN LÝ FILE NỘP KẾT QUẢ & LỊCH SỬ (Giao diện Sidebar nhỏ) */}
+                <div style={{ flex: '1 1 340px', display: 'flex', flexDirection: 'column', gap: '24px' }}>
+                    <div className="form-card" style={{ margin: 0, padding: '24px', maxWidth: '100%' }}>
                         <h3 style={{ fontSize: '18px', margin: '0 0 16px 0', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                             Tệp đính kèm <span style={{ backgroundColor: '#f1f5f9', color: '#475569', fontSize: '13px', padding: '2px 8px', borderRadius: '12px' }}>{attachments.length} file</span>
                         </h3>
@@ -261,7 +297,8 @@ function TaskDetail() {
                                 <div style={{ display: 'flex', alignItems: 'center', gap: '16px' }}>
                                     <button 
                                         onClick={() => handleDownload(file.id, file.file_name)} 
-                                        style={{ color: '#4f46e5', background: 'none', border: 'none', fontWeight: '600', cursor: 'pointer', fontSize: '13px', padding: 0 }}
+                                        className="btn-file"
+                                        style={{ margin: 0, padding: '4px 8px' }}
                                     >
                                         Tải về
                                     </button>
@@ -278,16 +315,16 @@ function TaskDetail() {
                         ))}
 
                         {isAssignedUser && !isTaskClosed && (
-                            <button onClick={handleCompleteTask} style={{ width: '100%', padding: '12px', borderRadius: '8px', border: 'none', backgroundColor: attachments.length > 0 ? '#10b981' : '#cbd5e1', color: '#fff', fontWeight: '600', marginTop: '12px' }}>✓ Hoàn thành</button>
+                            <button onClick={handleCompleteTask} style={{ width: '100%', padding: '12px', borderRadius: '8px', border: 'none', backgroundColor: attachments.length > 0 ? '#10b981' : '#cbd5e1', color: '#fff', fontWeight: '600', marginTop: '12px', cursor: 'pointer' }}>✓ Hoàn thành</button>
                         )}
                     </div>
 
                     {(isAssignedUser || hasManagerRights) && (
-                        <div className="form-card" style={{ margin: 0, padding: '24px', backgroundColor: '#F8FAFC' }}>
-                            <h4 style={{ margin: '0 0 20px 0', fontSize: '16px', display: 'flex', alignItems: 'center', gap: '8px' }}>Lịch sử hoạt động</h4>
+                        <div className="form-card" style={{ margin: 0, padding: '24px', backgroundColor: 'var(--bg-neutral)', maxWidth: '100%' }}>
+                            <h4 style={{ margin: '0 0 20px 0', fontSize: '16px', display: 'flex', alignItems: 'center', gap: '8px', color: 'var(--text-primary)' }}>Lịch sử hoạt động</h4>
                             <div style={{ maxHeight: '200px', overflowY: 'auto' }}>
                                 {taskHistory.map(h => (
-                                    <p key={h.id} style={{ fontSize: '13px', margin: '0 0 8px 0' }}><span style={{ fontWeight: '600' }}>{h.full_name}</span>: {translateAction(h.action)}</p>
+                                    <p key={h.id} style={{ fontSize: '13px', margin: '0 0 8px 0', color: 'var(--text-primary)' }}><span style={{ fontWeight: '600' }}>{h.full_name}</span>: {translateAction(h.action)}</p>
                                 ))}
                             </div>
                         </div>
