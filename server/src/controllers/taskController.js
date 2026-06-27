@@ -279,9 +279,13 @@ const createTask = async (req, res) => {
         // Kiểm tra event tồn tại
         const [events] = await db.query(
             `
-            SELECT *
+            SELECT
+                id,
+                leader_id,
+                deleted_at
             FROM events
             WHERE id = ?
+            AND deleted_at IS NULL
             `,
             [event_id]
         );
@@ -289,6 +293,18 @@ const createTask = async (req, res) => {
         if (events.length === 0) {
             return res.status(404).json({
                 message: "Không tìm thấy sự kiện"
+            });
+        }
+
+        const event = events[0];
+
+        // Chỉ Admin hoặc Leader của Event mới được tạo Task
+        if (
+            req.user.role !== "admin" &&
+            req.user.id !== event.leader_id
+        ) {
+            return res.status(403).json({
+                message: "Bạn không có quyền tạo công việc cho sự kiện này"
             });
         }
 
@@ -390,10 +406,17 @@ const updateTask = async (req, res) => {
         // Kiểm tra task tồn tại
         const [tasks] = await db.query(
             `
-            SELECT *
-            FROM tasks
-            WHERE id = ?
-            AND is_deleted = FALSE
+            SELECT
+                t.*,
+                e.leader_id
+
+            FROM tasks t
+
+            INNER JOIN events e
+                ON t.event_id = e.id
+
+            WHERE t.id = ?
+            AND t.is_deleted = FALSE
             `,
             [id]
         );
@@ -405,6 +428,16 @@ const updateTask = async (req, res) => {
         }
 
         const task = tasks[0];
+
+        // Chỉ Admin hoặc Leader của Event mới được sửa
+        if (
+            req.user.role !== "admin" &&
+            req.user.id !== task.leader_id
+        ) {
+            return res.status(403).json({
+                message: "Bạn không có quyền chỉnh sửa công việc này"
+            });
+        }
 
         // Không cho sửa task đã hoàn thành hoặc hủy
         if (
@@ -560,10 +593,17 @@ const updateTaskStatus = async (req, res) => {
         // Kiểm tra task tồn tại
         const [tasks] = await db.query(
             `
-            SELECT *
-            FROM tasks
-            WHERE id = ?
-            AND is_deleted = FALSE
+            SELECT
+                t.*,
+                e.leader_id
+
+            FROM tasks t
+
+            INNER JOIN events e
+                ON t.event_id = e.id
+
+            WHERE t.id = ?
+            AND t.is_deleted = FALSE
             `,
             [id]
         );
@@ -576,9 +616,10 @@ const updateTaskStatus = async (req, res) => {
 
         const task = tasks[0];
 
-        // Chỉ Admin hoặc người được giao việc mới được đổi trạng thái
+        // Chỉ Admin, Leader hoặc người được giao mới được đổi trạng thái
         if (
             req.user.role !== "admin" &&
+            req.user.id !== task.leader_id &&
             req.user.id !== task.assigned_to
         ) {
             return res.status(403).json({
@@ -605,8 +646,11 @@ const updateTaskStatus = async (req, res) => {
             });
         }
 
-        // Khi hoàn thành công việc
-        if (status === "completed") {
+        // Khi hoàn thành công việc cho nhân viên
+        if (
+            status === "completed" &&
+            req.user.id === task.assigned_to
+        ) {
 
             const [attachments] = await db.query(
                 `
@@ -670,10 +714,17 @@ const deleteTask = async (req, res) => {
         // Kiểm tra task tồn tại
         const [tasks] = await db.query(
             `
-            SELECT *
-            FROM tasks
-            WHERE id = ?
-            AND is_deleted = FALSE
+            SELECT
+                t.*,
+                e.leader_id
+
+            FROM tasks t
+
+            INNER JOIN events e
+                ON t.event_id = e.id
+
+            WHERE t.id = ?
+            AND t.is_deleted = FALSE
             `,
             [id]
         );
@@ -681,6 +732,18 @@ const deleteTask = async (req, res) => {
         if (tasks.length === 0) {
             return res.status(404).json({
                 message: "Không tìm thấy công việc"
+            });
+        }
+
+        const task = tasks[0];
+
+        // Chỉ Admin hoặc Leader của Event mới được xóa
+        if (
+            req.user.role !== "admin" &&
+            req.user.id !== task.leader_id
+        ) {
+            return res.status(403).json({
+                message: "Bạn không có quyền xóa công việc này"
             });
         }
 
@@ -727,9 +790,16 @@ const restoreTask = async (req, res) => {
         // Kiểm tra task có tồn tại không
         const [tasks] = await db.query(
             `
-            SELECT *
-            FROM tasks
-            WHERE id = ?
+            SELECT
+                t.*,
+                e.leader_id
+
+            FROM tasks t
+
+            INNER JOIN events e
+                ON t.event_id = e.id
+
+            WHERE t.id = ?
             `,
             [id]
         );
@@ -741,6 +811,16 @@ const restoreTask = async (req, res) => {
         }
 
         const task = tasks[0];
+
+        // Chỉ Admin hoặc Leader của Event mới được khôi phục
+        if (
+            req.user.role !== "admin" &&
+            req.user.id !== task.leader_id
+        ) {
+            return res.status(403).json({
+                message: "Bạn không có quyền khôi phục công việc này"
+            });
+        }
 
         // Kiểm tra đã bị xóa chưa
         if (!task.is_deleted) {

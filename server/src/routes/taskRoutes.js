@@ -32,7 +32,6 @@ router.get(
 router.post(
     "/",
     authMiddleware,
-    roleMiddleware("admin"),
     createTask
 );
 
@@ -59,7 +58,6 @@ router.get(
 router.put(
     "/:id",
     authMiddleware,
-    roleMiddleware("admin"),
     updateTask
 );
 
@@ -72,7 +70,6 @@ router.patch(
 router.delete(
     "/:id",
     authMiddleware,
-    roleMiddleware("admin"),
     deleteTask
 );
 
