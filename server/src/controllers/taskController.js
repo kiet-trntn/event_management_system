@@ -874,8 +874,9 @@ const getDeletedTasks = async (req, res) => {
 
     try {
 
-        const [tasks] = await db.query(
-            `
+        const { event_id } = req.query;
+
+        let sql = `
             SELECT
                 t.id,
                 t.title,
@@ -887,6 +888,7 @@ const getDeletedTasks = async (req, res) => {
 
                 e.id AS event_id,
                 e.title AS event_title,
+                e.leader_id AS event_leader_id,
 
                 u.id AS assigned_to,
                 u.full_name AS assigned_name
@@ -900,10 +902,33 @@ const getDeletedTasks = async (req, res) => {
                 ON t.assigned_to = u.id
 
             WHERE t.is_deleted = TRUE
+            AND t.deleted_at IS NOT NULL
+            AND e.deleted_at IS NULL
+        `;
 
-            ORDER BY t.id DESC
-            `
-        );
+        let params = [];
+
+        if (req.user.role !== "admin") {
+            sql += `
+                AND e.leader_id = ?
+            `;
+
+            params.push(req.user.id);
+        }
+
+        if (event_id) {
+            sql += `
+                AND t.event_id = ?
+            `;
+
+            params.push(event_id);
+        }
+
+        sql += `
+            ORDER BY t.deleted_at DESC
+        `;
+
+        const [tasks] = await db.query(sql, params);
 
         res.json({
             total: tasks.length,
