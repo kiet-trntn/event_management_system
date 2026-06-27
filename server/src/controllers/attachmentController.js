@@ -22,10 +22,17 @@ const uploadAttachment = async (req, res) => {
         // Kiểm tra task tồn tại
         const [tasks] = await db.query(
             `
-            SELECT *
-            FROM tasks
-            WHERE id = ?
-            AND is_deleted = FALSE
+            SELECT
+                t.*,
+                e.leader_id
+
+            FROM tasks t
+
+            INNER JOIN events e
+                ON t.event_id = e.id
+
+            WHERE t.id = ?
+            AND t.is_deleted = FALSE
             `,
             [task_id]
         );
@@ -33,6 +40,19 @@ const uploadAttachment = async (req, res) => {
         if (tasks.length === 0) {
             return res.status(404).json({
                 message: "Không tìm thấy công việc"
+            });
+        }
+
+        const task = tasks[0];
+
+        // Chỉ Admin, Leader hoặc người được giao mới được upload file
+        if (
+            req.user.role !== "admin" &&
+            req.user.id !== task.leader_id &&
+            req.user.id !== task.assigned_to
+        ) {
+            return res.status(403).json({
+                message: "Bạn không có quyền tải file lên"
             });
         }
 
@@ -68,7 +88,7 @@ const uploadAttachment = async (req, res) => {
 
         await addTaskHistory(
             task_id,
-            `Tải lên tệp ${file.originalname}`,
+            `${req.user.full_name} đã tải lên tệp ${req.file.originalname}`,
             req.user.id
         );
 
@@ -182,10 +202,21 @@ const deleteAttachment = async (req, res) => {
 
         const [attachments] = await db.query(
             `
-            SELECT *
-            FROM attachments
-            WHERE id = ?
-            AND deleted_at IS NULL
+            SELECT
+                a.*,
+                t.assigned_to,
+                e.leader_id
+
+            FROM attachments a
+
+            INNER JOIN tasks t
+                ON a.task_id = t.id
+
+            INNER JOIN events e
+                ON t.event_id = e.id
+
+            WHERE a.id = ?
+            AND a.deleted_at IS NULL
             `,
             [id]
         );
@@ -198,35 +229,15 @@ const deleteAttachment = async (req, res) => {
 
         const attachment = attachments[0];
 
-        if (req.user.role !== "admin") {
-
-            const [events] = await db.query(
-                `
-                SELECT
-                    e.leader_id
-                FROM attachments a
-
-                INNER JOIN tasks t
-                    ON a.task_id = t.id
-
-                INNER JOIN events e
-                    ON t.event_id = e.id
-
-                WHERE a.id = ?
-                `,
-                [id]
-            );
-
-            if (
-                events.length === 0 ||
-                events[0].leader_id !== req.user.id
-            ) {
-                return res.status(403).json({
-                    message:
-                        "Bạn không có quyền xóa file này"
-                });
-            }
-
+        // Chỉ Admin, Leader hoặc người upload được xóa file
+        if (
+            req.user.role !== "admin" &&
+            req.user.id !== attachment.leader_id &&
+            req.user.id !== attachment.uploaded_by
+        ) {
+            return res.status(403).json({
+                message: "Bạn không có quyền xóa file này"
+            });
         }
 
         await db.query(
@@ -312,10 +323,20 @@ const restoreAttachment = async (req, res) => {
 
         const [attachments] = await db.query(
             `
-            SELECT *
-            FROM attachments
-            WHERE id = ?
-            AND deleted_at IS NOT NULL
+            SELECT
+                a.*,
+                e.leader_id
+
+            FROM attachments a
+
+            INNER JOIN tasks t
+                ON a.task_id = t.id
+
+            INNER JOIN events e
+                ON t.event_id = e.id
+
+            WHERE a.id = ?
+            AND a.deleted_at IS NOT NULL
             `,
             [id]
         );
@@ -323,6 +344,18 @@ const restoreAttachment = async (req, res) => {
         if (attachments.length === 0) {
             return res.status(404).json({
                 message: "Không tìm thấy file đã xóa"
+            });
+        }
+
+        const attachment = attachments[0];
+
+        // Chỉ Admin hoặc Leader mới được khôi phục file
+        if (
+            req.user.role !== "admin" &&
+            req.user.id !== attachment.leader_id
+        ) {
+            return res.status(403).json({
+                message: "Bạn không có quyền khôi phục file này"
             });
         }
 
@@ -337,7 +370,7 @@ const restoreAttachment = async (req, res) => {
 
         await addTaskHistory(
             attachment.task_id,
-            `Khôi phục tệp "${attachment.file_name}"`,
+            `${req.user.full_name} đã khôi phục tệp "${attachment.file_name}"`,
             req.user.id
         );
 
