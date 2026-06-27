@@ -20,21 +20,18 @@ router.get(
 router.post(
     "/:eventId/members",
     authMiddleware,
-    roleMiddleware("admin"),
     addMemberToEvent
 );
 
 router.delete(
     "/:eventId/members/:userId",
     authMiddleware,
-    roleMiddleware("admin"),
     removeMemberFromEvent
 );
 
 router.patch(
     "/:eventId/members/:userId",
     authMiddleware,
-    roleMiddleware("admin"),
     updateMemberRole
 );
 

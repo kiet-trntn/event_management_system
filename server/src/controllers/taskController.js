@@ -120,6 +120,7 @@ const getTaskById = async (req, res) => {
 
                 e.id AS event_id,
                 e.title AS event_title,
+                e.leader_id AS event_leader_id,
 
                 u1.id AS assigned_to,
                 u1.full_name AS assigned_name,
@@ -173,7 +174,7 @@ const getTaskById = async (req, res) => {
 
         // Leader Event
         const isLeader =
-            task.leader_id === req.user.id;
+            task.event_leader_id === req.user.id;
 
         // Không phải member và không phải leader
         if (
