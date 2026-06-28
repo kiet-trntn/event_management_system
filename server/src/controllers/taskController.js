@@ -1,6 +1,7 @@
 const db = require("../config/db");
 const addTaskHistory =
 require("../utils/taskHistory");
+const createNotification = require("../utils/createNotification");
 
 const getAllTasks = async (req, res) => {
 
@@ -373,6 +374,16 @@ const createTask = async (req, res) => {
             ]
         );
 
+        if (assigned_to) {
+            await createNotification({
+                user_id: assigned_to,
+                title: "Bạn có công việc mới",
+                content: `Bạn được giao công việc: "${title}"`,
+                type: "task",
+                related_id: result.insertId
+            });
+        }
+
         // Ghi lịch sử
         await addTaskHistory(
             result.insertId,
@@ -550,6 +561,14 @@ const updateTask = async (req, res) => {
                 req.user.id
             );
 
+            await createNotification({
+                user_id: assigned_to,
+                title: "Bạn được giao công việc",
+                content: `Bạn được giao công việc: "${title}"`,
+                type: "task",
+                related_id: id
+            });
+
         }
 
         // Ghi lịch sử
@@ -692,9 +711,37 @@ const updateTaskStatus = async (req, res) => {
 
         await addTaskHistory(
             id,
-            `Chuyển trạng thái thành ${status}`,
+            `${req.user.full_name} đã chuyển trạng thái công việc "${task.title}" từ ${task.status} sang ${status}`,
             req.user.id
         );
+
+        // Tạo thông báo khi trạng thái công việc thay đổi
+        const receivers = new Set();
+
+        // Thông báo cho Leader nếu người đổi trạng thái không phải Leader
+        if (task.leader_id && task.leader_id !== req.user.id) {
+            receivers.add(task.leader_id);
+        }
+
+        // Thông báo cho người tạo task nếu người đổi trạng thái không phải người tạo
+        if (task.created_by && task.created_by !== req.user.id) {
+            receivers.add(task.created_by);
+        }
+
+        // Thông báo cho người được giao nếu người đổi trạng thái không phải người được giao
+        if (task.assigned_to && task.assigned_to !== req.user.id) {
+            receivers.add(task.assigned_to);
+        }
+
+        for (const userId of receivers) {
+            await createNotification({
+                user_id: userId,
+                title: "Trạng thái công việc đã thay đổi",
+                content: `${req.user.full_name} đã chuyển công việc "${task.title}" từ ${task.status} sang ${status}`,
+                type: "task",
+                related_id: id
+            });
+        }
 
         res.json({
             message: "Cập nhật trạng thái thành công"
@@ -768,9 +815,37 @@ const deleteTask = async (req, res) => {
 
         await addTaskHistory(
             id,
-            "Xóa công việc",
+            `${req.user.full_name} đã xóa công việc "${task.title}"`,
             req.user.id
         );
+
+        // Tạo thông báo khi công việc bị xóa
+        const receivers = new Set();
+
+        // Thông báo cho người được giao task
+        if (task.assigned_to && task.assigned_to !== req.user.id) {
+            receivers.add(task.assigned_to);
+        }
+
+        // Nếu Admin xóa task thì thông báo cho Leader
+        if (task.leader_id && task.leader_id !== req.user.id) {
+            receivers.add(task.leader_id);
+        }
+
+        // Nếu người tạo task khác người xóa thì cũng thông báo
+        if (task.created_by && task.created_by !== req.user.id) {
+            receivers.add(task.created_by);
+        }
+
+        for (const userId of receivers) {
+            await createNotification({
+                user_id: userId,
+                title: "Công việc đã bị xóa",
+                content: `${req.user.full_name} đã xóa công việc "${task.title}"`,
+                type: "task",
+                related_id: id
+            });
+        }
 
         res.json({
             message: "Xóa công việc thành công"
@@ -850,9 +925,37 @@ const restoreTask = async (req, res) => {
 
         await addTaskHistory(
             id,
-            "Khôi phục công việc",
+            `${req.user.full_name} đã khôi phục công việc "${task.title}"`,
             req.user.id
         );
+
+        // Tạo thông báo khi công việc được khôi phục
+        const receivers = new Set();
+
+        // Thông báo cho người được giao task
+        if (task.assigned_to && task.assigned_to !== req.user.id) {
+            receivers.add(task.assigned_to);
+        }
+
+        // Nếu Admin khôi phục thì thông báo cho Leader
+        if (task.leader_id && task.leader_id !== req.user.id) {
+            receivers.add(task.leader_id);
+        }
+
+        // Nếu người tạo task khác người khôi phục thì cũng thông báo
+        if (task.created_by && task.created_by !== req.user.id) {
+            receivers.add(task.created_by);
+        }
+
+        for (const userId of receivers) {
+            await createNotification({
+                user_id: userId,
+                title: "Công việc đã được khôi phục",
+                content: `${req.user.full_name} đã khôi phục công việc "${task.title}"`,
+                type: "task",
+                related_id: id
+            });
+        }
 
         res.json({
             message: "Khôi phục công việc thành công"

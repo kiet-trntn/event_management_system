@@ -1,4 +1,5 @@
 const db = require("../config/db");
+const createNotification = require("../utils/createNotification");
 
 const getEventMembers = async (req, res) => {
 
@@ -200,6 +201,14 @@ const addMemberToEvent = async (req, res) => {
             ]
         );
 
+        await createNotification({
+            user_id: user_id,
+            title: "Bạn được thêm vào sự kiện",
+            content: `Bạn đã được thêm vào sự kiện "${event.title}"`,
+            type: "event",
+            related_id: eventId
+        });
+
         res.status(201).json({
             message: "Thêm thành viên thành công"
         });
@@ -286,7 +295,7 @@ const removeMemberFromEvent = async (req, res) => {
             [eventId, userId]
         );
 
-        // Xóa
+        // Xóa thành viên khỏi sự kiện
         await db.query(
             `
             DELETE FROM event_members
@@ -295,6 +304,15 @@ const removeMemberFromEvent = async (req, res) => {
             `,
             [eventId, userId]
         );
+
+        // Tạo thông báo cho thành viên bị xóa
+        await createNotification({
+            user_id: userId,
+            title: "Bạn đã bị xóa khỏi sự kiện",
+            content: `Bạn đã bị xóa khỏi sự kiện "${event.title}"`,
+            type: "event",
+            related_id: eventId
+        });
 
         res.json({
             message: "Xóa thành viên khỏi sự kiện thành công"
