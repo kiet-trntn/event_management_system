@@ -1,8 +1,8 @@
 const db = require("../config/db");
 const path = require("path");
 const fs = require("fs");
-const addTaskHistory =
-require("../utils/taskHistory");
+const addTaskHistory = require("../utils/taskHistory");
+const createNotification = require("../utils/createNotification");
 
 const uploadAttachment = async (req, res) => {
 
@@ -91,6 +91,31 @@ const uploadAttachment = async (req, res) => {
             `${req.user.full_name} đã tải lên tệp ${req.file.originalname}`,
             req.user.id
         );
+
+        // Tạo thông báo khi có file mới được tải lên
+        const receivers = new Set();
+
+        if (task.leader_id && task.leader_id !== req.user.id) {
+            receivers.add(task.leader_id);
+        }
+
+        if (task.created_by && task.created_by !== req.user.id) {
+            receivers.add(task.created_by);
+        }
+
+        if (task.assigned_to && task.assigned_to !== req.user.id) {
+            receivers.add(task.assigned_to);
+        }
+
+        for (const userId of receivers) {
+            await createNotification({
+                user_id: userId,
+                title: "Có file mới được tải lên",
+                content: `${req.user.full_name} đã tải lên file "${req.file.originalname}" cho công việc "${task.title}"`,
+                type: "task",
+                related_id: task_id
+            });
+        }
 
         res.status(201).json({
 
@@ -251,9 +276,42 @@ const deleteAttachment = async (req, res) => {
 
         await addTaskHistory(
             attachment.task_id,
-            `Xóa tệp "${attachment.file_name}"`,
+            `${req.user.full_name} đã xóa tệp "${attachment.file_name}"`,
             req.user.id
         );
+
+        // Tạo thông báo khi file bị xóa
+        const receivers = new Set();
+
+        // Thông báo cho Leader nếu người xóa không phải Leader
+        if (attachment.leader_id && attachment.leader_id !== req.user.id) {
+            receivers.add(attachment.leader_id);
+        }
+
+        // Thông báo cho người được giao task nếu khác người xóa
+        if (attachment.assigned_to && attachment.assigned_to !== req.user.id) {
+            receivers.add(attachment.assigned_to);
+        }
+
+        // Thông báo cho người tạo task nếu khác người xóa
+        if (attachment.created_by && attachment.created_by !== req.user.id) {
+            receivers.add(attachment.created_by);
+        }
+
+        // Thông báo cho người upload file nếu khác người xóa
+        if (attachment.uploaded_by && attachment.uploaded_by !== req.user.id) {
+            receivers.add(attachment.uploaded_by);
+        }
+
+        for (const userId of receivers) {
+            await createNotification({
+                user_id: userId,
+                title: "File đã bị xóa",
+                content: `${req.user.full_name} đã xóa file "${attachment.file_name}" trong công việc "${attachment.task_title}"`,
+                type: "task",
+                related_id: attachment.task_id
+            });
+        }
 
         res.json({
             message: "Xóa file thành công"
@@ -329,10 +387,12 @@ const restoreAttachment = async (req, res) => {
                 a.task_id,
                 a.file_name,
                 a.file_path,
+                a.uploaded_by,
                 a.deleted_at,
 
-                t.id AS task_id,
                 t.title AS task_title,
+                t.assigned_to,
+                t.created_by,
 
                 e.id AS event_id,
                 e.title AS event_title,
@@ -374,7 +434,9 @@ const restoreAttachment = async (req, res) => {
         await db.query(
             `
             UPDATE attachments
-            SET deleted_at = NULL
+            SET
+                is_deleted = FALSE,
+                deleted_at = NULL
             WHERE id = ?
             `,
             [id]
@@ -386,6 +448,40 @@ const restoreAttachment = async (req, res) => {
             `${req.user.full_name} đã khôi phục tệp "${attachment.file_name}"`,
             req.user.id
         );
+
+        // Tạo thông báo khi file được khôi phục
+        const receivers = new Set();
+
+        // Thông báo cho Leader nếu người khôi phục không phải Leader
+        if (attachment.leader_id && attachment.leader_id !== req.user.id) {
+            receivers.add(attachment.leader_id);
+        }
+
+        // Thông báo cho người được giao task nếu khác người khôi phục
+        if (attachment.assigned_to && attachment.assigned_to !== req.user.id) {
+            receivers.add(attachment.assigned_to);
+        }
+
+        // Thông báo cho người tạo task nếu khác người khôi phục
+        if (attachment.created_by && attachment.created_by !== req.user.id) {
+            receivers.add(attachment.created_by);
+        }
+
+        // Thông báo cho người upload file nếu khác người khôi phục
+        if (attachment.uploaded_by && attachment.uploaded_by !== req.user.id) {
+            receivers.add(attachment.uploaded_by);
+        }
+
+        for (const userId of receivers) {
+            await createNotification({
+                user_id: userId,
+                title: "File đã được khôi phục",
+                content: `${req.user.full_name} đã khôi phục file "${attachment.file_name}" trong công việc "${attachment.task_title}"`,
+                type: "task",
+                related_id: attachment.task_id
+            });
+        }
+
 
         res.json({
             message: "Khôi phục file thành công"
