@@ -57,7 +57,12 @@ function AddEventMember() {
     return (
         <div className="page-container">
             <div className="page-header-form">
-                <button type="button" className="btn-back" onClick={() => navigate(-1)}>Quay lại</button>
+                <button className="btn-back" onClick={() => navigate(-1)}>
+                    <svg width="18" height="18" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" d="M10 19l-7-7m0 0l7-7m-7 7h18" />
+                    </svg>
+                    Quay lại
+                </button>
                 <h3>Thêm thành viên mới</h3>
             </div>
             <div className="form-card">

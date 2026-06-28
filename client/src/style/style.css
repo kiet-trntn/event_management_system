@@ -1206,40 +1206,11 @@ body {
     margin-bottom: 24px;
     max-width: 100% !important;
 }
-
-.calendar-title {
-    margin: 0;
-    font-size: 24px;
-    color: var(--text-primary);
-}
-
-.calendar-subtitle {
-    margin: 8px 0 0 0;
-    font-size: 14px;
-    color: var(--text-secondary);
-}
-
-.calendar-legend {
-    display: flex;
-    gap: 16px;
-    margin-top: 16px;
-    font-size: 13px;
-    flex-wrap: wrap;
-}
-
-.legend-item {
-    display: flex;
-    align-items: center;
-    gap: 6px;
-    font-weight: 500;
-    color: var(--text-secondary);
-}
-
-.legend-color-box {
-    width: 12px;
-    height: 12px;
-    border-radius: 3px;
-}
+.calendar-title { margin: 0; font-size: 24px; color: var(--text-primary); }
+.calendar-subtitle { margin: 8px 0 0 0; font-size: 14px; color: var(--text-secondary); }
+.calendar-legend { display: flex; gap: 16px; margin-top: 16px; font-size: 13px; flex-wrap: wrap; }
+.legend-item { display: flex; align-items: center; gap: 6px; font-weight: 500; color: var(--text-secondary); }
+.legend-color-box { width: 12px; height: 12px; border-radius: 3px; }
 .legend-color-box.pending { background-color: #f59e0b; }
 .legend-color-box.in-progress { background-color: #3b82f6; }
 .legend-color-box.completed { background-color: #10b981; }
@@ -1253,82 +1224,414 @@ body {
     min-height: 600px;
     max-width: 100% !important;
 }
+.calendar-wrapper .rbc-calendar { height: 100%; }
 
-.calendar-wrapper .rbc-calendar {
-    height: 100%;
+/* =========================================================
+
+   19. GIAO DIỆN LỊCH LÀM VIỆC & MÀU SẮC TRẠNG THÁI
+
+   ========================================================= */
+
+
+
+/* --- Khu vực Header & Chú thích --- */
+
+.calendar-header-section {
+
+    margin-bottom: 24px;
+
+    max-width: 100% !important;
+
 }
 
-/* --- Tương tác Thẻ Công Việc (Events) trên Lịch --- */
-.rbc-event {
-    transition: transform 0.15s ease, box-shadow 0.15s ease, opacity 0.2s;
-    opacity: 0.95;
+/* =========================================================
+
+   CHÚ THÍCH MÀU SẮC (LEGEND) CHUẨN THEO ẢNH
+
+   ========================================================= */
+
+.calendar-legend {
+
+    display: flex;
+
+    gap: 16px;
+
+    margin-top: 12px;
+
+    font-size: 11px; /* Thu nhỏ chữ lại theo yêu cầu */
+
+    flex-wrap: wrap;
+
+    align-items: center;
+
 }
 
-.rbc-event:hover {
-    opacity: 1;
-    transform: translateY(-1px);
-    box-shadow: 0 4px 6px -1px rgba(0,0,0,0.1), 0 2px 4px -1px rgba(0,0,0,0.06) !important;
-    z-index: 10;
+
+
+.legend-item {
+
+    display: flex;
+
+    align-items: center;
+
+    gap: 6px;
+
+    font-weight: 500;
+
+    color: #475569; /* Màu chữ xám xanh thanh lịch */
+
 }
 
-/* Màu thẻ trạng thái */
+
+
+.legend-color-box {
+
+    width: 14px; /* Cho cục màu to ra một xíu để cân đối với chữ */
+
+    height: 14px;
+
+    border-radius: 4px; /* Bo góc giống ảnh 100% */
+
+}
+
+
+
+/* Đổ màu chuẩn cho cục chú thích */
+
+.legend-color-box.pending { background-color: #f59e0b; }      /* Cam - Chờ xử lý */
+
+.legend-color-box.in-progress { background-color: #3b82f6; }  /* Xanh dương - Đang tiến hành */
+
+.legend-color-box.completed { background-color: #10b981; }    /* Xanh lá - Hoàn thành */
+
+.legend-color-box.overdue { background-color: #ef4444; }      /* Đỏ - Trễ hạn */
+
+
+
+/* =========================================================
+
+   ĐỒNG BỘ MÀU THẺ CÔNG VIỆC TRÊN LỊCH KHỚP VỚI CHÚ THÍCH
+
+   ========================================================= */
+
 .calendar-event-pending { background-color: #f59e0b !important; color: #fff !important; }
+
 .calendar-event-in-progress { background-color: #3b82f6 !important; color: #fff !important; }
+
 .calendar-event-completed { background-color: #10b981 !important; color: #fff !important; }
+
 .calendar-event-overdue { background-color: #ef4444 !important; color: #fff !important; }
-.calendar-event-cancelled { 
-    background-color: #94a3b8 !important; 
-    color: #fff !important; 
-    text-decoration: line-through; 
+
+.calendar-event-cancelled {
+
+    background-color: #94a3b8 !important;
+
+    color: #fff !important;
+
+    text-decoration: line-through;
+
 }
 
-/* --- Thanh công cụ (Toolbar) & Nút bấm --- */
-.rbc-toolbar .rbc-btn-group {
-    display: flex !important;
-    gap: 8px !important; 
+
+
+/* --- Khung chứa bộ Lịch --- */
+
+.calendar-wrapper {
+
+    margin: 0;
+
+    padding: 20px;
+
+    height: 75vh;
+
+    min-height: 600px;
+
+    max-width: 100% !important;
+
 }
 
-.rbc-toolbar button {
-    color: #4b5563 !important; 
-    background-color: #ffffff !important;
-    background-image: none !important; 
-    border: 1px solid #e5e7eb !important;
-    border-radius: 8px !important; 
-    padding: 8px 16px !important;
-    font-size: 14px !important;
+.calendar-wrapper .rbc-calendar { height: 100%; }
+
+
+
+/* =========================================================
+
+   THANH CÔNG CỤ CHUẨN GOOGLE CALENDAR
+
+   ========================================================= */
+
+/* Ẩn Toolbar mặc định của react-big-calendar vì đã dùng Custom */
+
+.rbc-toolbar {
+
+    display: none !important;
+
+}
+
+
+
+.gg-toolbar {
+
+    display: flex;
+
+    justify-content: space-between;
+
+    align-items: center;
+
+    margin-bottom: 24px;
+
+    padding: 0 4px;
+
+}
+
+
+
+.gg-toolbar-left {
+
+    display: flex;
+
+    align-items: center;
+
+    gap: 16px;
+
+}
+
+
+
+/* Nút Hôm nay */
+
+.gg-btn-today {
+
+    padding: 8px 16px;
+
+    border: 1px solid #d1d5db;
+
+    background-color: transparent;
+
+    border-radius: 6px;
+
+    font-size: 14px;
+
+    font-weight: 500;
+
+    color: #374151;
+
+    cursor: pointer;
+
+    transition: all 0.2s;
+
+}
+
+.gg-btn-today:hover {
+
+    background-color: #f3f4f6;
+
+    color: #111827;
+
+}
+
+
+
+/* Nhóm 2 mũi tên */
+
+.gg-nav-group {
+
+    display: flex;
+
+    gap: 4px;
+
+}
+
+.gg-btn-nav {
+
+    width: 32px;
+
+    height: 32px;
+
+    border: none;
+
+    background: transparent;
+
+    border-radius: 50%;
+
+    cursor: pointer;
+
+    font-size: 14px;
+
+    color: #4b5563;
+
+    display: flex;
+
+    align-items: center;
+
+    justify-content: center;
+
+    transition: background-color 0.2s;
+
+}
+
+.gg-btn-nav:hover {
+
+    background-color: #f3f4f6;
+
+}
+
+
+
+/* Chữ Tháng 7 2026 */
+
+.gg-toolbar-label {
+
+    font-size: 22px;
+
+    font-weight: 400;
+
+    color: #374151;
+
+    margin-left: 8px;
+
+    text-transform: capitalize;
+
+}
+
+
+
+/* Nút xổ xuống (Dropdown) chọn Tháng/Tuần/Ngày */
+
+.gg-view-select {
+
+    padding: 8px 16px;
+
+    border: 1px solid #d1d5db;
+
+    background-color: transparent;
+
+    border-radius: 6px;
+
+    font-size: 14px;
+
+    font-weight: 500;
+
+    color: #374151;
+
+    cursor: pointer;
+
+    outline: none;
+
+    -webkit-appearance: none;
+
+    -moz-appearance: none;
+
+    appearance: none;
+
+    /* Tạo mũi tên xổ xuống nhỏ gọn */
+
+    background-image: url("data:image/svg+xml;charset=US-ASCII,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20width%3D%22292.4%22%20height%3D%22292.4%22%3E%3Cpath%20fill%3D%22%23374151%22%20d%3D%22M287%2069.4a17.6%2017.6%200%200%200-13-5.4H18.4c-5%200-9.3%201.8-12.9%205.4A17.6%2017.6%200%200%200%200%2082.2c0%205%201.8%209.3%205.4%2012.9l128%20127.9c3.6%203.6%207.8%205.4%2012.8%205.4s9.2-1.8%2012.8-5.4L287%2095c3.5-3.5%205.4-7.8%205.4-12.8%200-5-1.9-9.2-5.5-12.8z%22%2F%3E%3C%2Fsvg%3E");
+
+    background-repeat: no-repeat;
+
+    background-position: right 12px top 50%;
+
+    background-size: 10px auto;
+
+    padding-right: 32px;
+
+}
+
+.gg-view-select:hover {
+
+    background-color: #f3f4f6;
+
+}
+
+
+
+/* Làm mỏng thẻ công việc, bo góc nhẹ nhàng */
+
+.rbc-event {
+
+    padding: 2px 6px !important;
+
+    border-radius: 4px !important;
+
+    min-height: 20px !important;
+
+    margin-bottom: 2px !important;
+
+}
+
+
+
+/* Thu nhỏ font chữ, không tự xuống dòng, dài quá tự cắt thành ... */
+
+.rbc-event-content {
+
+    font-size: 11px !important;
+
     font-weight: 500 !important;
-    cursor: pointer !important;
-    transition: all 0.2s ease !important;
-    box-shadow: 0 1px 2px rgba(0,0,0,0.05) !important;
-    margin: 0 !important; 
+
+    line-height: 1.3 !important;
+
+    white-space: nowrap !important;
+
+    overflow: hidden !important;
+
+    text-overflow: ellipsis !important;
+
 }
 
-.rbc-toolbar button:hover {
-    background-color: #f8fafc !important;
-    color: #111827 !important;
-    border-color: #cbd5e1 !important;
+
+
+/* Thu nhỏ chữ số ngày (01, 02...) trong các ô lịch */
+
+.rbc-date-cell {
+
+    font-size: 12px !important;
+
+    padding: 4px !important;
+
 }
 
-.rbc-toolbar button.rbc-active {
-    background-color: #2563eb !important; 
-    color: #ffffff !important; 
-    border-color: #2563eb !important;
-    box-shadow: 0 4px 6px -1px rgba(37, 99, 235, 0.25) !important; 
+
+
+/* Thu nhỏ tiêu đề các Thứ (T2, T3...) */
+
+.rbc-header {
+
+    padding: 8px 0 !important;
+
+    font-size: 12px !important;
+
+    text-transform: uppercase;
+
 }
 
-.rbc-toolbar button.rbc-active:hover {
-    background-color: #1d4ed8 !important;
-    border-color: #1d4ed8 !important;
+
+
+/* Nút hiển thị "Xem thêm (+2)" nhỏ lại */
+
+.rbc-show-more {
+
+    font-size: 11px !important;
+
+    color: #4b5563 !important;
+
+    background-color: #f3f4f6 !important;
+
+    padding: 2px 6px !important;
+
+    border-radius: 4px;
+
+    display: inline-block;
+
+    margin-top: 2px;
+
 }
 
-.rbc-toolbar button:active,
-.rbc-toolbar button:focus {
-    outline: none !important;
-}
+.rbc-show-more:hover {
 
-.rbc-toolbar .rbc-toolbar-label {
-    font-size: 18px !important;
-    font-weight: 700 !important;
-    color: #0f172a !important;
-    text-transform: capitalize !important;
+    background-color: #e5e7eb !important;
+
+    text-decoration: none !important;
+
 }

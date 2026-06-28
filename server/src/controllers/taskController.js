@@ -993,6 +993,31 @@ const getTaskHistory = async (req, res) => {
 
 };
 
+// Lấy toàn bộ công việc thuộc các sự kiện do user làm Leader
+const getLeaderCalendarTasks = async (req, res) => {
+    try {
+        const userId = req.user.id;
+        const query = `
+            SELECT 
+                t.*, 
+                e.title as event_title, 
+                u.full_name as assigned_name
+            FROM tasks t
+            INNER JOIN events e ON t.event_id = e.id
+            LEFT JOIN users u ON t.assigned_to = u.id
+            WHERE t.deleted_at IS NULL 
+            AND e.leader_id = ?
+        `;
+        
+        const [tasks] = await db.query(query, [userId]);
+
+        res.json({ tasks });
+    } catch (error) {
+        console.log(error);
+        res.status(500).json({ message: error.message });
+    }
+};
+
 module.exports = {
     getAllTasks,
     getTaskById,
@@ -1003,5 +1028,6 @@ module.exports = {
     deleteTask,
     restoreTask,
     getDeletedTasks,
-    getTaskHistory
+    getTaskHistory,
+    getLeaderCalendarTasks
 };
