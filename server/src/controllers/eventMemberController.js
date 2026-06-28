@@ -109,6 +109,13 @@ const addMemberToEvent = async (req, res) => {
 
         const event = events[0];
 
+         if (req.user.role !== "admin" && req.user.id !== event.leader_id) {
+            return res.status(403).json({
+                message: "Bạn không có quyền thực hiện hành động này trong sự kiện"
+            });
+        }
+        
+
         // Kiểm tra user tồn tại
         const [users] = await db.query(
             `
@@ -253,6 +260,11 @@ const removeMemberFromEvent = async (req, res) => {
 
         const event = events[0];
 
+        if (req.user.role !== "admin" && Number(req.user.id) !== Number(event.leader_id)) {
+            return res.status(403).json({
+                message: "Bạn không có quyền thực hiện hành động này trong sự kiện"
+            });
+        }
 
         if (
             event.status === "Đang diễn ra" ||
@@ -263,6 +275,16 @@ const removeMemberFromEvent = async (req, res) => {
                 message: "Không thể thay đổi thành viên của sự kiện này"
             });
         }
+
+        await db.query(
+            `
+            UPDATE tasks
+            SET assigned_to = NULL
+            WHERE event_id = ?
+            AND assigned_to = ?
+            `,
+            [eventId, userId]
+        );
 
         // Xóa
         await db.query(
@@ -330,6 +352,12 @@ const updateMemberRole = async (req, res) => {
         }
 
         const event = events[0];
+
+        if (req.user.role !== "admin" && req.user.id !== event.leader_id) {
+            return res.status(403).json({
+                message: "Bạn không có quyền thực hiện hành động này trong sự kiện"
+            });
+        }
 
         // Không cho sửa khi event đã khóa
         if (

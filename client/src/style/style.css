@@ -1087,3 +1087,248 @@ body {
     background-color: #dbeafe;
     border-color: #93c5fd;
 }
+
+/* =========================================================
+   17. VIEW TASK DETAIL COMPONENT (Trang chi tiết công việc)
+   ========================================================= */
+.task-view-wrapper {
+    display: flex; 
+    gap: 24px; 
+    flex-wrap: wrap; 
+    align-items: flex-start; 
+}
+
+.task-info-grid {
+    display: grid; 
+    grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); 
+    gap: 16px 24px;
+    margin-bottom: 32px; 
+    padding: 20px; 
+    background-color: var(--bg-neutral);
+    border-radius: 12px;
+    font-size: 14px;
+}
+
+.task-grid-item {
+    display: flex; 
+    align-items: center; 
+    gap: 8px; 
+    color: var(--text-secondary);
+}
+
+.task-grid-label {
+    font-weight: 600; 
+    color: var(--text-primary);
+}
+
+/* Các nhãn trạng thái đặc trưng (Sử dụng hệ màu token từ Trello/TaskFlow) */
+.badge-creator {
+    color: var(--primary-color); 
+    background-color: var(--primary-light); 
+    padding: 4px 10px; 
+    border-radius: 6px; 
+    font-weight: 500;
+}
+
+.badge-assignee {
+    color: #059669; 
+    background-color: #ecfdf5; 
+    padding: 4px 10px; 
+    border-radius: 6px; 
+    font-weight: 500;
+}
+
+.badge-priority-high {
+    color: #dc2626; 
+    background-color: #fef2f2; 
+    padding: 4px 10px; 
+    border-radius: 6px; 
+    font-weight: 600;
+}
+
+.badge-priority-medium {
+    color: #d97706; 
+    background-color: #fffbeb; 
+    padding: 4px 10px; 
+    border-radius: 6px; 
+    font-weight: 600;
+}
+
+.badge-priority-low {
+    color: #4b5563; 
+    background-color: #f3f4f6; 
+    padding: 4px 10px; 
+    border-radius: 6px; 
+    font-weight: 600;
+}
+
+.badge-deadline-empty {
+    color: var(--text-secondary);
+    background-color: var(--border-neutral);
+    padding: 4px 10px; 
+    border-radius: 6px; 
+    font-weight: 600;
+}
+
+/* Phần hiển thị mô tả */
+.task-desc-title {
+    font-size: 16px; 
+    font-weight: 600; 
+    color: var(--text-primary); 
+    margin: 0 0 12px 0;
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.task-desc-box {
+    color: #334155; 
+    line-height: 1.7; 
+    white-space: pre-wrap; 
+    font-size: 15px;
+    background-color: var(--card-bg);
+    border: 1px solid var(--border-neutral);
+    padding: 16px;
+    border-radius: 8px;
+}
+
+.task-desc-empty {
+    color: var(--text-secondary);
+    font-style: italic;
+}
+
+/* =========================================================
+   19. GIAO DIỆN LỊCH LÀM VIỆC & MÀU SẮC TRẠNG THÁI
+   ========================================================= */
+
+/* --- Khu vực Header & Chú thích --- */
+.calendar-header-section {
+    margin-bottom: 24px;
+    max-width: 100% !important;
+}
+
+.calendar-title {
+    margin: 0;
+    font-size: 24px;
+    color: var(--text-primary);
+}
+
+.calendar-subtitle {
+    margin: 8px 0 0 0;
+    font-size: 14px;
+    color: var(--text-secondary);
+}
+
+.calendar-legend {
+    display: flex;
+    gap: 16px;
+    margin-top: 16px;
+    font-size: 13px;
+    flex-wrap: wrap;
+}
+
+.legend-item {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    font-weight: 500;
+    color: var(--text-secondary);
+}
+
+.legend-color-box {
+    width: 12px;
+    height: 12px;
+    border-radius: 3px;
+}
+.legend-color-box.pending { background-color: #f59e0b; }
+.legend-color-box.in-progress { background-color: #3b82f6; }
+.legend-color-box.completed { background-color: #10b981; }
+.legend-color-box.overdue { background-color: #ef4444; }
+
+/* --- Khung chứa bộ Lịch --- */
+.calendar-wrapper {
+    margin: 0;
+    padding: 20px;
+    height: 75vh;
+    min-height: 600px;
+    max-width: 100% !important;
+}
+
+.calendar-wrapper .rbc-calendar {
+    height: 100%;
+}
+
+/* --- Tương tác Thẻ Công Việc (Events) trên Lịch --- */
+.rbc-event {
+    transition: transform 0.15s ease, box-shadow 0.15s ease, opacity 0.2s;
+    opacity: 0.95;
+}
+
+.rbc-event:hover {
+    opacity: 1;
+    transform: translateY(-1px);
+    box-shadow: 0 4px 6px -1px rgba(0,0,0,0.1), 0 2px 4px -1px rgba(0,0,0,0.06) !important;
+    z-index: 10;
+}
+
+/* Màu thẻ trạng thái */
+.calendar-event-pending { background-color: #f59e0b !important; color: #fff !important; }
+.calendar-event-in-progress { background-color: #3b82f6 !important; color: #fff !important; }
+.calendar-event-completed { background-color: #10b981 !important; color: #fff !important; }
+.calendar-event-overdue { background-color: #ef4444 !important; color: #fff !important; }
+.calendar-event-cancelled { 
+    background-color: #94a3b8 !important; 
+    color: #fff !important; 
+    text-decoration: line-through; 
+}
+
+/* --- Thanh công cụ (Toolbar) & Nút bấm --- */
+.rbc-toolbar .rbc-btn-group {
+    display: flex !important;
+    gap: 8px !important; 
+}
+
+.rbc-toolbar button {
+    color: #4b5563 !important; 
+    background-color: #ffffff !important;
+    background-image: none !important; 
+    border: 1px solid #e5e7eb !important;
+    border-radius: 8px !important; 
+    padding: 8px 16px !important;
+    font-size: 14px !important;
+    font-weight: 500 !important;
+    cursor: pointer !important;
+    transition: all 0.2s ease !important;
+    box-shadow: 0 1px 2px rgba(0,0,0,0.05) !important;
+    margin: 0 !important; 
+}
+
+.rbc-toolbar button:hover {
+    background-color: #f8fafc !important;
+    color: #111827 !important;
+    border-color: #cbd5e1 !important;
+}
+
+.rbc-toolbar button.rbc-active {
+    background-color: #2563eb !important; 
+    color: #ffffff !important; 
+    border-color: #2563eb !important;
+    box-shadow: 0 4px 6px -1px rgba(37, 99, 235, 0.25) !important; 
+}
+
+.rbc-toolbar button.rbc-active:hover {
+    background-color: #1d4ed8 !important;
+    border-color: #1d4ed8 !important;
+}
+
+.rbc-toolbar button:active,
+.rbc-toolbar button:focus {
+    outline: none !important;
+}
+
+.rbc-toolbar .rbc-toolbar-label {
+    font-size: 18px !important;
+    font-weight: 700 !important;
+    color: #0f172a !important;
+    text-transform: capitalize !important;
+}

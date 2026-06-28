@@ -29,7 +29,7 @@ import EditTask from './pages/admin/task/EditTask';
 import AttachmentList from './pages/admin/attachment/AttachmentList';
 
 // Import Thùng rác dùng chung nằm ở folder admin
-import Trash from './pages/admin/Trash';
+import Trash from './pages/Trash';
 
 import Dashboard from './pages/staff/Dashboard';
 
@@ -38,6 +38,8 @@ import ViewEventStaff from './pages/staff/event/ViewEvent';
 
 import TaskListStaff from './pages/staff/task/TaskList';
 import ViewTaskStaff from './pages/staff/task/ViewTask';
+
+import WorkCalendar from './pages/staff/WorkCalendar';
 
 function App() {
   return (
@@ -80,13 +82,9 @@ function App() {
 
           <Route path="/admin/tasks/:id/attachments" element={<AttachmentList />} />
 
-          {/* Thùng rác của Admin */}
           <Route path="trash" element={<Trash />} />
         </Route>
 
-        {/* =========================================================
-            2. PHÂN HỆ ROUTE DÀNH CHO STAFF / EMPLOYEE / LEADER
-           ========================================================= */}
         <Route 
           path="/staff"
           element={ 
@@ -104,11 +102,12 @@ function App() {
 
           <Route path="tasks" element={<TaskListStaff />} />
           <Route path="tasks/view/:id" element={<ViewTaskStaff />} />
+          <Route path="calendar" element={<WorkCalendar />} />
 
-          {/* ĐẶC QUYỀN LEADER: Các Form thao tác gộp chung xử lý động */}
           <Route path="events/:eventId/tasks/add" element={<AddTask />} />
           <Route path="tasks/edit/:id" element={<EditTask />} />
           <Route path="events/:eventId/members/add" element={<AddEventMember />} />
+          <Route path="events/:eventId/members/edit/:userId" element={<EditEventMember />} />
           
           <Route path="trash" element={<Trash />} />
         </Route>
