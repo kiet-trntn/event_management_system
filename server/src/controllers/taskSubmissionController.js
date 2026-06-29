@@ -243,6 +243,59 @@ const reviewSubmission = async (req, res) => {
                 [submission.task_id]
             );
 
+            // Nếu bài nộp có file thì chuyển file đó sang bảng attachments
+            if (submission.file_name && submission.file_path) {
+
+                // Kiểm tra tránh insert trùng file
+                const [existingAttachments] = await db.query(
+                    `
+                    SELECT id
+                    FROM attachments
+                    WHERE task_id = ?
+                    AND file_path = ?
+                    LIMIT 1
+                    `,
+                    [
+                        submission.task_id,
+                        submission.file_path
+                    ]
+                );
+
+                if (existingAttachments.length === 0) {
+
+                    await db.query(
+                        `
+                        INSERT INTO attachments
+                        (
+                            task_id,
+                            file_name,
+                            file_path,
+                            file_size,
+                            file_type,
+                            uploaded_by
+                        )
+                        VALUES (?, ?, ?, ?, ?, ?)
+                        `,
+                        [
+                            submission.task_id,
+                            submission.file_name,
+                            submission.file_path,
+                            submission.file_size,
+                            submission.file_type,
+                            submission.submitted_by
+                        ]
+                    );
+
+                    await addTaskHistory(
+                        submission.task_id,
+                        `${req.user.full_name} đã duyệt và chuyển file minh chứng vào tài liệu đính kèm`,
+                        req.user.id
+                    );
+
+                }
+
+            }
+
             await addTaskHistory(
                 submission.task_id,
                 `${req.user.full_name} đã duyệt bài nộp và hoàn thành công việc`,
