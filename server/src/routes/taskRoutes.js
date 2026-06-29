@@ -13,8 +13,7 @@ const {
     deleteTask,
     restoreTask,
     getDeletedTasks,
-    getTaskHistory,
-    getLeaderCalendarTasks
+    getTaskHistory
 } = require("../controllers/taskController");
 
 router.get(
@@ -27,12 +26,6 @@ router.get(
     "/my-tasks",
     authMiddleware,
     getMyTasks
-);
-
-router.get(
-    "/leader-calendar", 
-    authMiddleware,
-    getLeaderCalendarTasks
 );
 
 router.get(

@@ -9,9 +9,7 @@ import Swal from 'sweetalert2';
 moment.locale('vi');
 const localizer = momentLocalizer(moment);
 
-// =======================================================
-// TẠO THANH CÔNG CỤ (TOOLBAR) CHUẨN GOOGLE CALENDAR
-// =======================================================
+// --- Thanh công cụ chuẩn Google Calendar ---
 const CustomToolbar = (toolbar) => {
     const goToBack = () => toolbar.onNavigate('PREV');
     const goToNext = () => toolbar.onNavigate('NEXT');
@@ -23,12 +21,8 @@ const CustomToolbar = (toolbar) => {
             <div className="gg-toolbar-left">
                 <button className="gg-btn-today" onClick={goToCurrent}>Hôm nay</button>
                 <div className="gg-nav-group">
-                    <button className="gg-btn-nav" onClick={goToBack} title="Trước">
-                        &#10094; {/* Icon mũi tên trái */}
-                    </button>
-                    <button className="gg-btn-nav" onClick={goToNext} title="Sau">
-                        &#10095; {/* Icon mũi tên phải */}
-                    </button>
+                    <button className="gg-btn-nav" onClick={goToBack} title="Trước">&#10094;</button>
+                    <button className="gg-btn-nav" onClick={goToNext} title="Sau">&#10095;</button>
                 </div>
                 <span className="gg-toolbar-label">{toolbar.label}</span>
             </div>
@@ -45,9 +39,6 @@ const CustomToolbar = (toolbar) => {
     );
 };
 
-// =======================================================
-// COMPONENT LỊCH CHÍNH
-// =======================================================
 function WorkCalendar() {
     const navigate = useNavigate();
     const [events, setEvents] = useState([]);
@@ -55,74 +46,98 @@ function WorkCalendar() {
 
     const [currentDate, setCurrentDate] = useState(new Date());
     const [currentView, setCurrentView] = useState('month');
-    
-    const currentUser = JSON.parse(localStorage.getItem('user')) || {};
 
-    const fetchTasksForCalendar = useCallback(async () => {
+    const fetchCalendarData = useCallback(async () => {
         try {
             setLoading(true);
             const headers = { 'Authorization': `Bearer ${localStorage.getItem('my_token')}` };
             
-            const [myTasksRes, leaderTasksRes] = await Promise.all([
+            // GỌI 2 API: 1 lấy Việc cá nhân, 1 lấy Sự kiện làm Leader
+            const [myTasksRes, leaderEventsRes] = await Promise.all([
                 fetch('http://localhost:5000/api/tasks/my-tasks', { headers }),
-                fetch('http://localhost:5000/api/tasks/leader-calendar', { headers })
+                fetch('http://localhost:5000/api/events/leader-calendar', { headers }) // Đã đổi sang gọi API events
             ]);
 
-            let allTasks = [];
+            let calendarItems = [];
+
+            // 1. Xử lý Công việc cá nhân (Thẻ ngắn 1 ngày)
             if (myTasksRes.ok) {
                 const data = await myTasksRes.json();
-                allTasks = [...allTasks, ...(data.tasks || [])];
-            }
-            if (leaderTasksRes.ok) {
-                const data = await leaderTasksRes.json();
-                allTasks = [...allTasks, ...(data.tasks || [])];
-            }
-
-            const uniqueTasksMap = new Map();
-            allTasks.forEach(task => uniqueTasksMap.set(task.id, task));
-            const uniqueTasks = Array.from(uniqueTasksMap.values());
-
-            const formattedEvents = uniqueTasks.map(task => {
-                const eventDate = task.due_date ? new Date(task.due_date) : new Date(task.created_at);
-                let displayTitle = '';
+                const myTasks = data.tasks || [];
                 
-                if (String(task.assigned_to) === String(currentUser.id)) {
-                    displayTitle = task.title; 
-                } else {
-                    const firstName = task.assigned_name ? task.assigned_name.split(' ').pop() : 'NV';
-                    displayTitle = `[${firstName}] ${task.title}`;
-                }
+                const formattedTasks = myTasks.map(task => {
+                    const taskDate = task.due_date ? new Date(task.due_date) : new Date(task.created_at);
+                    return {
+                        id: `task_${task.id}`,
+                        real_id: task.id,
+                        title: task.title,
+                        start: taskDate,
+                        end: taskDate, // Việc thì bắt đầu và kết thúc cùng 1 ngày để thành dấu chấm nhỏ
+                        allDay: true, 
+                        type: 'task', // Phân loại là Task
+                        resource: task 
+                    };
+                });
+                calendarItems = [...calendarItems, ...formattedTasks];
+            }
 
-                return {
-                    id: task.id,
-                    title: displayTitle,
-                    start: eventDate,
-                    end: eventDate,
-                    allDay: true, 
-                    resource: task 
-                };
-            });
+            if (leaderEventsRes.ok) {
+                const data = await leaderEventsRes.json();
+                const ledEvents = data.events || [];
 
-            setEvents(formattedEvents);
+                const formattedEvents = ledEvents.map(evt => {
+                    // Lấy ngày kết thúc (end_date) làm mốc hiển thị duy nhất
+                    const eventDeadline = evt.end_date ? new Date(evt.end_date) : new Date(evt.start_date);
+
+                    return {
+                        id: `event_${evt.id}`,
+                        real_id: evt.id,
+                        title: `${evt.title}`, // Thêm chữ Hạn chót cho rõ ràng
+                        start: eventDeadline, // Bắt đầu ở ngày kết thúc
+                        end: eventDeadline,   // Kết thúc cũng ở ngày kết thúc (Tạo thành 1 thẻ ngắn)
+                        allDay: true,
+                        type: 'event', 
+                        resource: evt
+                    };
+                });
+                calendarItems = [...calendarItems, ...formattedEvents];
+            }
+
+            setEvents(calendarItems);
         } catch (error) {
             console.error("Lỗi tải lịch:", error);
             Swal.fire('Lỗi', 'Mất kết nối với máy chủ', 'error');
         } finally {
             setLoading(false);
         }
-    }, [currentUser.id]);
+    }, []);
 
     useEffect(() => {
         document.title = "Lịch làm việc | TaskFlow";
-        fetchTasksForCalendar();
-    }, [fetchTasksForCalendar]);
+        fetchCalendarData();
+    }, [fetchCalendarData]);
 
-    const handleEventClick = (event) => navigate(`/staff/tasks/view/${event.id}`);
+    // Xử lý khi bấm vào Lịch (Bấm vào việc -> Trang Việc, Bấm vào Sự kiện -> Trang Sự Kiện)
+    const handleEventClick = (item) => {
+        if (item.type === 'event') {
+            navigate(`/staff/events/view/${item.real_id}`);
+        } else {
+            navigate(`/staff/tasks/view/${item.real_id}`);
+        }
+    };
 
-    const eventPropGetter = (event) => {
+    // Đổ màu khác nhau cho Việc cá nhân và Khối Sự kiện
+    const eventPropGetter = (item) => {
         let className = 'calendar-event-in-progress';
-        const status = event.resource.status;
-        const dueDate = new Date(event.resource.due_date);
+        
+        // Nếu là khối Sự Kiện (Màu tím nổi bật)
+        if (item.type === 'event') {
+            return { className: 'calendar-project-block' };
+        }
+
+        // Nếu là Công việc cá nhân (Màu theo trạng thái)
+        const status = item.resource.status;
+        const dueDate = new Date(item.resource.due_date);
         const today = new Date();
         
         if (status === 'completed') className = 'calendar-event-completed';
@@ -151,6 +166,9 @@ function WorkCalendar() {
                     <span className="legend-item"><span className="legend-color-box in-progress"></span> Đang tiến hành</span>
                     <span className="legend-item"><span className="legend-color-box completed"></span> Hoàn thành</span>
                     <span className="legend-item"><span className="legend-color-box overdue"></span> Trễ hạn</span>
+                    <span className="legend-item" style={{ marginLeft: '16px' }}>
+                        <span className="legend-color-box" style={{ backgroundColor: '#8b5cf6' }}></span> Tiến độ Sự kiện
+                    </span>
                 </div>
             </div>
 
@@ -167,13 +185,9 @@ function WorkCalendar() {
                     onNavigate={(newDate) => setCurrentDate(newDate)}
                     view={currentView}
                     onView={(newView) => setCurrentView(newView)}
-                    
-                    components={{
-                        toolbar: CustomToolbar
-                    }}
-                    
+                    components={{ toolbar: CustomToolbar }}
                     messages={{
-                        noEventsInRange: "Không có công việc nào trong khoảng thời gian này.",
+                        noEventsInRange: "Không có lịch trình nào trong khoảng thời gian này.",
                         showMore: total => `+${total} nữa`
                     }}
                 />

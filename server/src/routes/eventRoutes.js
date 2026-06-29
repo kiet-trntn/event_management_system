@@ -13,7 +13,8 @@ const {
     deleteEvent,
     restoreEvent,
     cancelEvent,
-    getTrashEvents
+    getTrashEvents,
+    getLeaderEventsForCalendar
 } = require("../controllers/eventController");
 
 router.patch(
@@ -34,6 +35,11 @@ router.post(
     authMiddleware,
     roleMiddleware("admin"),
     createEvent
+);
+
+router.get("/leader-calendar",
+     authMiddleware, 
+     getLeaderEventsForCalendar
 );
 
 router.put(
