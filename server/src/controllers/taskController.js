@@ -107,11 +107,10 @@ const getAllTasks = async (req, res) => {
 };
 
 const getTaskById = async (req, res) => {
-
     try {
-
         const { id } = req.params;
 
+        // Câu lệnh SQL này đã thêm JOIN bảng task_submissions để lấy ID bài nộp
         const [tasks] = await db.query(
             `
             SELECT
@@ -132,7 +131,15 @@ const getTaskById = async (req, res) => {
                 u1.full_name AS assigned_name,
 
                 u2.id AS created_by,
-                u2.full_name AS created_by_name
+                u2.full_name AS created_by_name,
+
+                -- PHẦN DỮ LIỆU BÀI NỘP QUAN TRỌNG ĐỂ FRONTEND KHÔNG BỊ LỖI UNDEFINED
+                ts.id AS latest_submission_id,
+                ts.content AS submission_content,
+                ts.link_url AS submission_link_url,
+                ts.file_name AS submission_file_name,
+                ts.file_path AS submission_file_path,
+                ts.file_type AS submission_file_type
 
             FROM tasks t
 
@@ -144,6 +151,17 @@ const getTaskById = async (req, res) => {
 
             LEFT JOIN users u2
                 ON t.created_by = u2.id
+
+            -- JOIN ĐỂ LẤY BÀI NỘP MỚI NHẤT
+            LEFT JOIN (
+                SELECT ts1.*
+                FROM task_submissions ts1
+                INNER JOIN (
+                    SELECT task_id, MAX(id) as max_id
+                    FROM task_submissions
+                    GROUP BY task_id
+                ) ts2 ON ts1.id = ts2.max_id
+            ) ts ON t.id = ts.task_id
 
             WHERE t.id = ?
             AND t.is_deleted = FALSE
@@ -179,32 +197,23 @@ const getTaskById = async (req, res) => {
         );
 
         // Leader Event
-        const isLeader =
-            task.event_leader_id === req.user.id;
+        const isLeader = task.event_leader_id === req.user.id;
 
         // Không phải member và không phải leader
-        if (
-            members.length === 0 &&
-            !isLeader
-        ) {
+        if (members.length === 0 && !isLeader) {
             return res.status(403).json({
-                message:
-                    "Bạn không có quyền xem công việc này"
+                message: "Bạn không có quyền xem công việc này"
             });
         }
 
         res.json(task);
 
     } catch (error) {
-
         console.log(error);
-
         res.status(500).json({
             message: error.message
         });
-
     }
-
 };
 
 const getMyTasks = async (req, res) => {
