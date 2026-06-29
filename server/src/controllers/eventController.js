@@ -629,6 +629,22 @@ const getTrashEvents = async (req, res) => {
 
 };
 
+// Thêm vào eventController.js
+const getLeaderEventsForCalendar = async (req, res) => {
+    try {
+        const userId = req.user.id;
+        const [events] = await db.query(
+            `SELECT id, title, start_date, end_date, status 
+             FROM events 
+             WHERE leader_id = ? AND deleted_at IS NULL`,
+            [userId]
+        );
+        res.json({ events });
+    } catch (error) {
+        res.status(500).json({ message: error.message });
+    }
+};
+
 module.exports = {
     publishEvent,
     getAllEvents,
@@ -638,5 +654,6 @@ module.exports = {
     deleteEvent,
     restoreEvent,
     cancelEvent,
-    getTrashEvents
+    getTrashEvents,
+    getLeaderEventsForCalendar
 }
