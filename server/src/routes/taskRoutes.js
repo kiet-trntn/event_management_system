@@ -13,7 +13,8 @@ const {
     deleteTask,
     restoreTask,
     getDeletedTasks,
-    getTaskHistory
+    getTaskHistory,
+    permanentDeleteTask
 } = require("../controllers/taskController");
 
 router.get(
@@ -74,6 +75,12 @@ router.patch(
     "/:id/restore",
     authMiddleware,
     restoreTask
+);
+
+router.delete(
+    "/:id/permanent",
+    authMiddleware,
+    permanentDeleteTask
 );
 
 module.exports = router;

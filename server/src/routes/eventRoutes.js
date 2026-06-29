@@ -14,8 +14,15 @@ const {
     restoreEvent,
     cancelEvent,
     getTrashEvents,
-    getLeaderEventsForCalendar
+    getLeaderEventsForCalendar,
+    permanentDeleteEvent
 } = require("../controllers/eventController");
+
+router.delete(
+    "/:id/permanent",
+    authMiddleware,
+    permanentDeleteEvent
+);
 
 router.patch(
     "/:id/publish",
@@ -82,6 +89,7 @@ router.patch(
     roleMiddleware("admin"),
     cancelEvent
 );
+
 
 
 
