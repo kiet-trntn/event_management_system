@@ -109,6 +109,42 @@ function Trash() {
         }
     };
 
+    const handleHardDelete = async (id) => {
+    const result = await Swal.fire({
+        title: 'Xóa vĩnh viễn?',
+        text: "Bạn sẽ xóa tệp này khỏi hệ thống. Thao tác không thể hoàn tác!",
+        icon: 'warning',
+        showCancelButton: true,
+        confirmButtonColor: '#ef4444',
+        confirmButtonText: 'Xóa vĩnh viễn'
+    });
+
+    if (result.isConfirmed) {
+        try {
+            // Giữ đúng đường dẫn API mà Backend của bạn yêu cầu
+            const response = await fetch(`http://localhost:5000/api/${activeTab}/${id}/permanent`, {
+                method: 'DELETE',
+                headers: { 
+                    'Authorization': `Bearer ${localStorage.getItem('my_token')}` 
+                }
+            });
+
+            const data = await response.json();
+
+            if (response.ok) {
+                Swal.fire('Thành công', 'Đã xóa vĩnh viễn tệp.', 'success');
+                // Cập nhật giao diện bằng cách lọc bỏ file vừa xóa khỏi list
+                setItems(prevItems => prevItems.filter(item => item.id !== id));
+            } else {
+                // Nếu Backend trả về lỗi (ví dụ 404 hoặc 403), thông báo cho người dùng
+                Swal.fire('Lỗi', data.message || 'Không thể xóa tệp.', 'error');
+            }
+        } catch (error) {
+            Swal.fire('Lỗi', 'Kết nối đến máy chủ thất bại.', 'error');
+        }
+    }
+};
+
     const isAdmin = currentUser?.role === 'admin';
 
     return (
@@ -197,6 +233,11 @@ function Trash() {
                             <div className="event-divider"></div>
                             
                             <div className="event-actions">
+                                <button className="btn-restore" title="Xóa vĩnh viễn" onClick={() => handleHardDelete(item.id)}>
+                                    <svg width="16" height="16" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                                </svg>
+                                </button>
                                 <button className="btn-restore" title="Khôi phục ngay" onClick={() => handleRestore(item.id)}>
                                     <svg width="16" height="16" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />

@@ -46,9 +46,9 @@ router.get(
 );
 
 router.delete(
-    "/:id",
+    "/:id/permanent",
     authMiddleware,
-    deleteAttachment
+    permanentDeleteAttachment
 );
 
 router.patch(
