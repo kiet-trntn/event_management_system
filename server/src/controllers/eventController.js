@@ -1,4 +1,5 @@
 const db = require("../config/db");
+const fs = require("fs");
 const createNotification = require("../utils/createNotification");
 
 const publishEvent = async (req, res) => {
@@ -713,6 +714,186 @@ const getLeaderEventsForCalendar = async (req, res) => {
     }
 };
 
+const permanentDeleteEvent = async (req, res) => {
+
+    try {
+
+        const { id } = req.params;
+
+        // Chỉ Admin nên được xóa vĩnh viễn sự kiện
+        if (req.user.role !== "admin") {
+            return res.status(403).json({
+                message: "Chỉ Admin mới được xóa vĩnh viễn sự kiện"
+            });
+        }
+
+        // Kiểm tra sự kiện có nằm trong thùng rác không
+        const [events] = await db.query(
+            `
+            SELECT *
+            FROM events
+            WHERE id = ?
+            AND deleted_at IS NOT NULL
+            `,
+            [id]
+        );
+
+        if (events.length === 0) {
+            return res.status(404).json({
+                message: "Không tìm thấy sự kiện trong thùng rác"
+            });
+        }
+
+        // Lấy danh sách task thuộc sự kiện
+        const [tasks] = await db.query(
+            `
+            SELECT id
+            FROM tasks
+            WHERE event_id = ?
+            `,
+            [id]
+        );
+
+        const taskIds = tasks.map(task => task.id);
+
+        if (taskIds.length > 0) {
+
+            // Xóa file thật trong bảng attachments
+            const [attachmentFiles] = await db.query(
+                `
+                SELECT file_path
+                FROM attachments
+                WHERE task_id IN (?)
+                AND file_path IS NOT NULL
+                `,
+                [taskIds]
+            );
+
+            for (const file of attachmentFiles) {
+                if (file.file_path && fs.existsSync(file.file_path)) {
+                    fs.unlinkSync(file.file_path);
+                }
+            }
+
+            // Xóa file thật trong bảng task_submissions nếu có
+            try {
+
+                const [submissionFiles] = await db.query(
+                    `
+                    SELECT file_path
+                    FROM task_submissions
+                    WHERE task_id IN (?)
+                    AND file_path IS NOT NULL
+                    `,
+                    [taskIds]
+                );
+
+                for (const file of submissionFiles) {
+                    if (file.file_path && fs.existsSync(file.file_path)) {
+                        fs.unlinkSync(file.file_path);
+                    }
+                }
+
+                await db.query(
+                    `
+                    DELETE FROM task_submissions
+                    WHERE task_id IN (?)
+                    `,
+                    [taskIds]
+                );
+
+            } catch (error) {
+
+                // Nếu chưa có bảng task_submissions thì bỏ qua
+                if (error.code !== "ER_NO_SUCH_TABLE") {
+                    throw error;
+                }
+
+            }
+
+            // Xóa thông báo liên quan tới task
+            await db.query(
+                `
+                DELETE FROM notifications
+                WHERE type = 'task'
+                AND related_id IN (?)
+                `,
+                [taskIds]
+            );
+
+            // Xóa lịch sử task
+            await db.query(
+                `
+                DELETE FROM task_history
+                WHERE task_id IN (?)
+                `,
+                [taskIds]
+            );
+
+            // Xóa file đính kèm trong DB
+            await db.query(
+                `
+                DELETE FROM attachments
+                WHERE task_id IN (?)
+                `,
+                [taskIds]
+            );
+
+            // Xóa task thuộc sự kiện
+            await db.query(
+                `
+                DELETE FROM tasks
+                WHERE event_id = ?
+                `,
+                [id]
+            );
+
+        }
+
+        // Xóa thành viên sự kiện
+        await db.query(
+            `
+            DELETE FROM event_members
+            WHERE event_id = ?
+            `,
+            [id]
+        );
+
+        // Xóa notification liên quan tới event
+        await db.query(
+            `
+            DELETE FROM notifications
+            WHERE type = 'event'
+            AND related_id = ?
+            `,
+            [id]
+        );
+
+        // Xóa sự kiện thật khỏi database
+        await db.query(
+            `
+            DELETE FROM events
+            WHERE id = ?
+            `,
+            [id]
+        );
+
+        res.json({
+            message: "Xóa vĩnh viễn sự kiện thành công"
+        });
+
+    } catch (error) {
+
+        console.log(error);
+
+        res.status(500).json({
+            message: error.message
+        });
+
+    }
+
+};
+
 module.exports = {
     publishEvent,
     getAllEvents,
@@ -723,5 +904,6 @@ module.exports = {
     restoreEvent,
     cancelEvent,
     getTrashEvents,
-    getLeaderEventsForCalendar
+    getLeaderEventsForCalendar,
+    permanentDeleteEvent
 }
