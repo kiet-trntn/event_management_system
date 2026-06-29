@@ -606,6 +606,7 @@ const updateTaskStatus = async (req, res) => {
         const validStatus = [
             "pending",
             "in_progress",
+            "submitted",
             "completed",
             "cancelled"
         ];
@@ -672,30 +673,17 @@ const updateTaskStatus = async (req, res) => {
             });
         }
 
+        if (status === "submitted") {
+            return res.status(403).json({
+                message: "Trạng thái chờ duyệt chỉ được tạo khi nhân viên nộp minh chứng"
+            });
+        }
+
         // Khi hoàn thành công việc cho nhân viên
-        if (
-            status === "completed" &&
-            req.user.id === task.assigned_to
-        ) {
-
-            const [attachments] = await db.query(
-                `
-                SELECT id
-                FROM attachments
-                WHERE task_id = ?
-                AND deleted_at IS NULL
-                LIMIT 1
-                `,
-                [id]
-            );
-
-            if (attachments.length === 0) {
-                return res.status(400).json({
-                    message:
-                        "Vui lòng tải lên ít nhất 1 file trước khi hoàn thành công việc"
-                });
-            }
-
+        if (status === "completed") {
+            return res.status(403).json({
+                message: "Không thể tự chuyển sang hoàn thành. Vui lòng duyệt bài nộp để hoàn thành công việc"
+            });
         }
 
         await db.query(
