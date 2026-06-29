@@ -187,7 +187,7 @@ function ViewEvent() {
                     
                     <div className="form-card large" style={{ maxWidth: '100%', margin: 0 }}>
                         <h3 className="section-title">Mô tả sự kiện</h3>
-                        <p className="text-secondary" style={{ lineHeight: '1.6', marginBottom: '16px' }}>{event.description || 'Không có mô tả chi tiết cho sự kiện này.'}</p>
+                        <p className="text-secondary" style={{ lineHeight: '1.6', margin: '0 0 16px 0', whiteSpace: 'pre-wrap' }}>{event.description || 'Không có mô tả chi tiết cho sự kiện này.'}</p>
                         <div className="event-divider"></div>
                         <div style={{ display: 'flex', gap: '24px', marginTop: '16px', fontSize: '14px', color: 'var(--text-secondary)', flexWrap: 'wrap' }}>
                             <div><strong>Phụ trách: </strong> <span className="text-brand font-medium">{leaderName}</span></div>
@@ -217,17 +217,26 @@ function ViewEvent() {
                                         style={{ 
                                             display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '14px 16px', 
                                             borderBottom: index === tasks.length - 1 ? 'none' : '1px solid var(--border-neutral)',
-                                            cursor: 'pointer', transition: 'background-color 0.2s', borderRadius: '8px'
+                                            cursor: 'pointer', transition: 'background-color 0.2s', borderRadius: '8px',
+                                            flexWrap: 'wrap', gap: '12px'
                                         }}
                                         onMouseEnter={(e) => e.currentTarget.style.backgroundColor = '#f8fafc'}
                                         onMouseLeave={(e) => e.currentTarget.style.backgroundColor = 'transparent'}
                                     >
-                                        <div>
-                                            <h4 style={{ margin: '0 0 4px 0', fontSize: '15px', color: 'var(--text-primary)', fontWeight: 'bold' }}>{task.title}</h4>
-                                            <p style={{ margin: 0, fontSize: '13px', color: 'var(--text-secondary)' }}>Hạn: {task.due_date ? new Date(task.due_date).toLocaleDateString('vi-VN') : 'Không có hạn'}</p>
+                                        <div style={{ flex: '1 1 200px' }}>
+                                            <h4 style={{ margin: '0 0 6px 0', fontSize: '15px', color: 'var(--text-primary)', fontWeight: 'bold' }}>{task.title}</h4>
+                                            
+                                            {/* ĐÃ BỔ SUNG TÊN NGƯỜI LÀM Ở ĐÂY VỚI THIẾT KẾ NẰM NGANG */}
+                                            <div style={{ display: 'flex', gap: '16px', alignItems: 'center', flexWrap: 'wrap' }}>
+                                                <p style={{ margin: 0, fontSize: '13px', color: 'var(--text-secondary)' }}>
+                                                    Hạn: {task.due_date ? new Date(task.due_date).toLocaleDateString('vi-VN') : 'Không có hạn'}
+                                                </p>
+                                                <p style={{ margin: 0, fontSize: '13px', color: 'var(--text-secondary)' }}>
+                                                    Giao cho: <span style={{ fontWeight: '600', color: 'var(--primary-color)' }}>{task.assigned_name || 'Chưa phân công'}</span>
+                                                </p>
+                                            </div>
                                         </div>
                                         
-                                        {/* Sử dụng hàm helper bọc ngoặc để triệt tiêu lỗi biên dịch ESLint Type Cast */}
                                         <div style={{ display: 'flex', alignItems: 'center', gap: '20px', minWidth: '160px', justifyContent: 'flex-end' }}>
                                             <span style={{ display: 'inline-block', padding: '4px 12px', borderRadius: '4px', border: '1px solid', fontSize: '12px', fontWeight: '500', whiteSpace: 'nowrap', ...getSelectStyle(task.status) }}>
                                                 {renderTaskStatusText(task.status)}
