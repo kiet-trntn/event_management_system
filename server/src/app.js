@@ -8,6 +8,7 @@ const eventRoutes = require("./routes/eventRoutes"); // Lấy danh sách các đ
 const eventMemberRoutes = require("./routes/eventMemberRoutes"); 
 const taskRoutes = require("./routes/taskRoutes");
 const attachmentRoutes = require("./routes/attachmentRoutes");
+const notificationRoutes = require("./routes/notificationRoutes");
 
 const app = express(); // Tạo ra một ứng dụng server
 
@@ -27,6 +28,7 @@ app.use("/api/events", eventRoutes); // Gắn tiền tố "/api/events" cho các
 app.use("/api/events", eventMemberRoutes);
 app.use("/api/tasks", taskRoutes);
 app.use("/api/attachments",attachmentRoutes);
+app.use("/api/notifications", notificationRoutes);
 
 // Error Handler
 app.use((err, req, res, next) => {

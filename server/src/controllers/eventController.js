@@ -1,4 +1,5 @@
 const db = require("../config/db");
+const createNotification = require("../utils/createNotification");
 
 const publishEvent = async (req, res) => {
     try {
@@ -38,7 +39,40 @@ const publishEvent = async (req, res) => {
             [id]
         );
 
-        // 6. Trả về thông báo công bố thành công cho Client
+        // Tạo thông báo khi sự kiện được công bố
+        const receivers = new Set();
+
+        // Thông báo cho Leader nếu người công bố không phải Leader
+        if (event.leader_id && event.leader_id !== req.user.id) {
+            receivers.add(event.leader_id);
+        }
+
+        // Lấy danh sách thành viên trong sự kiện
+        const [members] = await db.query(
+            `
+            SELECT user_id
+            FROM event_members
+            WHERE event_id = ?
+            AND user_id <> ?
+            `,
+            [id, req.user.id]
+        );
+
+        for (const member of members) {
+            receivers.add(member.user_id);
+        }
+
+        // Gửi thông báo
+        for (const userId of receivers) {
+            await createNotification({
+                user_id: userId,
+                title: "Sự kiện đã được công bố",
+                content: `${req.user.full_name} đã công bố sự kiện "${event.title}"`,
+                type: "event",
+                related_id: id
+            });
+        }
+
         res.json({
             message: "Công bố sự kiện thành công"
         });
@@ -485,6 +519,40 @@ const cancelEvent = async (req, res) => {
             `,
             [id]
         );
+
+        // Tạo thông báo khi sự kiện bị hủy
+        const receivers = new Set();
+
+        // Thông báo cho Leader nếu người hủy không phải Leader
+        if (event.leader_id && event.leader_id !== req.user.id) {
+            receivers.add(event.leader_id);
+        }
+
+        // Lấy danh sách thành viên của sự kiện
+        const [members] = await db.query(
+            `
+            SELECT user_id
+            FROM event_members
+            WHERE event_id = ?
+            AND user_id <> ?
+            `,
+            [id, req.user.id]
+        );
+
+        for (const member of members) {
+            receivers.add(member.user_id);
+        }
+
+        // Gửi thông báo
+        for (const userId of receivers) {
+            await createNotification({
+                user_id: userId,
+                title: "Sự kiện đã bị hủy",
+                content: `${req.user.full_name} đã hủy sự kiện "${event.title}"`,
+                type: "event",
+                related_id: id
+            });
+        }
 
         res.json({
             message: "Hủy sự kiện thành công"
