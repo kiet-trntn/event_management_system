@@ -14,9 +14,16 @@ const {
     deleteAttachment,
     getDeletedAttachments,
     restoreAttachment,
-    downloadAttachment
+    downloadAttachment,
+    permanentDeleteAttachment
 } = require(
     "../controllers/attachmentController"
+);
+
+router.delete(
+    "/:id/permanent",
+    authMiddleware,
+    permanentDeleteAttachment
 );
 
 router.post(

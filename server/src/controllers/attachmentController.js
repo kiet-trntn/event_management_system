@@ -268,7 +268,9 @@ const deleteAttachment = async (req, res) => {
         await db.query(
             `
             UPDATE attachments
-            SET deleted_at = NOW()
+            SET
+                is_deleted = TRUE,
+                deleted_at = NOW()
             WHERE id = ?
             `,
             [id]
@@ -594,6 +596,96 @@ const downloadAttachment = async (req, res) => {
 
 };
 
+const permanentDeleteAttachment = async (req, res) => {
+
+    try {
+
+        const { id } = req.params;
+
+        // Lấy file trong thùng rác + thông tin task/event
+        const [attachments] = await db.query(
+            `
+            SELECT
+                a.*,
+
+                t.id AS task_id,
+                t.title AS task_title,
+                t.assigned_to,
+                t.created_by,
+
+                e.leader_id
+            FROM attachments a
+
+            INNER JOIN tasks t
+                ON a.task_id = t.id
+
+            INNER JOIN events e
+                ON t.event_id = e.id
+
+            WHERE a.id = ?
+            AND a.deleted_at IS NOT NULL
+            `,
+            [id]
+        );
+
+        if (attachments.length === 0) {
+            return res.status(404).json({
+                message: "Không tìm thấy file trong thùng rác"
+            });
+        }
+
+        const attachment = attachments[0];
+
+        // Chỉ Admin hoặc Leader được xóa vĩnh viễn file
+        if (
+            req.user.role !== "admin" &&
+            req.user.id !== attachment.leader_id
+        ) {
+            return res.status(403).json({
+                message: "Bạn không có quyền xóa vĩnh viễn file này"
+            });
+        }
+
+        // Xóa file thật trong thư mục uploads
+        if (
+            attachment.file_path &&
+            fs.existsSync(attachment.file_path)
+        ) {
+            fs.unlinkSync(attachment.file_path);
+        }
+
+        // Xóa record trong database
+        await db.query(
+            `
+            DELETE FROM attachments
+            WHERE id = ?
+            `,
+            [id]
+        );
+
+        // Ghi lịch sử vào task
+        await addTaskHistory(
+            attachment.task_id,
+            `${req.user.full_name} đã xóa vĩnh viễn tệp "${attachment.file_name}"`,
+            req.user.id
+        );
+
+        res.json({
+            message: "Xóa vĩnh viễn file thành công"
+        });
+
+    } catch (error) {
+
+        console.log(error);
+
+        res.status(500).json({
+            message: error.message
+        });
+
+    }
+
+};
+
 
 module.exports = {
     uploadAttachment,
@@ -601,5 +693,6 @@ module.exports = {
     deleteAttachment,
     getDeletedAttachments,
     restoreAttachment,
-    downloadAttachment
+    downloadAttachment,
+    permanentDeleteAttachment
 };

@@ -1,7 +1,7 @@
 const db = require("../config/db");
-const addTaskHistory =
-require("../utils/taskHistory");
+const addTaskHistory = require("../utils/taskHistory");
 const createNotification = require("../utils/createNotification");
+const fs = require("fs");
 
 const getAllTasks = async (req, res) => {
 
@@ -1084,6 +1084,145 @@ const getTaskHistory = async (req, res) => {
 
 };
 
+const permanentDeleteTask = async (req, res) => {
+
+    try {
+
+        const { id } = req.params;
+
+        // Kiểm tra task tồn tại
+        const [tasks] = await db.query(
+            `
+            SELECT
+                t.*,
+                e.leader_id
+            FROM tasks t
+            INNER JOIN events e
+                ON t.event_id = e.id
+            WHERE t.id = ?
+            `,
+            [id]
+        );
+
+        if (tasks.length === 0) {
+            return res.status(404).json({
+                message: "Không tìm thấy công việc"
+            });
+        }
+
+        const task = tasks[0];
+
+        // Chỉ Admin hoặc Leader của Event mới được xóa vĩnh viễn
+        if (
+            req.user.role !== "admin" &&
+            req.user.id !== task.leader_id
+        ) {
+            return res.status(403).json({
+                message: "Bạn không có quyền xóa vĩnh viễn công việc này"
+            });
+        }
+
+        // Chỉ cho xóa vĩnh viễn khi task đang nằm trong thùng rác
+        if (!task.is_deleted) {
+            return res.status(400).json({
+                message: "Công việc chưa nằm trong thùng rác, không thể xóa vĩnh viễn"
+            });
+        }
+
+        // Lấy file trong bảng attachments để xóa file thật
+        const [attachmentFiles] = await db.query(
+            `
+            SELECT file_path
+            FROM attachments
+            WHERE task_id = ?
+            AND file_path IS NOT NULL
+            `,
+            [id]
+        );
+
+        for (const file of attachmentFiles) {
+            if (file.file_path && fs.existsSync(file.file_path)) {
+                fs.unlinkSync(file.file_path);
+            }
+        }
+
+        // Nếu bạn đã làm bảng task_submissions thì xóa file minh chứng luôn
+        try {
+            const [submissionFiles] = await db.query(
+                `
+                SELECT file_path
+                FROM task_submissions
+                WHERE task_id = ?
+                AND file_path IS NOT NULL
+                `,
+                [id]
+            );
+
+            for (const file of submissionFiles) {
+                if (file.file_path && fs.existsSync(file.file_path)) {
+                    fs.unlinkSync(file.file_path);
+                }
+            }
+
+            await db.query(
+                `
+                DELETE FROM task_submissions
+                WHERE task_id = ?
+                `,
+                [id]
+            );
+
+        } catch (error) {
+
+            // Nếu chưa có bảng task_submissions thì bỏ qua
+            if (error.code !== "ER_NO_SUCH_TABLE") {
+                throw error;
+            }
+
+        }
+
+        // Xóa dữ liệu liên quan trước
+        await db.query(
+            `
+            DELETE FROM task_history
+            WHERE task_id = ?
+            `,
+            [id]
+        );
+
+        await db.query(
+            `
+            DELETE FROM attachments
+            WHERE task_id = ?
+            `,
+            [id]
+        );
+
+        // Xóa task thật khỏi database
+        await db.query(
+            `
+            DELETE FROM tasks
+            WHERE id = ?
+            `,
+            [id]
+        );
+
+        res.json({
+            message: "Xóa vĩnh viễn công việc thành công"
+        });
+
+    } catch (error) {
+
+        console.log(error);
+
+        res.status(500).json({
+            message: error.message
+        });
+
+    }
+
+};
+
 module.exports = {
     getAllTasks,
     getTaskById,
@@ -1094,5 +1233,6 @@ module.exports = {
     deleteTask,
     restoreTask,
     getDeletedTasks,
-    getTaskHistory
+    getTaskHistory,
+    permanentDeleteTask
 };
