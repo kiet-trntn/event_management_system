@@ -437,8 +437,122 @@ const getPendingSubmissions = async (req, res) => {
 
 };
 
+const getSubmissionsByTask = async (req, res) => {
+
+    try {
+
+        const { taskId } = req.params;
+
+        // Kiểm tra task tồn tại + lấy quyền
+        const [tasks] = await db.query(
+            `
+            SELECT
+                t.id,
+                t.title,
+                t.assigned_to,
+                t.is_deleted,
+
+                e.id AS event_id,
+                e.title AS event_title,
+                e.leader_id,
+                e.deleted_at AS event_deleted_at
+
+            FROM tasks t
+
+            INNER JOIN events e
+                ON t.event_id = e.id
+
+            WHERE t.id = ?
+            AND t.is_deleted = FALSE
+            AND e.deleted_at IS NULL
+            `,
+            [taskId]
+        );
+
+        if (tasks.length === 0) {
+            return res.status(404).json({
+                message: "Không tìm thấy công việc"
+            });
+        }
+
+        const task = tasks[0];
+
+        // Chỉ Admin, Leader hoặc người được giao task được xem lịch sử nộp
+        if (
+            req.user.role !== "admin" &&
+            Number(req.user.id) !== Number(task.leader_id) &&
+            Number(req.user.id) !== Number(task.assigned_to)
+        ) {
+            return res.status(403).json({
+                message: "Bạn không có quyền xem bài nộp của công việc này"
+            });
+        }
+
+        const [submissions] = await db.query(
+            `
+            SELECT
+                s.id,
+                s.task_id,
+                s.submitted_by,
+                s.content,
+                s.link_url,
+                s.file_name,
+                s.file_path,
+                s.file_size,
+                s.file_type,
+                s.status,
+                s.review_note,
+                s.reviewed_by,
+                s.reviewed_at,
+                s.created_at,
+                s.updated_at,
+
+                submitter.full_name AS submitted_by_name,
+                submitter.email AS submitted_by_email,
+
+                reviewer.full_name AS reviewed_by_name
+
+            FROM task_submissions s
+
+            LEFT JOIN users submitter
+                ON s.submitted_by = submitter.id
+
+            LEFT JOIN users reviewer
+                ON s.reviewed_by = reviewer.id
+
+            WHERE s.task_id = ?
+
+            ORDER BY s.created_at DESC
+            `,
+            [taskId]
+        );
+
+        res.json({
+            task: {
+                id: task.id,
+                title: task.title,
+                event_id: task.event_id,
+                event_title: task.event_title
+            },
+            total: submissions.length,
+            submissions
+        });
+
+    } catch (error) {
+
+        console.log(error);
+
+        res.status(500).json({
+            message: error.message
+        });
+
+    }
+
+};
+
 module.exports = {
     submitTask,
     reviewSubmission,
-    getPendingSubmissions
+    getPendingSubmissions,
+    getSubmissionsByTask
 };
