@@ -8,7 +8,8 @@ const {
     submitTask,
     reviewSubmission,
     getPendingSubmissions,
-    getSubmissionsByTask
+    getSubmissionsByTask,
+    downloadSubmissionFile
 } = require("../controllers/taskSubmissionController");
 
 
@@ -25,18 +26,23 @@ router.get(
     getPendingSubmissions
 );
 
-router.patch(
-    "/:id/review",
-    authMiddleware,
-    reviewSubmission
-);
-
 router.get(
     "/task/:taskId",
     authMiddleware,
     getSubmissionsByTask
 );
 
+router.get(
+    "/:id/download",
+    authMiddleware,
+    downloadSubmissionFile
+);
+
+router.patch(
+    "/:id/review",
+    authMiddleware,
+    reviewSubmission
+);
 
 
 module.exports = router;

@@ -1,5 +1,6 @@
 const db = require("../config/db");
 const path = require("path");
+const fs = require("fs");
 const addTaskHistory = require("../utils/taskHistory");
 const createNotification = require("../utils/createNotification");
 
@@ -550,9 +551,90 @@ const getSubmissionsByTask = async (req, res) => {
 
 };
 
+const downloadSubmissionFile = async (req, res) => {
+
+    try {
+
+        const { id } = req.params;
+
+        const [submissions] = await db.query(
+            `
+            SELECT
+                s.*,
+
+                t.id AS task_id,
+                t.title AS task_title,
+                t.assigned_to,
+
+                e.id AS event_id,
+                e.leader_id
+
+            FROM task_submissions s
+
+            INNER JOIN tasks t
+                ON s.task_id = t.id
+
+            INNER JOIN events e
+                ON t.event_id = e.id
+
+            WHERE s.id = ?
+            `,
+            [id]
+        );
+
+        if (submissions.length === 0) {
+            return res.status(404).json({
+                message: "Không tìm thấy bài nộp"
+            });
+        }
+
+        const submission = submissions[0];
+
+        // Chỉ Admin, Leader hoặc người nộp được tải file
+        if (
+            req.user.role !== "admin" &&
+            Number(req.user.id) !== Number(submission.leader_id) &&
+            Number(req.user.id) !== Number(submission.submitted_by)
+        ) {
+            return res.status(403).json({
+                message: "Bạn không có quyền tải file bài nộp này"
+            });
+        }
+
+        // Nếu bài nộp chỉ có link/content, không có file
+        if (!submission.file_path || !submission.file_name) {
+            return res.status(400).json({
+                message: "Bài nộp này không có file để tải"
+            });
+        }
+
+        if (!fs.existsSync(submission.file_path)) {
+            return res.status(404).json({
+                message: "File không tồn tại trên server"
+            });
+        }
+
+        res.download(
+            submission.file_path,
+            submission.file_name
+        );
+
+    } catch (error) {
+
+        console.log(error);
+
+        res.status(500).json({
+            message: error.message
+        });
+
+    }
+
+};
+
 module.exports = {
     submitTask,
     reviewSubmission,
     getPendingSubmissions,
-    getSubmissionsByTask
+    getSubmissionsByTask,
+    downloadSubmissionFile
 };
