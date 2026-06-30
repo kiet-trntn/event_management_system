@@ -116,7 +116,7 @@ function ManagerDashboard() {
                                     {recentSubmissions.map(task => (
                                         <div 
                                             key={task.id} 
-                                            onClick={() => navigate(`/staff/tasks/view/${task.id}`)}
+                                            onClick={() => navigate(`/admin/tasks/view/${task.id}`)}
                                             style={{ 
                                                 display: 'flex', 
                                                 justifyContent: 'space-between', 
