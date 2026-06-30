@@ -10,6 +10,7 @@ const taskRoutes = require("./routes/taskRoutes");
 const attachmentRoutes = require("./routes/attachmentRoutes");
 const notificationRoutes = require("./routes/notificationRoutes");
 const taskSubmissionRoutes = require("./routes/taskSubmissionRoutes");
+const messageRoutes = require("./routes/messageRoutes");
 
 const app = express(); // Tạo ra một ứng dụng server
 
@@ -31,6 +32,7 @@ app.use("/api/tasks", taskRoutes);
 app.use("/api/attachments",attachmentRoutes);
 app.use("/api/notifications", notificationRoutes);
 app.use("/api/task-submissions", taskSubmissionRoutes);
+app.use("/api/messages", messageRoutes);
 
 // Error Handler
 app.use((err, req, res, next) => {
