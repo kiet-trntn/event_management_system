@@ -32,6 +32,7 @@ import AttachmentList from './pages/admin/attachment/AttachmentList';
 import Trash from './pages/Trash';
 
 import Dashboard from './pages/staff/Dashboard';
+import ManagerDashboard from './pages/admin/ManagerDashboard';
 
 import EventListStaff from './pages/staff/event/EventList';
 import ViewEventStaff from './pages/staff/event/ViewEvent';
@@ -60,6 +61,8 @@ function App() {
           }
         >
           <Route path="changepassword" element={<ChangePassword />} />
+
+          <Route path="dashboard" element={<ManagerDashboard />} />
 
           <Route path="members" element={<MembersList />} />
           <Route path="members/add" element={<AddMember />} />

@@ -144,13 +144,11 @@ function TaskList() {
                                                 <h4 className="event-title">{task.title}</h4>
 
                                                 <p className="event-detail-row">
-                                                    <span className="event-detail-icon">⏳</span> 
                                                     {task.due_date ? new Date(task.due_date).toLocaleDateString('vi-VN') : 'Không có hạn'}
                                                 </p>
                                                 
                                                 <p className="event-detail-row">
-                                                    <span className="event-detail-icon">👤</span> 
-                                                    {task.assigned_name ? task.assigned_name.split(' ').pop() : 'Chưa phân công'}
+                                                    {task.assigned_name ? task.assigned_name : 'Chưa phân công'}
                                                 </p>
                                             </div>
                                         );

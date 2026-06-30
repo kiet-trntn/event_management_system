@@ -155,7 +155,7 @@ function ViewTask() {
                                 <span style={{ color: '#111827' }}>{task.created_by_name || 'Hệ thống'}</span>
                             </div>
                             <div style={{ display: 'flex', alignItems: 'center' }}>
-                                <strong style={{ width: '120px', color: '#4B5563', fontSize: '14px' }}>Người làm:</strong>
+                                <strong style={{ width: '120px', color: '#4B5563', fontSize: '14px' }}>Giao cho:</strong>
                                 <span style={{ color: '#111827', fontWeight: '500' }}>{task.assigned_name || 'Chưa giao cho ai'}</span>
                             </div>
                             <div style={{ display: 'flex', alignItems: 'center' }}>

@@ -240,7 +240,7 @@ const renderTaskStatusText = (status) => {
                                         </div>
                                         
                                         <div style={{ display: 'flex', alignItems: 'center', gap: '20px', minWidth: '160px', justifyContent: 'flex-end' }}>
-                                            <span style={{ display: 'inline-block', padding: '4px 12px', borderRadius: '4px', border: '1px solid', fontSize: '12px', fontWeight: '500', whiteSpace: 'nowrap', ...getSelectStyle(task.status) }}>
+                                            <span style={{ display: 'inline-block', padding: '4px 12px', borderRadius: '9999px', border: 'none', fontSize: '12px', fontWeight: '500', whiteSpace: 'nowrap', ...getSelectStyle(task.status) }}>
                                                 {renderTaskStatusText(task.status)}
                                             </span>
                                             

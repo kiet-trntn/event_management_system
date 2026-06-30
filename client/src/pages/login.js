@@ -43,7 +43,7 @@ function Login() {
       localStorage.setItem('user', JSON.stringify(data.user));
 
       if (data.user.role === 'admin') {
-        navigate('/admin/events');
+        navigate('/admin/dashboard');
       }
       else if (data.user.role === 'employee') 
       { 

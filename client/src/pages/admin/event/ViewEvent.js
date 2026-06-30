@@ -172,27 +172,27 @@ function ViewEvent() {
 
                 <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '20px', background: 'var(--bg-neutral)', padding: '20px', borderRadius: '8px', marginBottom: '32px' }}>
                     <div>
-                        <p className="text-secondary mb-2" style={{ fontSize: '13px' }}>📍 Địa điểm tổ chức</p>
+                        <p className="text-secondary mb-2" style={{ fontSize: '13px' }}>Địa điểm tổ chức</p>
                         <p className="font-semibold">{event.location}</p>
                     </div>
                     <div>
-                        <p className="text-secondary mb-2" style={{ fontSize: '13px' }}>👤 Người phụ trách (Leader)</p>
+                        <p className="text-secondary mb-2" style={{ fontSize: '13px' }}>Người phụ trách (Leader)</p>
                         <p className="font-semibold">{event.leader_name || 'Chưa cập nhật'}</p>
                     </div>
                     <div>
-                        <p className="text-secondary mb-2" style={{ fontSize: '13px' }}>🕒 Thời gian bắt đầu</p>
+                        <p className="text-secondary mb-2" style={{ fontSize: '13px' }}>Thời gian bắt đầu</p>
                         <p className="font-semibold">{new Date(event.start_date).toLocaleString('vi-VN')}</p>
                     </div>
                     <div>
-                        <p className="text-secondary mb-2" style={{ fontSize: '13px' }}>⏳ Thời gian kết thúc</p>
+                        <p className="text-secondary mb-2" style={{ fontSize: '13px' }}>Thời gian kết thúc</p>
                         <p className="font-semibold">{new Date(event.end_date).toLocaleString('vi-VN')}</p>
                     </div>
                     <div>
-                        <p className="text-secondary mb-2" style={{ fontSize: '13px' }}>👥 Số lượng tối đa</p>
+                        <p className="text-secondary mb-2" style={{ fontSize: '13px' }}>Số lượng tối đa</p>
                         <p className="font-semibold">{event.max_members} người</p>
                     </div>
                     <div>
-                        <p className="text-secondary mb-2" style={{ fontSize: '13px' }}>✍️ Người tạo</p>
+                        <p className="text-secondary mb-2" style={{ fontSize: '13px' }}>Người tạo</p>
                         <p className="font-semibold">{event.created_by_name || 'Admin'}</p>
                     </div>
                 </div>

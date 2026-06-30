@@ -176,11 +176,6 @@ function MyTasks() {
                                                     <span className="kanban-tag" style={{ backgroundColor: prio.bg, color: prio.color }}>
                                                         Ưu tiên: {prio.text}
                                                     </span>
-                                                    {isLocked && (
-                                                        <span className="kanban-tag" style={{ backgroundColor: '#f3f4f6', color: '#1f2937', marginLeft: '4px' }}>
-                                                            🔒 Khóa kéo thả
-                                                        </span>
-                                                    )}
                                                 </div>
 
                                                 <h5 style={{ margin: '0 0 4px 0', fontSize: '15px', color: '#111827', fontWeight: '700', lineHeight: '1.4' }}>
@@ -193,7 +188,7 @@ function MyTasks() {
                                                 </p>
 
                                                 <p style={{ margin: 0, fontSize: '12px', color: '#626f86' }}>
-                                                    ⏳ Hạn: {task.due_date ? new Date(task.due_date).toLocaleDateString('vi-VN') : 'Không có'}
+                                                    Hạn: {task.due_date ? new Date(task.due_date).toLocaleDateString('vi-VN') : 'Không có'}
                                                 </p>
                                             </div>
                                         )

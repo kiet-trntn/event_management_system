@@ -360,7 +360,7 @@ function TaskDetail() {
                                     {task.status === 'submitted' && task.submission_link_url ? (
                                         <div style={{ padding: '10px 12px', borderRadius: '8px', border: '1px solid #cbd5e1', backgroundColor: '#f1f5f9', fontSize: '14px' }}>
                                             <a href={task.submission_link_url} target="_blank" rel="noopener noreferrer" style={{ color: '#2563eb', textDecoration: 'none', fontWeight: '600' }}>
-                                                Link minh chứng đã nộp ↗
+                                                Link minh chứng đã nộp 
                                             </a>
                                         </div>
                                     ) : (
@@ -421,7 +421,7 @@ function TaskDetail() {
                                     <p style={{ margin: 0 }}>
                                         <strong>Đường dẫn (Link):</strong>{' '}
                                         <a href={task.submission_link_url} target="_blank" rel="noopener noreferrer" style={{ color: '#2563eb', textDecoration: 'underline', fontWeight: '600' }}>
-                                            Xem sản phẩm nộp ↗
+                                            Xem sản phẩm nộp
                                         </a>
                                     </p>
                                 )}

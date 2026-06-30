@@ -224,11 +224,11 @@ const renderStatusBadge = (status) => {
                                 </a>
                             </p>
                         )}
-                        {task.submission_file_path && <p style={{ margin: 0, color: '#4b5563', fontStyle: 'italic' }}>📁 Có file đính kèm đính kèm (Sẽ đưa vào danh sách dưới sau khi duyệt)</p>}
+                        {task.submission_file_path && <p style={{ margin: 0, color: '#4b5563', fontStyle: 'italic' }}>Có file đính kèm đính kèm (Sẽ đưa vào danh sách dưới sau khi duyệt)</p>}
                         
                         <div style={{ display: 'flex', gap: '12px', justifyContent: 'flex-end', marginTop: '20px', borderTop: '1px solid #e5e7eb', paddingTop: '14px' }}>
-                            <button onClick={() => handleReviewSubmission('rejected')} style={{ backgroundColor: '#EF4444', color: '#fff', padding: '8px 16px', border:'none', borderRadius:'6px', cursor:'pointer', fontWeight:'600' }}>❌ Từ chối</button>
-                            <button onClick={() => handleReviewSubmission('approved')} style={{ backgroundColor: '#10B981', color: '#fff', padding: '8px 16px', border:'none', borderRadius:'6px', cursor:'pointer', fontWeight:'600' }}>✓ Phê duyệt</button>
+                            <button onClick={() => handleReviewSubmission('rejected')} style={{ backgroundColor: '#EF4444', color: '#fff', padding: '8px 16px', border:'none', borderRadius:'6px', cursor:'pointer', fontWeight:'600' }}>Từ chối</button>
+                            <button onClick={() => handleReviewSubmission('approved')} style={{ backgroundColor: '#10B981', color: '#fff', padding: '8px 16px', border:'none', borderRadius:'6px', cursor:'pointer', fontWeight:'600' }}>Phê duyệt</button>
                         </div>
                     </div>
                 )}
@@ -237,7 +237,7 @@ const renderStatusBadge = (status) => {
                 {task.status === 'completed' && (
                     <div style={{ padding: '20px', backgroundColor: '#F0FDF4', border: '1px solid #bbf7d0', borderRadius: '8px', marginBottom: '32px' }}>
                         <div style={{ color: '#166534', fontWeight: '600', marginBottom: '10px' }}>
-                            ✅ Công việc hoàn thành. Toàn bộ thông tin báo cáo đã được lưu trữ an toàn.
+                            Công việc hoàn thành. Toàn bộ thông tin báo cáo đã được lưu trữ an toàn.
                         </div>
                         <div style={{ backgroundColor: '#ffffff', padding: '12px', borderRadius: '6px', border: '1px solid #bbf7d0', fontSize: '13px', display: 'flex', flexDirection: 'column', gap: '8px' }}>
                             {task.submission_content && <p style={{ margin: 0 }}><strong>Nội dung:</strong> {task.submission_content}</p>}

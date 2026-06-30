@@ -108,12 +108,10 @@ function EventList() {
                                     <h3 className="event-title">{event.title}</h3>
                                     
                                     <p className="event-detail-row">
-                                        <span className="event-detail-icon">📍</span> 
                                         {event.location}
                                     </p>
 
-                                    <p className="event-detail-row">
-                                        <span className="event-detail-icon">📅</span> 
+                                    <p className="event-detail-row"> 
                                         {new Date(event.start_date).toLocaleDateString('vi-VN')} - {new Date(event.end_date).toLocaleDateString('vi-VN')}
                                     </p>
                                     

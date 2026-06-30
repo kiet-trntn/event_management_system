@@ -58,23 +58,24 @@ function Dashboard() {
         .sort((a, b) => (b.priority === 'high' ? 1 : -1)) // Đẩy việc có độ ưu tiên cao lên trước để xử lý sớm
         .slice(0, 3);
 
-    // Hàm lấy class badge chuẩn theo trạng thái từ style.css
-    const getStatusBadgeClass = (status) => {
-        switch(status) {
-            case 'in_progress': return 'badge-pill badge-blue';
-            case 'cancelled': return 'badge-pill badge-gray';
-            default: return 'badge-pill badge-yellow'; // pending / Chờ xử lý
-        }
+   const getSelectStyle = (status) => {
+    const styles = {
+        'pending': { color: '#64748b', backgroundColor: '#f1f5f9', borderColor: '#cbd5e1' },
+        'in_progress': { color: '#2563eb', backgroundColor: '#eff6ff', borderColor: '#bfdbfe' },
+        'submitted': { color: '#ea580c', backgroundColor: '#fff7ed', borderColor: '#ffedd5' }, // Màu cam chờ duyệt[cite: 7]
+        'completed': { color: '#166534', backgroundColor: '#f0fdf4', borderColor: '#bbf7d0' },
+        'cancelled': { color: '#dc2626', backgroundColor: '#fef2f2', borderColor: '#fecaca' }
     };
+    return styles[status] || {};
+};
 
-    // Hàm dịch trạng thái sang tiếng Việt tương ứng với select
-    const getStatusLabel = (status) => {
-        switch(status) {
-            case 'in_progress': return 'Đang tiến hành';
-            case 'cancelled': return 'Đã hủy';
-            default: return 'Chờ xử lý'; // pending
-        }
-    };
+const renderTaskStatusText = (status) => {
+    if (status === 'pending') return 'Chờ xử lý';
+    if (status === 'in_progress') return 'Đang tiến hành';
+    if (status === 'submitted') return 'Chờ phê duyệt'; // Dịch chuẩn từ hình ảnh[cite: 7]
+    if (status === 'completed') return 'Đã hoàn thành';
+    return 'Đã hủy';
+};
 
     return (
         <div className="page-container">
@@ -174,9 +175,9 @@ function Dashboard() {
                                             </div>
 
                                             <div style={{ display: 'flex', alignItems: 'center', gap: '16px' }}>
-                                                <span className={getStatusBadgeClass(task.status)} style={{ fontSize: '12px', fontWeight: 'normal' }}>
-                                                    {getStatusLabel(task.status)}
-                                                </span>
+                                                <span style={{ display: 'inline-block', padding: '4px 12px', borderRadius: '9999px', border: 'none', fontSize: '12px', fontWeight: '500', whiteSpace: 'nowrap', ...getSelectStyle(task.status) }}>
+                                                {renderTaskStatusText(task.status)}
+                                            </span>
                                                 
                                                 <span style={{ fontSize: '12px', color: 'var(--text-secondary)' }}>
                                                     {task.due_date ? new Date(task.due_date).toLocaleDateString('vi-VN') : 'Không hạn'}

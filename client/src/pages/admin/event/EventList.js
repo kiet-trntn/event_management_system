@@ -73,8 +73,8 @@ function EventList() {
                                                 </span>
                                             </div>
                                             <h2 className="event-title">{event.title}</h2>
-                                            <p className="event-detail-row">📍 {event.location}</p>
-                                            <p className="event-detail-row">🕒 {new Date(event.start_date).toLocaleDateString('vi-VN')}</p>
+                                            <p className="event-detail-row">{event.location}</p>
+                                            <p className="event-detail-row">{new Date(event.start_date).toLocaleDateString('vi-VN')}</p>
                                         </div>
                                     ))}
                                 </div>
