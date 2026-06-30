@@ -35,8 +35,10 @@ function MyTasks() {
         fetchTasks();
     }, [fetchTasks]);
 
+    // --- 1. LOGIC KHÓA KHÔNG CHO PHÉP KÉO CARD ---
     const handleDragStart = (e, task) => {
-        if (task.status === 'completed') {
+        // Khóa không cho phép kéo các công việc đã Hoàn thành, Đã hủy, hoặc đang Chờ phê duyệt
+        if (task.status === 'completed' || task.status === 'cancelled' || task.status === 'submitted') {
             e.preventDefault();
             return;
         }
@@ -57,6 +59,7 @@ function MyTasks() {
         setDraggedOverCol(null);
     };
 
+    // --- 2. LOGIC KIỂM TRA KHI THẢ (DROP) CARD ---
     const handleDrop = async (e, newStatus) => {
         e.preventDefault();
         setDraggedOverCol(null); 
@@ -67,31 +70,22 @@ function MyTasks() {
         const taskToMove = tasks.find(t => t.id.toString() === taskId);
         if (!taskToMove || taskToMove.status === newStatus) return; 
 
+        // CHẶN: Không cho phép tự kéo vào cột "Đã hủy"
         if (newStatus === 'cancelled') {
             Swal.fire('Từ chối', 'Nhân viên không thể tự ý hủy công việc.', 'warning');
             return;
         }
 
-        if (newStatus === 'completed') {
-            Swal.fire({ title: 'Đang kiểm tra dữ liệu...', allowOutsideClick: false, didOpen: () => Swal.showLoading() });
+        // CHẶN: Không cho phép nhân viên tự ý kéo công việc vào cột "Chờ phê duyệt"
+        if (newStatus === 'submitted') {
+            Swal.fire('Từ chối', 'Trạng thái "Chờ phê duyệt" sẽ tự động kích hoạt khi bạn bấm vào xem công việc và tiến hành nộp file kết quả.', 'warning');
+            return;
+        }
 
-            try {
-                const token = localStorage.getItem('my_token');
-                const attachRes = await fetch(`http://localhost:5000/api/attachments/task/${taskId}`, {
-                    headers: { 'Authorization': `Bearer ${token}` }
-                });
-                
-                if (attachRes.ok) {
-                    const attachData = await attachRes.json();
-                    if (!attachData.attachments || attachData.attachments.length === 0) {
-                        Swal.fire('Chưa nộp file!', 'Bạn phải bấm vào công việc này để nộp file kết quả trước khi hoàn thành!', 'warning');
-                        return; // Chặn kéo thả
-                    }
-                }
-            } catch (error) {
-                Swal.fire('Lỗi', 'Không thể kết nối để kiểm tra file.', 'error');
-                return;
-            }
+        // CHẶN: Không cho phép nhân viên tự ý kéo công việc thẳng vào cột "Đã hoàn thành"
+        if (newStatus === 'completed') {
+            Swal.fire('Từ chối', 'Bạn không thể tự hoàn thành công việc. Công việc cần được chuyển sang trạng thái chờ phê duyệt để cấp trên xác nhận.', 'warning');
+            return;
         }
 
         const oldStatus = taskToMove.status;
@@ -106,14 +100,10 @@ function MyTasks() {
             });
 
             if (response.ok) {
-                if (newStatus === 'completed') {
-                    Swal.fire({ toast: true, position: 'top-end', icon: 'success', title: 'Đã hoàn thành công việc!', showConfirmButton: false, timer: 1500 });
-                } else {
-                    Swal.close(); 
-                }
+                Swal.fire({ toast: true, position: 'top-end', icon: 'success', title: 'Cập nhật trạng thái thành công!', showConfirmButton: false, timer: 1500 });
             } else {
                 setTasks(prev => prev.map(t => t.id.toString() === taskId ? { ...t, status: oldStatus } : t));
-                Swal.fire('Lỗi từ Server', 'Không thể lưu trạng thái', 'error');
+                Swal.fire('Lỗi từ Server', 'Không thể lưu trạng thái mới', 'error');
             }
         } catch (error) {
             setTasks(prev => prev.map(t => t.id.toString() === taskId ? { ...t, status: oldStatus } : t));
@@ -122,8 +112,9 @@ function MyTasks() {
     };
 
     const columns = [
-        { id: 'pending', title: 'Chờ xử lý', titleColor: '#172b4d' },
-        { id: 'in_progress', title: 'Đang tiến hành', titleColor: '#172b4d' },
+        { id: 'pending', title: 'Chờ xử lý', titleColor: '#64748b' },
+        { id: 'in_progress', title: 'Đang tiến hành', titleColor: '#2563eb' },
+        { id: 'submitted', title: 'Chờ phê duyệt', titleColor: '#ea580c' }, 
         { id: 'completed', title: 'Đã hoàn thành', titleColor: '#16a34a' },
         { id: 'cancelled', title: 'Đã hủy', titleColor: '#6b7280' }
     ];
@@ -145,7 +136,6 @@ function MyTasks() {
             </div>
 
             <div className="kanban-board">
-                
                 {columns.map(col => {
                     const colTasks = tasks.filter(t => t.status === col.id);
                     const isDragOver = draggedOverCol === col.id;
@@ -169,20 +159,28 @@ function MyTasks() {
                                 ) : (
                                     colTasks.map(task => {
                                         const prio = getPriorityStyle(task.priority);
-                                        const isCompleted = task.status === 'completed';
+                                        
+                                        // Kiểm tra xem card này có thuộc diện bị khóa kéo thả hay không
+                                        const isLocked = ['completed', 'cancelled', 'submitted'].includes(task.status);
 
                                         return (
                                             <div 
                                                 key={task.id} 
-                                                className={`kanban-card ${isCompleted ? 'locked' : ''}`}
-                                                draggable={!isCompleted} 
+                                                className={`kanban-card ${isLocked ? 'locked' : ''}`}
+                                                draggable={!isLocked} 
                                                 onDragStart={(e) => handleDragStart(e, task)}
                                                 onClick={() => navigate(`/staff/tasks/view/${task.id}`)}
+                                                style={{ opacity: isLocked ? 0.85 : 1, cursor: isLocked ? 'pointer' : 'grab' }}
                                             >
                                                 <div className="kanban-tags" style={{ marginBottom: '8px' }}>
                                                     <span className="kanban-tag" style={{ backgroundColor: prio.bg, color: prio.color }}>
                                                         Ưu tiên: {prio.text}
                                                     </span>
+                                                    {isLocked && (
+                                                        <span className="kanban-tag" style={{ backgroundColor: '#f3f4f6', color: '#1f2937', marginLeft: '4px' }}>
+                                                            🔒 Khóa kéo thả
+                                                        </span>
+                                                    )}
                                                 </div>
 
                                                 <h5 style={{ margin: '0 0 4px 0', fontSize: '15px', color: '#111827', fontWeight: '700', lineHeight: '1.4' }}>
@@ -205,7 +203,6 @@ function MyTasks() {
                         </div>
                     );
                 })}
-
             </div>
         </div>
     );

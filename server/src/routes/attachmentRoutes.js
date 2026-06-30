@@ -20,10 +20,10 @@ const {
     "../controllers/attachmentController"
 );
 
-router.delete(
-    "/:id/permanent",
+router.patch(
+    "/:id/deleted",
     authMiddleware,
-    permanentDeleteAttachment
+    deleteAttachment,
 );
 
 router.post(

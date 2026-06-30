@@ -137,23 +137,25 @@ function ViewEvent() {
         }
     };
 
-    const getSelectStyle = (status) => {
-        const styles = {
-            'pending': { color: 'var(--warning-color)', backgroundColor: '#FEF3C7', borderColor: '#FDE68A' },
-            'in_progress': { color: 'var(--primary-color)', backgroundColor: 'var(--primary-light)', borderColor: '#BFDBFE' },
-            'completed': { color: 'var(--success-color)', backgroundColor: '#DCFCE7', borderColor: '#A7F3D0' },
-            'cancelled': { color: 'var(--text-secondary)', backgroundColor: '#F3F4F6', borderColor: 'var(--border-neutral)' }
-        };
-        return styles[status] || {};
+    // Thay thế 2 hàm bổ trợ trạng thái bằng đoạn mã dưới đây:
+const getSelectStyle = (status) => {
+    const styles = {
+        'pending': { color: '#64748b', backgroundColor: '#f1f5f9', borderColor: '#cbd5e1' },
+        'in_progress': { color: '#2563eb', backgroundColor: '#eff6ff', borderColor: '#bfdbfe' },
+        'submitted': { color: '#ea580c', backgroundColor: '#fff7ed', borderColor: '#ffedd5' }, // Màu cam chờ duyệt[cite: 7]
+        'completed': { color: '#166534', backgroundColor: '#f0fdf4', borderColor: '#bbf7d0' },
+        'cancelled': { color: '#dc2626', backgroundColor: '#fef2f2', borderColor: '#fecaca' }
     };
+    return styles[status] || {};
+};
 
-    // Helper hàm dịch trạng thái hiển thị text
-    const renderTaskStatusText = (status) => {
-        if (status === 'pending') return 'Chờ xử lý';
-        if (status === 'in_progress') return 'Đang tiến hành';
-        if (status === 'completed') return 'Đã hoàn thành';
-        return 'Đã hủy';
-    };
+const renderTaskStatusText = (status) => {
+    if (status === 'pending') return 'Chờ xử lý';
+    if (status === 'in_progress') return 'Đang tiến hành';
+    if (status === 'submitted') return 'Chờ phê duyệt'; // Dịch chuẩn từ hình ảnh[cite: 7]
+    if (status === 'completed') return 'Đã hoàn thành';
+    return 'Đã hủy';
+};
 
     if (loading) return <div className="page-container event-page"><div className="form-card text-center text-secondary">Đang tải chi tiết sự kiện...</div></div>;
     if (!event) return null;

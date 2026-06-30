@@ -52,15 +52,13 @@ function WorkCalendar() {
             setLoading(true);
             const headers = { 'Authorization': `Bearer ${localStorage.getItem('my_token')}` };
             
-            // GỌI 2 API: 1 lấy Việc cá nhân, 1 lấy Sự kiện làm Leader
             const [myTasksRes, leaderEventsRes] = await Promise.all([
                 fetch('http://localhost:5000/api/tasks/my-tasks', { headers }),
-                fetch('http://localhost:5000/api/events/leader-calendar', { headers }) // Đã đổi sang gọi API events
+                fetch('http://localhost:5000/api/events/leader-calendar', { headers })
             ]);
 
             let calendarItems = [];
 
-            // 1. Xử lý Công việc cá nhân (Thẻ ngắn 1 ngày)
             if (myTasksRes.ok) {
                 const data = await myTasksRes.json();
                 const myTasks = data.tasks || [];
@@ -72,9 +70,9 @@ function WorkCalendar() {
                         real_id: task.id,
                         title: task.title,
                         start: taskDate,
-                        end: taskDate, // Việc thì bắt đầu và kết thúc cùng 1 ngày để thành dấu chấm nhỏ
+                        end: taskDate, 
                         allDay: true, 
-                        type: 'task', // Phân loại là Task
+                        type: 'task', 
                         resource: task 
                     };
                 });
@@ -86,15 +84,14 @@ function WorkCalendar() {
                 const ledEvents = data.events || [];
 
                 const formattedEvents = ledEvents.map(evt => {
-                    // Lấy ngày kết thúc (end_date) làm mốc hiển thị duy nhất
                     const eventDeadline = evt.end_date ? new Date(evt.end_date) : new Date(evt.start_date);
 
                     return {
                         id: `event_${evt.id}`,
                         real_id: evt.id,
-                        title: `${evt.title}`, // Thêm chữ Hạn chót cho rõ ràng
-                        start: eventDeadline, // Bắt đầu ở ngày kết thúc
-                        end: eventDeadline,   // Kết thúc cũng ở ngày kết thúc (Tạo thành 1 thẻ ngắn)
+                        title: `${evt.title}`, 
+                        start: eventDeadline, 
+                        end: eventDeadline,   
                         allDay: true,
                         type: 'event', 
                         resource: evt
@@ -117,7 +114,6 @@ function WorkCalendar() {
         fetchCalendarData();
     }, [fetchCalendarData]);
 
-    // Xử lý khi bấm vào Lịch (Bấm vào việc -> Trang Việc, Bấm vào Sự kiện -> Trang Sự Kiện)
     const handleEventClick = (item) => {
         if (item.type === 'event') {
             navigate(`/staff/events/view/${item.real_id}`);
@@ -126,22 +122,20 @@ function WorkCalendar() {
         }
     };
 
-    // Đổ màu khác nhau cho Việc cá nhân và Khối Sự kiện
     const eventPropGetter = (item) => {
-        let className = 'calendar-event-in-progress';
-        
-        // Nếu là khối Sự Kiện (Màu tím nổi bật)
         if (item.type === 'event') {
             return { className: 'calendar-project-block' };
         }
 
-        // Nếu là Công việc cá nhân (Màu theo trạng thái)
         const status = item.resource.status;
         const dueDate = new Date(item.resource.due_date);
         const today = new Date();
         
+        let className = 'calendar-event-in-progress';
+        
         if (status === 'completed') className = 'calendar-event-completed';
         else if (status === 'cancelled') className = 'calendar-event-cancelled';
+        else if (status === 'submitted') className = 'calendar-event-submitted';
         else if (status !== 'completed' && dueDate < today) className = 'calendar-event-overdue';
         else if (status === 'pending') className = 'calendar-event-pending';
 
@@ -161,18 +155,19 @@ function WorkCalendar() {
             <div className="calendar-header-section page-header-form">
                 <h3 className="calendar-title">Lịch Làm Việc</h3>
                 
-                <div className="calendar-legend" style={{ marginTop: '12px' }}>
+                <div className="calendar-legend" style={{ marginTop: '12px', display: 'flex', gap: '16px', flexWrap: 'wrap' }}>
                     <span className="legend-item"><span className="legend-color-box pending"></span> Chờ xử lý</span>
                     <span className="legend-item"><span className="legend-color-box in-progress"></span> Đang tiến hành</span>
+                    <span className="legend-item"><span className="legend-color-box submitted"></span> Chờ phê duyệt</span>
                     <span className="legend-item"><span className="legend-color-box completed"></span> Hoàn thành</span>
                     <span className="legend-item"><span className="legend-color-box overdue"></span> Trễ hạn</span>
-                    <span className="legend-item" style={{ marginLeft: '16px' }}>
-                        <span className="legend-color-box" style={{ backgroundColor: '#8b5cf6' }}></span> Tiến độ Sự kiện
+                    <span className="legend-item">
+                        <span className="legend-color-box event-progress"></span> Tiến độ Sự kiện
                     </span>
                 </div>
             </div>
 
-            <div className="form-card large calendar-wrapper">
+            <div className="form-card large calendar-wrapper" style={{ marginTop: '16px' }}>
                 <Calendar
                     localizer={localizer}
                     events={events}

@@ -85,6 +85,7 @@ function ViewTask() {
             case 'completed': return { bg: '#dcfce7', color: '#16a34a', text: 'Đã hoàn thành' };
             case 'in_progress': return { bg: '#dbeafe', color: '#2563eb', text: 'Đang tiến hành' };
             case 'cancelled': return { bg: '#f3f4f6', color: '#6b7280', text: 'Đã hủy' };
+            case 'submitted': return { bg: '#f3f4f6', color: '#6b7280', text: 'Chờ phê duyệt' };
             default: return { bg: '#fef9c3', color: '#ca8a04', text: 'Chờ xử lý' }; 
         }
     };
@@ -117,7 +118,7 @@ function ViewTask() {
         <div className="page-container task-page" style={{ maxWidth: '1000px', margin: '0 auto' }}>
             
             <div className="page-header-form">
-                <button type="button" className="btn-back" onClick={() => navigate('/admin/events')}>
+                <button type="button" className="btn-back" onClick={() => navigate(-1)}>
                     <svg width="18" height="18" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth="2">
                         <path strokeLinecap="round" strokeLinejoin="round" d="M10 19l-7-7m0 0l7-7m-7 7h18"></path>
                     </svg>

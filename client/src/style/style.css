@@ -1196,6 +1196,7 @@ body {
 .legend-color-box.overdue { background-color: #ef4444; }     
 
 /* ĐỒNG BỘ MÀU THẺ CÔNG VIỆC TRÊN LỊCH KHỚP VỚI CHÚ THÍCH */
+.calendar-event-submitted { background-color: #8e8b85 !important; color: #fff !important; }
 .calendar-event-pending { background-color: #f59e0b !important; color: #fff !important; }
 .calendar-event-in-progress { background-color: #3b82f6 !important; color: #fff !important; }
 .calendar-event-completed { background-color: #10b981 !important; color: #fff !important; }
@@ -1203,6 +1204,13 @@ body {
 .calendar-event-cancelled { background-color: #94a3b8 !important; color: #fff !important; text-decoration: line-through; }
 .calendar-project-block { background-color: #c76dd1 !important; color: #fff !important; font-weight: 600 !important; }
 
+/* CSS RIÊNG CHO CÁC Ô ĐỔ MÀU CHÚ THÍCH (LEGEND BOX) */
+.legend-color-box.pending { background-color: #f59e0b !important; }
+.legend-color-box.in-progress { background-color: #3b82f6 !important; }
+.legend-color-box.submitted { background-color: #8e8b85 !important; }
+.legend-color-box.completed { background-color: #10b981 !important; }
+.legend-color-box.overdue { background-color: #ef4444 !important; }
+.legend-color-box.event-progress { background-color: #c76dd1 !important; }
 /* --- Khung chứa bộ Lịch --- */
 .calendar-wrapper { margin: 0; padding: 20px; height: 75vh; min-height: 600px; max-width: 100% !important; }
 .calendar-wrapper .rbc-calendar { height: 100%; }

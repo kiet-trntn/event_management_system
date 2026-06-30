@@ -67,6 +67,7 @@ function TaskList() {
             case 'completed': return { class: 'badge-pill badge-green', label: 'Đã hoàn thành' };
             case 'in_progress': return { class: 'badge-pill badge-blue', label: 'Đang tiến hành' };
             case 'cancelled': return { class: 'badge-pill badge-gray', label: 'Đã hủy' };
+            case 'submitted': return { class: 'badge-pill badge-gray', label: 'Chờ phê duyệt' };
             default: return { class: 'badge-pill badge-yellow', label: 'Chờ xử lý' }; 
         }
     };
@@ -115,8 +116,8 @@ function TaskList() {
                     
                     {groupedTasks.map(group => {
                         const isExpanded = expandedEvents[group.eventId];
-                        const displayTasks = isExpanded ? group.tasks : group.tasks.slice(0, 3);
-                        const hasMore = group.tasks.length > 3;
+                        const displayTasks = isExpanded ? group.tasks : group.tasks.slice(0, 4);
+                        const hasMore = group.tasks.length > 4;
 
                         return (
                             <div key={group.eventId} className="mb-6">
@@ -162,7 +163,7 @@ function TaskList() {
                                             onClick={() => toggleExpand(group.eventId)}
                                             style={{ background: 'none', border: 'none', color: 'var(--primary-color)', fontSize: '14px', fontWeight: '600', cursor: 'pointer' }}
                                         >
-                                            {isExpanded ? 'Thu gọn ⏶' : `Xem thêm ${group.tasks.length - 3} công việc nữa ⏷`}
+                                            {isExpanded ? 'Thu gọn ⏶' : `Xem thêm ${group.tasks.length - 4} công việc nữa ⏷`}
                                         </button>
                                     </div>
                                 )}
