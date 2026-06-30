@@ -1,5 +1,6 @@
 const db = require("../config/db");
 const createNotification = require("../utils/createNotification");
+const { emitToEvent } = require("../socket/socket");
 
 // Hàm kiểm tra quyền xem/gửi tin nhắn trong event
 const checkEventAccess = async (eventId, user) => {
@@ -126,6 +127,22 @@ const sendMessage = async (req, res) => {
                 req.user.id,
                 content.trim()
             ]
+        );
+
+        const messageData = {
+            id: result.insertId,
+            event_id: Number(event_id),
+            sender_id: req.user.id,
+            sender_name: req.user.full_name,
+            content: content.trim(),
+            created_at: new Date()
+        };
+
+        // Gửi tin nhắn realtime cho tất cả user đang ở room event
+        emitToEvent(
+            event_id,
+            "new_message",
+            messageData
         );
 
         // Tạo notification cho Leader và thành viên khác
@@ -314,5 +331,5 @@ const deleteMessage = async (req, res) => {
 module.exports = {
     sendMessage,
     getMessagesByEvent,
-    deleteMessage
+    deleteMessage,
 };
