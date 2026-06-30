@@ -6,8 +6,10 @@ const upload = require("../middlewares/uploadAttachment");
 
 const {
     submitTask,
-    reviewSubmission
+    reviewSubmission,
+    getPendingSubmissions
 } = require("../controllers/taskSubmissionController");
+
 
 router.post(
     "/",
@@ -16,10 +18,18 @@ router.post(
     submitTask
 );
 
+router.get(
+    "/pending",
+    authMiddleware,
+    getPendingSubmissions
+);
+
 router.patch(
     "/:id/review",
     authMiddleware,
     reviewSubmission
 );
+
+
 
 module.exports = router;

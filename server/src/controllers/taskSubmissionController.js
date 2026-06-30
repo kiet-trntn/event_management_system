@@ -356,7 +356,89 @@ const reviewSubmission = async (req, res) => {
 
 };
 
+const getPendingSubmissions = async (req, res) => {
+
+    try {
+
+        let sql = `
+            SELECT
+                s.id,
+                s.task_id,
+                s.submitted_by,
+                s.content,
+                s.link_url,
+                s.file_name,
+                s.file_path,
+                s.file_size,
+                s.file_type,
+                s.status,
+                s.created_at,
+
+                t.title AS task_title,
+                t.status AS task_status,
+                t.priority,
+                t.due_date,
+
+                e.id AS event_id,
+                e.title AS event_title,
+                e.leader_id,
+
+                u.full_name AS submitted_by_name,
+                u.email AS submitted_by_email
+
+            FROM task_submissions s
+
+            INNER JOIN tasks t
+                ON s.task_id = t.id
+
+            INNER JOIN events e
+                ON t.event_id = e.id
+
+            LEFT JOIN users u
+                ON s.submitted_by = u.id
+
+            WHERE s.status = 'pending'
+            AND t.is_deleted = FALSE
+            AND e.deleted_at IS NULL
+        `;
+
+        let params = [];
+
+        // Admin xem tất cả bài nộp chờ duyệt
+        // Leader chỉ xem bài nộp thuộc sự kiện mình phụ trách
+        if (req.user.role !== "admin") {
+            sql += `
+                AND e.leader_id = ?
+            `;
+
+            params.push(req.user.id);
+        }
+
+        sql += `
+            ORDER BY s.created_at DESC
+        `;
+
+        const [submissions] = await db.query(sql, params);
+
+        res.json({
+            total: submissions.length,
+            submissions
+        });
+
+    } catch (error) {
+
+        console.log(error);
+
+        res.status(500).json({
+            message: error.message
+        });
+
+    }
+
+};
+
 module.exports = {
     submitTask,
-    reviewSubmission
+    reviewSubmission,
+    getPendingSubmissions
 };
