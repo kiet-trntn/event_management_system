@@ -368,9 +368,68 @@ const deleteDirectMessage = async (req, res) => {
 
 };
 
+// Lấy danh sách người dùng có thể nhắn tin
+const getChatUsers = async (req, res) => {
+
+    try {
+
+        const { search } = req.query;
+
+        let sql = `
+            SELECT
+                id,
+                full_name,
+                email,
+                role,
+                status
+            FROM users
+            WHERE id <> ?
+            AND status = 'active'
+        `;
+
+        let params = [req.user.id];
+
+        if (search) {
+            sql += `
+                AND (
+                    full_name LIKE ?
+                    OR email LIKE ?
+                )
+            `;
+
+            params.push(
+                `%${search}%`,
+                `%${search}%`
+            );
+        }
+
+        sql += `
+            ORDER BY full_name ASC
+        `;
+
+        const [users] = await db.query(sql, params);
+
+        res.json({
+            total: users.length,
+            users
+        });
+
+    } catch (error) {
+
+        console.log(error);
+
+        res.status(500).json({
+            message: error.message
+        });
+
+    }
+
+};
+
 module.exports = {
     sendDirectMessage,
     getConversationWithUser,
     getMyConversations,
-    deleteDirectMessage
+    deleteDirectMessage,
+    getChatUsers
 };

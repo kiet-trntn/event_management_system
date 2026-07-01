@@ -7,7 +7,8 @@ const {
     sendDirectMessage,
     getConversationWithUser,
     getMyConversations,
-    deleteDirectMessage
+    deleteDirectMessage,
+    getChatUsers 
 } = require("../controllers/directMessageController");
 
 // Gửi tin nhắn riêng
@@ -15,6 +16,12 @@ router.post(
     "/",
     authMiddleware,
     sendDirectMessage
+);
+
+router.get(
+    "/users",
+    authMiddleware,
+    getChatUsers
 );
 
 // Xem danh sách cuộc trò chuyện
@@ -37,5 +44,7 @@ router.delete(
     authMiddleware,
     deleteDirectMessage
 );
+
+
 
 module.exports = router;
