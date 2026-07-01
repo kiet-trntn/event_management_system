@@ -1,86 +1,138 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import Swal from 'sweetalert2';
+import { PieChart, Pie, Cell, BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Legend } from 'recharts';
 
 function Dashboard() {
     const navigate = useNavigate();
     const [events, setEvents] = useState([]);
     const [tasks, setTasks] = useState([]);
+    const [myTasks, setMyTasks] = useState([]);
+    const [leaderPendingTasks, setLeaderPendingTasks] = useState([]);
+    const [isLeader, setIsLeader] = useState(false); // Thêm state quản lý quyền Leader
     const [loading, setLoading] = useState(true);
+    
+    const getTokenUser = () => {
+        const token = localStorage.getItem('my_token');
+        if (!token) return null;
+        try { return JSON.parse(window.atob(token.split('.')[1])); } 
+        catch (e) { return null; }
+    };
+    const currentUser = getTokenUser();
+    const rolePath = currentUser?.role === 'admin' ? 'admin' : 'staff';
+
+    const { taskStats, eventStats, COLORS } = useMemo(() => {
+        const taskStatusList = [
+            { id: 'pending', name: 'Chờ xử lý' },
+            { id: 'in_progress', name: 'Đang tiến hành' },
+            { id: 'submitted', name: 'Chờ phê duyệt' },
+            { id: 'completed', name: 'Đã hoàn thành' },
+            { id: 'cancelled', name: 'Đã hủy' }
+        ];
+
+        const taskStatsData = taskStatusList.map(status => ({
+            name: status.name,
+            value: tasks.filter(t => t.status === status.id).length
+        })).filter(item => item.value > 0);
+
+        const eventStatusList = [
+            { id: 'Nháp', name: 'Nháp' },
+            { id: 'Sắp diễn ra', name: 'Sắp diễn ra' },
+            { id: 'Đang diễn ra', name: 'Đang diễn ra' },
+            { id: 'Đã kết thúc', name: 'Đã kết thúc' },
+            { id: 'Đã hủy', name: 'Đã hủy' }
+        ];
+
+        const eventStatsData = eventStatusList.map(status => ({
+            name: status.name,
+            value: events.filter(e => e.status === status.id).length
+        })).filter(item => item.value > 0);
+
+        return {
+            taskStats: taskStatsData,
+            eventStats: eventStatsData,
+            COLORS: ['#3b82f6', '#10b981', '#f59e0b', '#ef4444', '#64748b']
+        };
+    }, [tasks, events]);
 
     const fetchDashboardData = useCallback(async () => {
         try {
             setLoading(true);
             const token = localStorage.getItem('my_token');
+            const headers = { 'Authorization': `Bearer ${token}` };
 
-            // 🚨 ĐÃ SỬA: Thay /api/tasks thành /api/tasks/my-tasks để lấy đúng việc của nhân viên này
-            const [eventsRes, tasksRes] = await Promise.all([
-                fetch('http://localhost:5000/api/events', { headers: { 'Authorization': `Bearer ${token}` } }),
-                fetch('http://localhost:5000/api/tasks/my-tasks', { headers: { 'Authorization': `Bearer ${token}` } })
+            // Gọi thêm API overview để xác nhận chính xác quyền Leader
+            const [eventsRes, tasksRes, myTasksRes, pendingRes, overviewRes] = await Promise.all([
+                fetch('http://localhost:5000/api/events', { headers }),
+                fetch('http://localhost:5000/api/tasks', { headers }),
+                fetch('http://localhost:5000/api/tasks/my-tasks', { headers }).catch(() => null),
+                fetch('http://localhost:5000/api/task-submissions/pending', { headers }).catch(() => null),
+                fetch('http://localhost:5000/api/reports/overview', { headers }).catch(() => null)
             ]);
 
             if (eventsRes.ok && tasksRes.ok) {
                 const eventsData = await eventsRes.json();
                 const tasksData = await tasksRes.json();
+                const myTasksData = (myTasksRes && myTasksRes.ok) ? await myTasksRes.json() : { tasks: [] };
+                const pendingData = (pendingRes && pendingRes.ok) ? await pendingRes.json() : { submissions: [] };
+                const overviewData = (overviewRes && overviewRes.ok) ? await overviewRes.json() : { total_events: 0 };
                 
                 setEvents(eventsData.events || []);
                 setTasks(tasksData.tasks || []);
+                setMyTasks(myTasksData.tasks || []);
+                setLeaderPendingTasks(pendingData.submissions || []);
+                
+                // Nếu tổng sự kiện phụ trách > 0 hoặc role là admin -> Bật cờ Leader
+                setIsLeader(overviewData.total_events > 0 || currentUser?.role === 'admin');
+
             } else {
                 Swal.fire('Lỗi', 'Không thể tải dữ liệu tổng quan', 'error');
             }
         } catch (error) {
-            console.error(error);
             Swal.fire('Lỗi', 'Lỗi kết nối đến máy chủ', 'error');
         } finally {
             setLoading(false);
         }
-    }, []);
+    }, [currentUser?.role]);
 
     useEffect(() => {
         document.title = "Tổng quan | TaskFlow";
         fetchDashboardData();
     }, [fetchDashboardData]);
 
-    // --- LOGIC XỬ LÝ SỐ LIỆU THỐNG KÊ BẰNG FRONTEND ---
     const totalEvents = events.length;
-    const totalTasks = tasks.length;
-    
-    const pendingTasks = tasks.filter(t => t.status === 'pending').length;
-    const inProgressTasks = tasks.filter(t => t.status === 'in_progress').length;
-    const completedTasks = tasks.filter(t => t.status === 'completed').length;
-
-    // Tính % hoàn thành công việc chung
+    const totalTasks = myTasks.length;
+    const pendingTasks = myTasks.filter(t => t.status === 'pending').length;
+    const inProgressTasks = myTasks.filter(t => t.status === 'in_progress').length;
+    const completedTasks = myTasks.filter(t => t.status === 'completed').length;
     const overallProgress = totalTasks === 0 ? 0 : Math.round((completedTasks / totalTasks) * 100);
 
-    // Lấy ra tối đa 3 công việc chưa hoàn thành để nhắc nhở nhân viên làm ngay
-    const urgentTasks = tasks
-        .filter(t => t.status !== 'completed' && t.status !== 'cancelled')
-        .sort((a, b) => (b.priority === 'high' ? 1 : -1)) // Đẩy việc có độ ưu tiên cao lên trước để xử lý sớm
+    const urgentTasks = myTasks
+        .filter(t => !['completed', 'cancelled', 'submitted'].includes(t.status))
+        .sort((a, b) => (b.priority === 'high' ? 1 : -1))
         .slice(0, 3);
 
-   const getSelectStyle = (status) => {
-    const styles = {
-        'pending': { color: '#64748b', backgroundColor: '#f1f5f9', borderColor: '#cbd5e1' },
-        'in_progress': { color: '#2563eb', backgroundColor: '#eff6ff', borderColor: '#bfdbfe' },
-        'submitted': { color: '#ea580c', backgroundColor: '#fff7ed', borderColor: '#ffedd5' }, // Màu cam chờ duyệt[cite: 7]
-        'completed': { color: '#166534', backgroundColor: '#f0fdf4', borderColor: '#bbf7d0' },
-        'cancelled': { color: '#dc2626', backgroundColor: '#fef2f2', borderColor: '#fecaca' }
+    const getSelectStyle = (status) => {
+        const styles = {
+            'pending': { color: '#64748b', backgroundColor: '#f1f5f9', borderColor: '#cbd5e1' },
+            'in_progress': { color: '#2563eb', backgroundColor: '#eff6ff', borderColor: '#bfdbfe' },
+            'submitted': { color: '#ea580c', backgroundColor: '#fff7ed', borderColor: '#ffedd5' }, 
+            'completed': { color: '#166534', backgroundColor: '#f0fdf4', borderColor: '#bbf7d0' },
+            'cancelled': { color: '#dc2626', backgroundColor: '#fef2f2', borderColor: '#fecaca' }
+        };
+        return styles[status] || {};
     };
-    return styles[status] || {};
-};
 
-const renderTaskStatusText = (status) => {
-    if (status === 'pending') return 'Chờ xử lý';
-    if (status === 'in_progress') return 'Đang tiến hành';
-    if (status === 'submitted') return 'Chờ phê duyệt'; // Dịch chuẩn từ hình ảnh[cite: 7]
-    if (status === 'completed') return 'Đã hoàn thành';
-    return 'Đã hủy';
-};
+    const renderTaskStatusText = (status) => {
+        if (status === 'pending') return 'Chờ xử lý';
+        if (status === 'in_progress') return 'Đang tiến hành';
+        if (status === 'submitted') return 'Chờ phê duyệt'; 
+        if (status === 'completed') return 'Đã hoàn thành';
+        return 'Đã hủy';
+    };
 
     return (
         <div className="page-container">
-            
-            {/* Header tổng quan */}
             <div className="page-header-form" style={{ maxWidth: '100%', marginBottom: '24px' }}>
                 <h3>Tổng Quan Công Việc</h3>
                 <p className="text-secondary" style={{ fontSize: '14px', marginTop: '4px' }}>
@@ -93,58 +145,43 @@ const renderTaskStatusText = (status) => {
             ) : (
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '24px' }}>
                     
-                    {/* --- 1. KHU VỰC THẺ ĐẾM SỐ LIỆU (STAT CARDS) --- */}
                     <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: '20px' }}>
-                        
                         <div className="form-card" style={{ margin: 0, padding: '20px', maxWidth: '100%' }}>
                             <div className="text-secondary" style={{ fontSize: '13px', fontWeight: '600' }}>SỰ KIỆN THAM GIA</div>
                             <div className="text-2xl font-semibold text-brand" style={{ marginTop: '8px' }}>{totalEvents}</div>
                         </div>
-
                         <div className="form-card" style={{ margin: 0, padding: '20px', maxWidth: '100%' }}>
                             <div className="text-secondary" style={{ fontSize: '13px', fontWeight: '600' }}>CÔNG VIỆC ĐƯỢC GIAO</div>
                             <div className="text-2xl font-semibold" style={{ marginTop: '8px', color: 'var(--text-primary)' }}>{totalTasks}</div>
                         </div>
-
                         <div className="form-card" style={{ margin: 0, padding: '20px', maxWidth: '100%' }}>
                             <div className="text-secondary" style={{ fontSize: '13px', fontWeight: '600' }}>VIỆC ĐANG LÀM</div>
                             <div className="text-2xl font-semibold text-warning" style={{ marginTop: '8px' }}>{inProgressTasks + pendingTasks}</div>
                         </div>
-
                         <div className="form-card" style={{ margin: 0, padding: '20px', maxWidth: '100%' }}>
                             <div className="text-secondary" style={{ fontSize: '13px', fontWeight: '600' }}>VIỆC ĐÃ HOÀN THÀNH</div>
                             <div className="text-2xl font-semibold text-success" style={{ marginTop: '8px' }}>{completedTasks}</div>
                         </div>
-
                     </div>
 
-                    {/* --- 2. LAYOUT CHÍNH: TIẾN ĐỘ CHUNG & VIỆC CHƯA XỬ LÝ --- */}
                     <div style={{ display: 'flex', gap: '24px', flexWrap: 'wrap', alignItems: 'stretch' }}>
-                        
-                        {/* Thẻ Tiến độ tổng thể (Trái) */}
                         <div className="form-card large" style={{ flex: '1 1 40%', margin: 0, padding: '24px', display: 'flex', flexDirection: 'column', justifyContent: 'center', alignItems: 'center' }}>
-                            <h3 className="section-title" style={{ width: '100%', borderLeftColor: 'var(--secondary-color)' }}>Hiệu Suất Hoàn Thành</h3>
-                            
-                            {/* Vòng hiển thị số % lớn */}
-                            <div style={{ width: '130px', height: '130px', borderRadius: '50%', border: '10px solid var(--primary-light)', display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '24px 0', position: 'relative' }}>
+                            <h3 className="section-title" style={{ width: '100%', borderLeftColor: 'var(--secondary-color)' }}>Hiệu Suất Cá Nhân</h3>
+                            <div style={{ width: '130px', height: '130px', borderRadius: '50%', border: '10px solid var(--primary-light)', display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '24px 0' }}>
                                 <span className="text-2xl font-semibold text-brand">{overallProgress}%</span>
                             </div>
-
-                            {/* Thanh tiến độ phụ bổ trợ */}
                             <div style={{ width: '100%', marginTop: '12px' }}>
                                 <div style={{ width: '100%', height: '8px', backgroundColor: 'var(--border-neutral)', borderRadius: '4px', overflow: 'hidden' }}>
                                     <div style={{ height: '100%', backgroundColor: 'var(--success-color)', width: `${overallProgress}%`, transition: 'width 0.5s ease' }} />
                                 </div>
                                 <p className="text-center text-secondary" style={{ fontSize: '12px', marginTop: '8px' }}>
-                                    Đã hoàn thành {completedTasks}/{totalTasks} tổng số công việc
+                                    Đã hoàn thành {completedTasks}/{totalTasks} công việc được giao
                                 </p>
                             </div>
                         </div>
 
-                        {/* Thẻ Công việc cần làm ngay (Phải - Đã đồng bộ Status) */}
                         <div className="form-card large" style={{ flex: '1 1 55%', margin: 0, padding: '24px' }}>
                             <h3 className="section-title">Nhiệm Vụ Cần Làm Ngay</h3>
-                            
                             {urgentTasks.length === 0 ? (
                                 <p className="text-center text-secondary" style={{ padding: '40px 0' }}>🎉 Tuyệt vời! Bạn không có công việc nào bị tồn đọng.</p>
                             ) : (
@@ -152,18 +189,8 @@ const renderTaskStatusText = (status) => {
                                     {urgentTasks.map(task => (
                                         <div 
                                             key={task.id} 
-                                            onClick={() => navigate(`/staff/tasks/view/${task.id}`)}
-                                            style={{ 
-                                                display: 'flex', 
-                                                justifyContent: 'space-between', 
-                                                alignItems: 'center', 
-                                                padding: '14px 18px', 
-                                                border: '1px solid var(--border-neutral)', 
-                                                borderRadius: '8px', 
-                                                backgroundColor: 'var(--bg-neutral)',
-                                                cursor: 'pointer',
-                                                transition: 'transform 0.1s'
-                                            }}
+                                            onClick={() => navigate(`/${rolePath}/tasks/view/${task.id}`)}
+                                            style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '14px 18px', border: '1px solid var(--border-neutral)', borderRadius: '8px', backgroundColor: 'var(--bg-neutral)', cursor: 'pointer', transition: 'transform 0.1s' }}
                                             onMouseEnter={(e) => e.currentTarget.style.transform = 'scale(1.01)'}
                                             onMouseLeave={(e) => e.currentTarget.style.transform = 'scale(1)'}
                                         >
@@ -173,12 +200,10 @@ const renderTaskStatusText = (status) => {
                                                     Sự kiện: <span className="text-brand font-medium">{task.event_title || 'Tên sự kiện'}</span>
                                                 </p>
                                             </div>
-
                                             <div style={{ display: 'flex', alignItems: 'center', gap: '16px' }}>
-                                                <span style={{ display: 'inline-block', padding: '4px 12px', borderRadius: '9999px', border: 'none', fontSize: '12px', fontWeight: '500', whiteSpace: 'nowrap', ...getSelectStyle(task.status) }}>
-                                                {renderTaskStatusText(task.status)}
-                                            </span>
-                                                
+                                                <span style={{ display: 'inline-block', padding: '4px 12px', borderRadius: '9999px', fontSize: '12px', fontWeight: '500', whiteSpace: 'nowrap', ...getSelectStyle(task.status) }}>
+                                                    {renderTaskStatusText(task.status)}
+                                                </span>
                                                 <span style={{ fontSize: '12px', color: 'var(--text-secondary)' }}>
                                                     {task.due_date ? new Date(task.due_date).toLocaleDateString('vi-VN') : 'Không hạn'}
                                                 </span>
@@ -188,8 +213,88 @@ const renderTaskStatusText = (status) => {
                                 </div>
                             )}
                         </div>
-
                     </div>
+
+                    {/* HÀNG 3: DÀNH RIÊNG CHO LEADER (Luôn hiện nếu là Leader) */}
+                    {isLeader && (
+                        <>
+                            <div style={{ display: 'flex', gap: '24px', flexWrap: 'wrap' }}>
+                                <div style={{ flex: '1 1 400px', backgroundColor: '#fff', padding: '24px', borderRadius: '12px', border: '1px solid #e2e8f0' }}>
+                                    <h4 style={{ margin: '0 0 20px 0', fontSize: '16px', color: '#1e293b' }}>Trạng thái Công việc Leader</h4>
+                                    <div style={{ height: '300px', width: '100%' }}>
+                                        <ResponsiveContainer width="100%" height="100%">
+                                            <PieChart>
+                                                <Pie data={taskStats} cx="50%" cy="50%" innerRadius={60} outerRadius={100} paddingAngle={5} dataKey="value">
+                                                    {taskStats.map((entry, index) => <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />)}
+                                                </Pie>
+                                                <Tooltip formatter={(value) => [`${value} công việc`, 'Số lượng']} />
+                                                <Legend />
+                                            </PieChart>
+                                        </ResponsiveContainer>
+                                    </div>
+                                </div>
+                                <div style={{ flex: '1 1 400px', backgroundColor: '#fff', padding: '24px', borderRadius: '12px', border: '1px solid #e2e8f0' }}>
+                                    <h4 style={{ margin: '0 0 20px 0', fontSize: '16px', color: '#1e293b' }}>Trạng thái Sự kiện Leader</h4>
+                                    <div style={{ height: '300px', width: '100%' }}>
+                                        <ResponsiveContainer width="100%" height="100%">
+                                            <BarChart data={eventStats} margin={{ top: 20, right: 30, left: 0, bottom: 5 }}>
+                                                <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#e2e8f0" />
+                                                <XAxis dataKey="name" tick={{fontSize: 12}} />
+                                                <YAxis allowDecimals={false} />
+                                                <Tooltip cursor={{fill: '#f1f5f9'}} />
+                                                <Bar dataKey="value" fill="#6366f1" radius={[4, 4, 0, 0]} name="Số lượng" barSize={40} />
+                                            </BarChart>
+                                        </ResponsiveContainer>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <div className="form-card large" style={{ margin: 0, padding: '24px', maxWidth: '100%' }}>
+                                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px' }}>
+                                    <h3 style={{ margin: 0, fontSize: '18px', fontWeight: '700', color: '#1e293b' }}>
+                                        Minh chứng chờ phê duyệt
+                                    </h3>
+                                    <span style={{ backgroundColor: '#fef3c7', color: '#d97706', padding: '6px 14px', borderRadius: '20px', fontSize: '13px', fontWeight: '600' }}>
+                                        {leaderPendingTasks.length} yêu cầu mới
+                                    </span>
+                                </div>
+                                
+                                {leaderPendingTasks.length === 0 ? (
+                                    <div style={{ textAlign: 'center', padding: '30px 0', backgroundColor: '#fff', borderRadius: '8px', border: '1px dashed #cbd5e1' }}>
+                                        <p style={{ margin: 0, color: '#64748b', fontStyle: 'italic', fontWeight: '500' }}>Hiện tại chưa có minh chứng nào cần bạn phê duyệt.</p>
+                                    </div>
+                                ) : (
+                                    <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+                                        {leaderPendingTasks.slice(0, 5).map(sub => (
+                                            <div 
+                                                key={sub.id} 
+                                                onClick={() => navigate(`/${rolePath}/tasks/view/${sub.task_id}`)}
+                                                style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '16px', border: '1px solid #e2e8f0', borderRadius: '8px', backgroundColor: '#fff', cursor: 'pointer', transition: 'all 0.2s' }}
+                                                onMouseEnter={(e) => { e.currentTarget.style.borderColor = '#93c5fd'; e.currentTarget.style.boxShadow = '0 2px 4px rgba(0,0,0,0.05)'; }}
+                                                onMouseLeave={(e) => { e.currentTarget.style.borderColor = '#e2e8f0'; e.currentTarget.style.boxShadow = 'none'; }}
+                                            >
+                                                <div>
+                                                    <div style={{ fontSize: '16px', fontWeight: '700', color: '#0f172a', marginBottom: '6px' }}>{sub.task_title}</div>
+                                                    <div style={{ fontSize: '14px', color: '#64748b' }}>
+                                                        Người nộp: <strong style={{ color: '#475569' }}>{sub.submitted_by_name}</strong> • Sự kiện: {sub.event_title}
+                                                    </div>
+                                                </div>
+                                                <button 
+                                                    onClick={(e) => { e.stopPropagation(); navigate(`/${rolePath}/tasks/view/${sub.task_id}`); }}
+                                                    style={{ padding: '8px 16px', background: '#eff6ff', color: '#2563eb', border: 'none', borderRadius: '6px', fontWeight: '600', fontSize: '14px', cursor: 'pointer', transition: 'background-color 0.2s' }}
+                                                    onMouseEnter={(e) => e.currentTarget.style.backgroundColor = '#dbeafe'}
+                                                    onMouseLeave={(e) => e.currentTarget.style.backgroundColor = '#eff6ff'}
+                                                >
+                                                    Xem & Duyệt
+                                                </button>
+                                            </div>
+                                        ))}
+                                    </div>
+                                )}
+                            </div>
+                        </>
+                    )}
+
                 </div>
             )}
         </div>
