@@ -527,7 +527,8 @@ const updateTask = async (req, res) => {
                 description = ?,
                 assigned_to = ?,
                 priority = ?,
-                due_date = ?
+                due_date = ?,
+                updated_at = NOW()
             WHERE id = ?
             `,
             [
@@ -541,7 +542,9 @@ const updateTask = async (req, res) => {
         );
 
         let assignedName = null;
+        let oldAssignedName = null;
 
+        // Lấy tên người được giao mới
         if (assigned_to) {
 
             const [users] = await db.query(
@@ -559,28 +562,95 @@ const updateTask = async (req, res) => {
 
         }
 
-        if (
-            assigned_to &&
-            assigned_to != task.assigned_to
-        ) {
+        // Lấy tên người được giao cũ
+        if (task.assigned_to) {
 
-            await addTaskHistory(
-                id,
-                `${req.user.full_name} đã giao công việc cho ${assignedName}`,
-                req.user.id
+            const [oldUsers] = await db.query(
+                `
+                SELECT full_name
+                FROM users
+                WHERE id = ?
+                `,
+                [task.assigned_to]
             );
 
-            await createNotification({
-                user_id: assigned_to,
-                title: "Bạn được giao công việc",
-                content: `Bạn được giao công việc: "${title}"`,
-                type: "task",
-                related_id: id
-            });
+            if (oldUsers.length > 0) {
+                oldAssignedName = oldUsers[0].full_name;
+            }
 
         }
 
-        // Ghi lịch sử
+        // Nếu có thay đổi người được giao
+        if (Number(assigned_to || 0) !== Number(task.assigned_to || 0)) {
+
+            // Trường hợp giao cho người mới
+            if (assigned_to) {
+
+                await addTaskHistory(
+                    id,
+                    task.assigned_to
+                        ? `${req.user.full_name} đã phân công lại công việc từ ${oldAssignedName} sang ${assignedName}`
+                        : `${req.user.full_name} đã phân công công việc cho ${assignedName}`,
+                    req.user.id
+                );
+
+                // Thông báo cho người mới
+                await createNotification({
+                    user_id: assigned_to,
+                    title: "Bạn được giao công việc",
+                    content: `Bạn được giao công việc: "${title}"`,
+                    type: "task",
+                    related_id: id
+                });
+
+            }
+
+            // Trường hợp người cũ bị gỡ khỏi task
+            if (task.assigned_to) {
+
+                await createNotification({
+                    user_id: task.assigned_to,
+                    title: "Bạn không còn phụ trách công việc",
+                    content: `Bạn không còn được phân công công việc: "${task.title}"`,
+                    type: "task",
+                    related_id: id
+                });
+
+            }
+
+            // Thông báo cho Leader/người tạo task biết đã phân công lại
+            const receivers = new Set();
+
+            if (task.leader_id && Number(task.leader_id) !== Number(req.user.id)) {
+                receivers.add(task.leader_id);
+            }
+
+            if (task.created_by && Number(task.created_by) !== Number(req.user.id)) {
+                receivers.add(task.created_by);
+            }
+
+            // Không gửi trùng cho người mới và người cũ
+            if (assigned_to) {
+                receivers.delete(Number(assigned_to));
+            }
+
+            if (task.assigned_to) {
+                receivers.delete(Number(task.assigned_to));
+            }
+
+            for (const userId of receivers) {
+                await createNotification({
+                    user_id: userId,
+                    title: "Công việc đã được phân công lại",
+                    content: `Công việc "${title}" đã được phân công lại cho ${assignedName || "chưa có người phụ trách"}`,
+                    type: "task",
+                    related_id: id
+                });
+            }
+
+        }
+
+        // Ghi lịch sử cập nhật chung
         await addTaskHistory(
             id,
             `${req.user.full_name} đã cập nhật công việc`,
