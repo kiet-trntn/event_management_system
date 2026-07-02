@@ -1,12 +1,16 @@
 import React, { useState, useEffect, useCallback, useRef } from "react";
 import { NavLink, useNavigate, Outlet } from "react-router-dom";
+import io from 'socket.io-client'; // Thêm import Socket.IO
 
 function Layout() {
     const navigate = useNavigate();
     const [isDropdownOpen, setIsDropdownOpen] = useState(false);
     const [isNotifOpen, setIsNotifOpen] = useState(false);
     const [notifications, setNotifications] = useState([]);
-    const [unreadCount, setUnreadCount] = useState(0);
+    
+    const [unreadCount, setUnreadCount] = useState(0); // Dành cho THÔNG BÁO
+    const [unreadMessageCount, setUnreadMessageCount] = useState(0); // Dành riêng cho TIN NHẮN
+
     const [showNewNotifToast, setShowNewNotifToast] = useState(false);
     const [toastMessage, setToastMessage] = useState('');
     const prevUnreadRef = useRef(0);
@@ -34,7 +38,7 @@ function Layout() {
         navigate('/login');
     };
 
-    // Hàm tải dữ liệu thông báo
+    // Hàm tải dữ liệu THÔNG BÁO
     const fetchNotifications = useCallback(async () => {
         const token = localStorage.getItem('my_token');
         if (!token) return;
@@ -65,18 +69,60 @@ function Layout() {
         } catch (error) { console.error("Lỗi tải thông báo:", error); }
     }, []);
 
-    // Tự động quét thông báo mỗi 15 giây
+    // Tự động quét thông báo mỗi 3 giây
     useEffect(() => {
         fetchNotifications();
         const interval = setInterval(fetchNotifications, 3000);
         return () => clearInterval(interval);
     }, [fetchNotifications]);
 
+    // ==========================================
+    // LOGIC LẤY SỐ LƯỢNG TIN NHẮN CHƯA ĐỌC VÀ LẮNG NGHE SOCKET
+    // ==========================================
     useEffect(() => {
+        const token = localStorage.getItem('my_token');
+        if (!token) return;
+
+        // Lấy số lượng tin nhắn chưa đọc lần đầu
+        const fetchUnreadMessages = async () => {
+            try {
+                const res = await fetch('http://localhost:5000/api/direct-messages/conversations', {
+                    headers: { 'Authorization': `Bearer ${token}` }
+                });
+                if (res.ok) {
+                    const data = await res.json();
+                    const totalUnread = data.conversations.reduce((sum, conv) => sum + (conv.unread_count || 0), 0);
+                    setUnreadMessageCount(totalUnread);
+                }
+            } catch (error) { console.error("Lỗi lấy số đếm tin nhắn:", error); }
+        };
+
+        fetchUnreadMessages();
+
+        // Kết nối socket ngầm để nghe tin nhắn tới
+        const socket = io('http://localhost:5000', { auth: { token } });
+
+        const handleNewMessage = (msg) => {
+            try {
+                const currentUser = JSON.parse(window.atob(token.split('.')[1]));
+                // Nếu không phải mình gửi VÀ không đang ở trang tin nhắn thì +1
+                if (Number(msg.sender_id) !== Number(currentUser.id)) {
+                    if (!window.location.pathname.includes('/messages')) {
+                        setUnreadMessageCount(prev => prev + 1);
+                    }
+                }
+            } catch (e) {}
+        };
+
+        socket.on('new_direct_message', handleNewMessage);
+        socket.on('new_message', handleNewMessage); // Bắt luôn cả tin nhắn sự kiện nếu cần
+
         return () => {
+            socket.disconnect();
             if (toastTimerRef.current) clearTimeout(toastTimerRef.current);
         };
     }, []);
+    // ==========================================
 
     const handleReadNotif = async (id, relatedId, type) => {
         try {
@@ -103,7 +149,7 @@ function Layout() {
     };
 
     const handleDeleteNotif = async (e, id) => {
-        e.stopPropagation();
+        e.stopPropagation(); 
         try {
             await fetch(`http://localhost:5000/api/notifications/${id}`, {
                 method: 'DELETE',
@@ -111,6 +157,11 @@ function Layout() {
             });
             fetchNotifications();
         } catch (error) { console.error(error); }
+    };
+
+    // Khi người dùng bấm vào tab tin nhắn, tự động reset bộ đếm về 0 trên giao diện
+    const handleMessagesClick = () => {
+        setUnreadMessageCount(0);
     };
 
     return (
@@ -149,18 +200,43 @@ function Layout() {
                         </svg>
                         <span className="nav-text">Lịch làm việc</span>
                     </NavLink>
-
-                    <NavLink to="/staff/messages" className="nav-item">
-                        <svg className="nav-icon" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth="2">
-                            <path strokeLinecap="round" strokeLinejoin="round" d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z"></path>
-                        </svg>
-                        <span className="nav-text">Tin nhắn</span>
-                    </NavLink>
                     
+                    {/* NAV LINK TIN NHẮN (Đã thêm bong bóng chưa đọc) */}
+                   <NavLink to="/staff/messages" className="nav-item" onClick={handleMessagesClick}>
+                                           <svg className="nav-icon" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth="2">
+                                               <path strokeLinecap="round" strokeLinejoin="round" d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z"></path>
+                                           </svg>
+                                           
+                                           <span className="nav-text" style={{ 
+                                               flexGrow: 1, 
+                                               display: 'flex', 
+                                               justifyContent: 'space-between', 
+                                               alignItems: 'center' 
+                                           }}>
+                                               Tin Nhắn
+                                               
+                                               {/* Chấm đỏ đếm số (Dạng hình viên thuốc bo tròn) */}
+                                               {unreadMessageCount > 0 && (
+                                                   <span style={{
+                                                       backgroundColor: '#ef4444', 
+                                                       color: '#ffffff', 
+                                                       fontSize: '11px',
+                                                       fontWeight: 'bold', 
+                                                       padding: '2px 8px', 
+                                                       borderRadius: '12px',
+                                                       marginLeft: '10px'
+                                                   }}>
+                                                       {unreadMessageCount > 99 ? '99+' : unreadMessageCount}
+                                                   </span>
+                                               )}
+                                           </span>
+                                       </NavLink>
+
+                    {/* NÚT THÙNG RÁC NẰM Ở GÓC DƯỚI */}
                     <div style={{ marginTop: 'auto', paddingTop: '16px', borderTop: '1px solid #E5E7EB' }}>
-                        <NavLink to="/staff/trash" className="nav-item" style={{ color: '#EF4444' }}>
-                            <svg className="nav-icon" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth="2">
-                                <path strokeLinecap="round" strokeLinejoin="round" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"></path>
+                        <NavLink to="/admin/trash" className="nav-item" style={{ color: '#EF4444' }}>
+                            <svg className="nav-icon" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"></path>
                             </svg>
                             <span className="nav-text">Thùng Rác</span>
                         </NavLink>
@@ -227,7 +303,7 @@ function Layout() {
                             </div>
                             {isDropdownOpen && (
                                 <div className="dropdown-menu">
-                                    <NavLink to="/staff/changepassword" className="dropdown-item" onClick={() => setIsDropdownOpen(false)}>Đổi Mật Khẩu</NavLink>
+                                    <NavLink to="/admin/changepassword" className="dropdown-item" onClick={() => setIsDropdownOpen(false)}>Đổi Mật Khẩu</NavLink>
                                     <div className="dropdown-divider" />
                                     <button onClick={(e) => { setIsDropdownOpen(false); handleSignOut(e); }} className="dropdown-item text-error" style={{ width: '100%', textAlign: 'left' }}>Đăng Xuất</button>
                                 </div>

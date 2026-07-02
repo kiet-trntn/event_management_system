@@ -162,8 +162,8 @@ function Chat() {
 
         socketRef.current = io('http://localhost:5000', { auth: { token } });
 
-        socketRef.current.on('connect', () => console.log("ĐÃ KẾT NỐI SOCKET"));
-        socketRef.current.on('connect_error', (err) => console.error("LỖI SOCKET:", err.message));
+        socketRef.current.on('connect', () => console.log("🟢 ĐÃ KẾT NỐI SOCKET"));
+        socketRef.current.on('connect_error', (err) => console.error("🔴 LỖI SOCKET:", err.message));
 
         // Nhận tin nhắn mới
         socketRef.current.on('new_direct_message', (msg) => {
@@ -201,8 +201,8 @@ function Chat() {
             if (fetchSidebarDataRef.current) fetchSidebarDataRef.current();
         });
 
-        // Bắt sóng sự kiện Thu hồi tin nhắn từ Backend
-        socketRef.current.on('delete_direct_message', (data) => {
+        // ĐÃ SỬA: Lắng nghe đúng sự kiện "direct_message_recalled" từ backend
+        socketRef.current.on('direct_message_recalled', (data) => {
             setMessages(prev => prev.map(m => Number(m.id) === Number(data.id) ? { ...m, is_revoked: true } : m));
             if (fetchSidebarDataRef.current) fetchSidebarDataRef.current();
         });
@@ -317,7 +317,8 @@ function Chat() {
             try {
                 let res;
                 if (activeTab === 'direct') {
-                    res = await fetch(`http://localhost:5000/api/direct-messages/${msgId}`, { method: 'DELETE', headers });
+                    // ĐÃ SỬA: Gọi đúng API PATCH /:id/recall của bạn Backend
+                    res = await fetch(`http://localhost:5000/api/direct-messages/${msgId}/recall`, { method: 'PATCH', headers });
                 } else {
                     res = await fetch(`http://localhost:5000/api/messages/${msgId}`, { method: 'DELETE', headers });
                 }
@@ -375,21 +376,33 @@ function Chat() {
                         activeTab === 'direct' ? (
                             conversations.length > 0 ? conversations.map(item => {
                                 const isUnread = item.unread_count > 0 || unreadDMs[item.user_id];
+                                // Lấy 2 chữ cái đầu làm Avatar
+                                const avatarInitials = item.full_name ? item.full_name.substring(0, 2).toUpperCase() : 'U';
+
                                 return (
                                     <div key={item.user_id} className={`chat-list-item ${selectedChat?.user_id === item.user_id ? 'selected' : ''} ${isUnread ? 'unread-bg' : ''}`} onClick={() => handleSelectChat(item)}>
-                                        <div className="chat-item-header">
-                                            <strong className={`chat-item-name ${isUnread ? 'unread-text' : ''}`}>{item.full_name}</strong>
-                                            <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                                                {item.last_message_time && (
-                                                    <span className={`chat-sidebar-time ${isUnread ? 'unread-time' : ''}`}>
-                                                        {formatSidebarTime(item.last_message_time)}
-                                                    </span>
-                                                )}
-                                                {isUnread && <span className="chat-unread-dot"></span>}
-                                            </div>
+                                        
+                                        {/* THÊM KHỐI AVATAR */}
+                                        <div className="chat-item-avatar">
+                                            {avatarInitials}
                                         </div>
-                                        <div className={`chat-item-last-msg ${isUnread ? 'unread-text' : ''}`}>
-                                            {item.last_message || 'Chưa có tin nhắn'}
+
+                                        {/* BỌC NỘI DUNG CŨ VÀO chat-item-content */}
+                                        <div className="chat-item-content">
+                                            <div className="chat-item-header">
+                                                <strong className={`chat-item-name ${isUnread ? 'unread-text' : ''}`}>{item.full_name}</strong>
+                                                <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                                                    {item.last_message_time && (
+                                                        <span className={`chat-sidebar-time ${isUnread ? 'unread-time' : ''}`}>
+                                                            {formatSidebarTime(item.last_message_time)}
+                                                        </span>
+                                                    )}
+                                                    {isUnread && <span className="chat-unread-dot"></span>}
+                                                </div>
+                                            </div>
+                                            <div className={`chat-item-last-msg ${isUnread ? 'unread-text' : ''}`}>
+                                                {item.last_message || 'Chưa có tin nhắn'}
+                                            </div>
                                         </div>
                                     </div>
                                 );
@@ -427,6 +440,7 @@ function Chat() {
                     <>
                         <div className="chat-header">
                             <div className="chat-header-avatar">
+                                {/* Dùng icon SVG đẹp thay cho emoji nếu là group chat */}
                                 {activeTab === 'direct' ? (
                                     selectedChat.full_name?.substring(0, 2).toUpperCase()
                                 ) : (

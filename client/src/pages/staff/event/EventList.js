@@ -9,7 +9,7 @@ function EventList() {
     const [loading, setLoading] = useState(true);
 
     const [currentPage, setCurrentPage] = useState(1);
-    const eventsPerPage =8;
+    const eventsPerPage =`10`;
 
     const fetchData = useCallback(async () => {
         try {

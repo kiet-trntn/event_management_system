@@ -8,7 +8,7 @@ function EventList() {
     
     const [currentOfficialPage, setCurrentOfficialPage] = useState(1);
     const [currentDraftPage, setCurrentDraftPage] = useState(1);
-    const eventsPerPage = 8; 
+    const eventsPerPage = 10; 
 
     useEffect(() => {
         document.title = "Quản lý Sự kiện | TaskFlow";

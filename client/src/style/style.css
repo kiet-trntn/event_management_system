@@ -51,18 +51,27 @@ body {
 .text-2xl { font-size: 28px; }
 .text-lg  { font-size: 20px; }
 
-/* 4. MAIN LAYOUT (Khung Sidebar & Vùng chứa nội dung chính) */
+/* =========================================================
+   4. MAIN LAYOUT & MINI SIDEBAR (Trượt mở khi hover)
+   ========================================================= */
 .sidebar { 
     position: fixed; 
     top: 0; 
     left: 0; 
-    width: var(--sidebar-width); 
+    width: 80px; /* Thu gọn mặc định để chừa chỗ cho Icon */
     height: 100vh; 
     background-color: var(--card-bg); 
-    /* border-right: 1px solid var(--border-neutral);  */
     display: flex; 
     flex-direction: column; 
-    z-index: 20; 
+    z-index: 100; /* Tăng để nổi lên trên content khi mở rộng */
+    transition: width 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    overflow-x: hidden;
+    white-space: nowrap;
+}
+
+.sidebar:hover {
+    width: var(--sidebar-width); /* Mở rộng ra 260px */
+    box-shadow: 4px 0 15px rgba(0, 0, 0, 0.05); /* Bóng đổ khi mở */
 }
 
 .sidebar-logo-box { 
@@ -70,9 +79,10 @@ body {
     display: flex; 
     align-items: center; 
     gap: 12px; 
-    padding: 0 24px; 
-    /* border-bottom: 1px solid var(--border-neutral);  */
+    padding-left: 24px; /* Sửa dòng này thành 24px */
     box-sizing: border-box; 
+    overflow: hidden;
+    white-space: nowrap;
 }
 
 .sidebar-logo-img { 
@@ -88,23 +98,35 @@ body {
     letter-spacing: 1.5px; 
     color: var(--primary-color); 
     margin: 0; 
+    opacity: 0;
+    visibility: hidden;
+    transform: translateX(-10px);
+    transition: all 0.3s ease;
+}
+
+.sidebar:hover .sidebar-logo-text {
+    opacity: 1;
+    visibility: visible;
+    transform: translateX(0);
+    transition-delay: 0.1s;
 }
 
 .sidebar-nav { 
     flex: 1; 
-    padding: 24px 16px; 
+    padding: 24px 12px; /* Sửa dòng này thành 12px */
 }
 
 .nav-item { 
     display: flex; 
     align-items: center; 
-    padding: 12px 24px; 
+    padding: 12px 17px; /* Sửa dòng này thành 17px */
     font-size: 16px; 
     color: var(--text-secondary); 
     text-decoration: none; 
     border-radius: 8px; 
     margin-bottom: 8px; 
     transition: all 0.2s; 
+    overflow: hidden;
 }
 
 .nav-item:hover, 
@@ -120,8 +142,22 @@ body {
     flex-shrink: 0; 
 }
 
+.nav-text {
+    opacity: 0;
+    visibility: hidden;
+    transform: translateX(-10px);
+    transition: all 0.3s ease;
+}
+
+.sidebar:hover .nav-text {
+    opacity: 1;
+    visibility: visible;
+    transform: translateX(0);
+    transition-delay: 0.1s;
+}
+
 .main-content { 
-    margin-left: var(--sidebar-width); 
+    margin-left: 80px; /* Khớp với độ rộng sidebar thu gọn */
     min-height: 100vh; 
     display: flex; 
     flex-direction: column; 
@@ -139,7 +175,6 @@ body {
 .header { 
     height: var(--header-height); 
     background-color: var(--card-bg); 
-    /* border-bottom: 1px solid var(--border-neutral);  */
     display: flex; 
     align-items: center; 
     justify-content: flex-end; 
@@ -181,7 +216,6 @@ body {
 
 .notification-btn:hover { color: var(--primary-color); }
 
-/* Class chuẩn cho cái Chuông */
 .icon { 
     width: 24px; 
     height: 24px; 
@@ -229,7 +263,7 @@ body {
 .user-name { font-size: 14px; font-weight: 600; }
 .user-role { font-size: 12px; color: var(--text-secondary); margin-top: 2px; }
 
-/* Menu Dropdown - Đã gia cố để chữ không bị lệch */
+/* Menu Dropdown */
 .dropdown-menu { 
     position: absolute; 
     top: 100%; 
@@ -249,14 +283,12 @@ body {
     box-sizing: border-box; 
 }
 
-
 .user-profile:hover .dropdown-menu { 
     opacity: 1; 
     visibility: visible; 
     transform: translateY(0); 
 }
 
-/* Đảm bảo mũi tên không che mất nội dung */
 .dropdown-menu::before { 
     content: ""; 
     position: absolute; 
@@ -302,7 +334,6 @@ body {
 }
 
 /* 6. FORMS & INPUTS DÙNG CHUNG */
-/* Căn chỉnh cụm Header Form (Nút quay lại & Tiêu đề) */
 .page-header-form {
     max-width: 480px; 
     width: 100%;
@@ -317,15 +348,9 @@ body {
     margin: 0;
 }
 
-.event-page .page-header-form {
-    max-width: 800px;
-}
+.event-page .page-header-form { max-width: 800px; }
+.task-page .page-header-form { max-width: 1000px; }
 
-.task-page .page-header-form {
-    max-width: 1000px;
-}
-
-/* Style cho nút Quay lại */
 .btn-back {
     background: transparent;
     border: none;
@@ -341,11 +366,8 @@ body {
     transition: color 0.2s ease;
 }
 
-.btn-back:hover {
-    color: var(--primary-color, #2563EB); 
-}
+.btn-back:hover { color: var(--primary-color, #2563EB); }
 
-/* 1. Class gốc: Chứa toàn bộ "phần hồn" (màu sắc, viền, đổ bóng...) và kích thước mặc định */
 .form-card { 
     background-color: var(--card-bg); 
     padding: 32px; 
@@ -354,13 +376,10 @@ body {
     width: 100%; 
     box-shadow: 0 4px 6px -1px rgba(0,0,0,0.05); 
     margin: 0 auto;
-    max-width: 480px; /* Mặc định form sẽ nhỏ gọn (dành cho Thêm Thành Viên, Đăng Nhập...) */
+    max-width: 480px; 
 }
 
-/* 2. Class biến thể: Chỉ dùng để "ghi đè" độ rộng khi cần thiết */
-.form-card.large {
-    max-width: 800px; /* Dành cho các form nhiều cột (Thêm Sự Kiện) */
-}
+.form-card.large { max-width: 800px; }
 
 .form-group { margin-bottom: 20px; }
 .form-label { display: block; font-size: 14px; font-weight: 600; margin-bottom: 8px; color: var(--text-primary); }
@@ -407,26 +426,22 @@ body {
 
 .btn-secondary { background-color: transparent; color: var(--text-secondary); border: 1px solid var(--border-neutral); padding: 10px 24px; font-size: 14px; }
 .btn-secondary:hover { background-color: var(--bg-neutral); color: var(--text-primary); border-color: var(--text-secondary); }
+
 /* 7. BẢNG DỮ LIỆU DÙNG CHUNG */
 .data-table { 
     width: 100%; 
-    
-    /* 🌟 BÍ QUYẾT 1: Đổi thành separate để bật lại tính năng bo góc */
     border-collapse: separate; 
     border-spacing: 0; 
-    
     background: var(--card-bg, #ffffff); 
-    border-radius: 12px; /* Tăng bo góc lên chút cho mềm mại */
+    border-radius: 12px; 
     overflow: hidden; 
     border: 1px solid var(--border-neutral, #e5e7eb); 
-    
-    /* 🌟 BÍ QUYẾT 2: Thêm bóng đổ nhẹ để bảng nổi bật, hết bị "chìm" */
     box-shadow: 0 4px 15px rgba(0, 0, 0, 0.04);
 }
 
 .data-table th { 
     background: var(--bg-neutral, #f9fafb); 
-    padding: 16px 20px; /* Tăng padding lên xíu cho thoáng */
+    padding: 16px 20px; 
     text-align: center; 
     font-size: 13px; 
     font-weight: 600; 
@@ -441,761 +456,163 @@ body {
     text-align: center; 
 }
 
-/* 🌟 BÍ QUYẾT 3: Xóa đường kẻ ngang ở dòng cuối cùng để không bị cấn vào viền bo góc */
-.data-table tr:last-child td {
-    border-bottom: none;
-}
+.data-table tr:last-child td { border-bottom: none; }
+.data-table th:first-child, .data-table td:first-child { text-align: left; }
 
-.data-table th:first-child, .data-table td:first-child { 
-    text-align: left; 
-}
-
-/* =========================================================
-   ĐỊNH DẠNG CHUNG CHO 4 NÚT ICON (HÌNH VUÔNG)
-   ========================================================= */
+/* Các nút Edit, View, Delete */
 .btn-view, .btn-edit, .btn-delete, .btn-restore {
-    display: inline-flex;
-    align-items: center;
-    justify-content: center;
-    width: 32px;
-    height: 32px;
-    padding: 0; /* Xóa chữ nên trả padding về 0 để thành hình vuông */
-    border-radius: 6px;
-    cursor: pointer;
-    transition: all 0.2s ease;
+    display: inline-flex; align-items: center; justify-content: center;
+    width: 32px; height: 32px; padding: 0; border-radius: 6px;
+    cursor: pointer; transition: all 0.2s ease;
 }
 
-/* Khoảng cách giữa các nút */
-.btn-view, .btn-edit {
-    margin-right: 8px;
-}
+.btn-view, .btn-edit { margin-right: 8px; }
 
-/* =========================================================
-   MÀU SẮC TỪNG NÚT (Giữ nguyên hệ màu cũ của bạn)
-   ========================================================= */
+.btn-view { border: 1px solid #bfdbfe; background-color: #eff6ff; color: #3b82f6; }
+.btn-view:hover { background-color: #dbeafe; border-color: #93c5fd; }
 
-/* 1. Nút Xem (Màu xanh dương) */
-.btn-view {
-    border: 1px solid #bfdbfe;     
-    background-color: #eff6ff;     
-    color: #3b82f6;                
-}
-.btn-view:hover {
-    background-color: #dbeafe;
-    border-color: #93c5fd;
-}
+.btn-edit { border: 1px solid #d1d5db; background-color: #ffffff; color: #374151; }
+.btn-edit:hover { background: #f9fafb !important; border-color: #9ca3af !important; }
 
-/* 2. Nút Sửa (Màu xám) */
-.btn-edit { 
-    border: 1px solid #d1d5db; 
-    background-color: #ffffff; 
-    color: #374151; 
-}
-.btn-edit:hover { 
-    background: #f9fafb !important; 
-    border-color: #9ca3af !important; 
-}
+.btn-delete { border: 1px solid #fee2e2; background-color: #fff5f5; color: #dc2626; }
+.btn-delete:hover { background: #fee2e2 !important; border-color: #fca5a5 !important; }
 
-/* 3. Nút Khóa / Xóa (Màu đỏ) */
-.btn-delete { 
-    border: 1px solid #fee2e2; 
-    background-color: #fff5f5; 
-    color: #dc2626; 
-}
-.btn-delete:hover { 
-    background: #fee2e2 !important; 
-    border-color: #fca5a5 !important; 
-}
+.btn-restore { border: 1px solid #bbf7d0; background-color: #f0fdf4; color: #166534; }
+.btn-restore:hover { background: #dcfce7; border-color: #86efac; }
 
-/* 4. Nút Mở khóa / Khôi phục (Màu xanh lá) */
-.btn-restore { 
-    border: 1px solid #bbf7d0; 
-    background-color: #f0fdf4; 
-    color: #166534; 
-}
-.btn-restore:hover { 
-    background: #dcfce7; 
-    border-color: #86efac; 
-}
+/* Status Badges */
 .status-badge {
-
-    padding: 4px 12px;
-
-    border-radius: 20px;
-
-    font-size: 12px;
-
-    font-weight: 600;
-
-    display: inline-block;
-
-    text-align: center;
-
-}.status-active {
-
-    background-color: #DEF7EC; /* Xanh nhạt */
-
-    color: #03543F; /* Chữ xanh đậm */
-
-    border: 1px solid #BCF0DA;
-
-}.status-inactive {
-
-    background-color: #FDE8E8; /* Đỏ nhạt */
-
-    color: #9B1C1C; /* Chữ đỏ thẫm */
-
-    border: 1px solid #F8B4B4;
-
+    padding: 4px 12px; border-radius: 20px; font-size: 12px;
+    font-weight: 600; display: inline-block; text-align: center;
 }
+.status-active { background-color: #DEF7EC; color: #03543F; border: 1px solid #BCF0DA; }
+.status-inactive { background-color: #FDE8E8; color: #9B1C1C; border: 1px solid #F8B4B4; }
 
-/* 8. CÁC THÔNG BÁO LỖI VÀ THÀNH CÔNG */
+/* 8. ALERTS */
 .alert-message { 
-    padding: 12px 16px; 
-    margin-bottom: 20px; 
-    border-radius: 8px; 
-    font-size: 14px; 
-    font-weight: 500; 
-    display: flex; 
-    align-items: center; 
-    border: 1px solid transparent; 
+    padding: 12px 16px; margin-bottom: 20px; border-radius: 8px; font-size: 14px; 
+    font-weight: 500; display: flex; align-items: center; border: 1px solid transparent; 
 }
-
 .alert-message.error { background-color: #FDE8E8; color: #9B1C1C; border-color: #F8B4B4; }
 .alert-message.success { background-color: #DEF7EC; color: #03543F; border-color: #BCF0DA; }
 
-/* 9. GIAO DIỆN ĐĂNG NHẬP (LOGIN PAGE) */
+/* 9. LOGIN PAGE */
 .login-wrapper { 
-    display: flex; 
-    flex-direction: column; 
-    justify-content: center; 
-    align-items: center; 
-    min-height: 100vh; 
-    padding: 20px; 
-    background-color: var(--bg-neutral);
-    background-image: radial-gradient(#e1e7f0 1px, transparent 1px);
-    background-size: 20px 20px;
+    display: flex; flex-direction: column; justify-content: center; align-items: center; 
+    min-height: 100vh; padding: 20px; background-color: var(--bg-neutral);
+    background-image: radial-gradient(#e1e7f0 1px, transparent 1px); background-size: 20px 20px;
 }
+.login-header { display: flex; align-items: center; justify-content: center; gap: 12px; margin-bottom: 32px; }
+.login-logo { width: 48px; height: 48px; border-radius: 12px; } 
+.login-title { font-size: 36px; font-weight: 900; letter-spacing: 2px; color: var(--primary-color); text-transform: uppercase; margin: 0; }
+.disclaimer-text { font-size: 12px; color: var(--text-secondary); text-align: center; margin-bottom: 20px; }
 
-.login-header { 
-    display: flex; 
-    align-items: center; 
-    justify-content: center; 
-    gap: 12px; 
-    margin-bottom: 32px; 
-}
-
-.login-logo { 
-    width: 48px; 
-    height: 48px; 
-    border-radius: 12px; 
-} 
-
-.login-title { 
-    font-size: 36px; 
-    font-weight: 900; 
-    letter-spacing: 2px; 
-    color: var(--primary-color); 
-    text-transform: uppercase; 
-    margin: 0; 
-}
-
-.disclaimer-text { 
-    font-size: 12px; 
-    color: var(--text-secondary); 
-    text-align: center; 
-    margin-bottom: 20px; 
-}
-
-/* 10. LAYOUT ĐỔI MẬT KHẨU (CHIA 2 CỘT) */
+/* 10. ĐỔI MẬT KHẨU */
 .password-settings-layout {
-    display: flex;
-    flex-direction: row;
-    align-items: flex-start;
-    justify-content: center;
-    gap: 64px;
-    width: 100%;
-    margin-top: 24px;
+    display: flex; flex-direction: row; align-items: flex-start; justify-content: center;
+    gap: 64px; width: 100%; margin-top: 24px;
 }
+.password-card-header { flex: 1; max-width: 340px; text-align: left; }
+.password-card-header h3 { font-size: 24px; font-weight: 700; color: var(--text-primary); margin-bottom: 12px; }
+.password-card-header p { font-size: 14px; color: var(--text-secondary); line-height: 1.6; }
+.password-settings-layout .form-card { margin: 0; flex: 1.2; }
 
-.password-card-header {
-    flex: 1;
-    max-width: 340px;
-    text-align: left;
-}
+/* 13. PAGINATION */
+.pagination-container { display: flex; justify-content: flex-end; align-items: center; margin-top: 20px; gap: 8px; }
+.btn-page { padding: 6px 12px; border: 1px solid var(--border-neutral); background-color: var(--card-bg); color: var(--text-secondary); border-radius: 6px; cursor: pointer; font-size: 14px; font-weight: 500; transition: all 0.2s ease; }
+.btn-page:hover:not(:disabled) { background-color: var(--bg-neutral); color: var(--primary-color); border-color: var(--primary-color); }
+.btn-page.active { background-color: var(--primary-color); color: #FFFFFF; border-color: var(--primary-color); }
+.btn-page:disabled { opacity: 0.5; cursor: not-allowed; }
 
-.password-card-header h3 {
-    font-size: 24px;
-    font-weight: 700;
-    color: var(--text-primary);
-    margin-bottom: 12px;
-}
+/* 14. VIEW MEMBER PROFILE */
+.profile-card { max-width: 600px; margin: 0 auto; }
+.profile-header-info { text-align: center; margin-bottom: 30px; }
+.profile-avatar { width: 80px; height: 80px; border-radius: 50%; background-color: var(--primary-color); color: #FFFFFF; display: flex; align-items: center; justify-content: center; font-size: 32px; font-weight: bold; margin: 0 auto 12px; }
+.profile-name { margin: 0 0 8px 0; font-size: 20px; color: var(--text-primary); }
+.profile-details-section { border-top: 1px solid var(--border-neutral); padding-top: 20px; }
+.profile-info-row { display: flex; margin-bottom: 16px; padding-bottom: 16px; border-bottom: 1px solid #f9fafb; }
+.profile-info-row:last-child { border-bottom: none; margin-bottom: 0; padding-bottom: 0; }
+.profile-info-label { width: 140px; color: var(--text-secondary); font-size: 14px; font-weight: 500; }
+.profile-info-value { color: var(--text-primary); font-size: 14px; }
+.profile-info-value.bold { font-weight: 600; }
+.profile-actions { display: flex; justify-content: center; margin-top: 30px; gap: 12px; }
+.btn-edit-large { background-color: #ffffff; color: #374151; border: 1px solid #d1d5db; border-radius: 6px; font-size: 13px; font-weight: 500; cursor: pointer; transition: all 0.2s ease; padding: 8px 24px; }
+.btn-edit-large:hover { background: #f9fafb; border-color: #9ca3af; }
 
-.password-card-header p {
-    font-size: 14px;
-    color: var(--text-secondary);
-    line-height: 1.6;
-}
+/* 15. DANH SÁCH SỰ KIỆN */
+.event-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(240px, 1fr)); gap: 20px; width: 100%; margin-top: 12px; }
+.event-card { background-color: var(--card-bg, #ffffff); border: 1px solid #F1F5F9; border-radius: 12px; padding: 20px; box-shadow: 0 1px 3px rgba(0,0,0,0.05); transition: transform 0.2s ease, box-shadow 0.2s ease; display: flex; flex-direction: column; height: 100%; }
+.event-card:hover { transform: translateY(-2px); box-shadow: 0 10px 15px -3px rgba(0,0,0,0.08); }
+.event-card-header { margin-bottom: 14px; }
+.badge-pill { padding: 4px 10px; border-radius: 20px; font-size: 11px; font-weight: 600; display: inline-block; }
+.badge-yellow { background-color: #FEF3C7; color: #92400E; }
+.badge-blue { background-color: #DBEAFE; color: #1E40AF; }
+.badge-green { background-color: #DCFCE7; color: #166534; }
+.badge-gray { background-color: #F3F4F6; color: #374151; }
+.event-title { font-size: 15px; font-weight: 700; color: #111827; margin: 0 0 12px 0; line-height: 1.4; }
+.event-detail-row { display: flex; align-items: flex-start; gap: 8px; margin-bottom: 8px; font-size: 12px; color: #6B7280; line-height: 1.4; }
+.event-detail-icon { flex-shrink: 0; margin-top: 2px; }
+.event-actions { display: flex; justify-content: flex-end; align-items: center; gap: 8px; margin-top: auto; padding-top: 16px; }
 
-.password-settings-layout .form-card {
-    margin: 0;
-    flex: 1.2;
-}
-
-/* =========================================================
-   13. PHÂN TRANG (PAGINATION)
-   ========================================================= */
-.pagination-container {
-    display: flex;
-    justify-content: flex-end;
-    align-items: center;
-    margin-top: 20px;
-    gap: 8px;
-}
-
-.btn-page {
-    padding: 6px 12px;
-    border: 1px solid var(--border-neutral);
-    background-color: var(--card-bg);
-    color: var(--text-secondary);
-    border-radius: 6px;
-    cursor: pointer;
-    font-size: 14px;
-    font-weight: 500;
-    transition: all 0.2s ease;
-}
-
-.btn-page:hover:not(:disabled) {
-    background-color: var(--bg-neutral);
-    color: var(--primary-color);
-    border-color: var(--primary-color);
-}
-
-.btn-page.active {
-    background-color: var(--primary-color);
-    color: #FFFFFF;
-    border-color: var(--primary-color);
-}
-
-.btn-page:disabled {
-    opacity: 0.5;
-    cursor: not-allowed;
-}
-
-/* =========================================================
-   14. TRANG HỒ SƠ CHI TIẾT (VIEW MEMBER)
-   ========================================================= */
-
-/* Thu gọn chiều rộng của Card cho cân đối */
-.profile-card {
-    max-width: 600px;
-    margin: 0 auto;
-}
-
-/* Khu vực Avatar & Tên */
-.profile-header-info {
-    text-align: center;
-    margin-bottom: 30px;
-}
-
-.profile-avatar {
-    width: 80px;
-    height: 80px;
-    border-radius: 50%;
-    background-color: var(--primary-color);
-    color: #FFFFFF;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    font-size: 32px;
-    font-weight: bold;
-    margin: 0 auto 12px;
-}
-    
-.profile-name {
-    margin: 0 0 8px 0;
-    font-size: 20px;
-    color: var(--text-primary);
-}
-
-/* Khu vực Thông tin chi tiết */
-.profile-details-section {
-    border-top: 1px solid var(--border-neutral);
-    padding-top: 20px;
-}
-
-.profile-info-row {
-    display: flex;
-    margin-bottom: 16px;
-    padding-bottom: 16px;
-    border-bottom: 1px solid #f9fafb;
-}
-
-/* Xóa gạch dưới ở dòng cuối cùng cho đẹp */
-.profile-info-row:last-child {
-    border-bottom: none;
-    margin-bottom: 0;
-    padding-bottom: 0;
-}
-
-.profile-info-label {
-    width: 140px;
-    color: var(--text-secondary);
-    font-size: 14px;
-    font-weight: 500;
-}
-
-.profile-info-value {
-    color: var(--text-primary);
-    font-size: 14px;
-}
-
-.profile-info-value.bold {
-    font-weight: 600;
-}
-
-/* Khu vực Nút bấm */
-.profile-actions {
-    display: flex;
-    justify-content: center;
-    margin-top: 30px;
-    gap: 12px;
-}
-
-/* Biến nút sửa icon vuông thành nút chữ dài */
-.btn-edit-large {
-    background-color: #ffffff; 
-    color: #374151; 
-    border: 1px solid #d1d5db; 
-    border-radius: 6px; 
-    font-size: 13px; 
-    font-weight: 500; 
-    cursor: pointer; 
-    transition: all 0.2s ease;
-    padding: 8px 24px; /* Rộng hơn nút vuông */
-}
-
-.btn-edit-large:hover {
-    background: #f9fafb; 
-    border-color: #9ca3af; 
-}
-
-/* =========================================================
-   15. DANH SÁCH SỰ KIỆN (EVENT LIST CARDS) - CHUẨN DESIGN
-   ========================================================= */
-
-.event-grid {
-    display: grid;
-    grid-template-columns: repeat(auto-fill, minmax(240px, 1fr)); 
-    gap: 20px;
-    width: 100%;
-    margin-top: 12px;
-}
-
-.event-card {
-    background-color: var(--card-bg, #ffffff);
-    border: 1px solid #F1F5F9; /* Viền siêu nhạt */
-    border-radius: 12px;
-    padding: 20px;
-    box-shadow: 0 1px 3px rgba(0,0,0,0.05); /* Bóng đổ cực kỳ nhẹ */
-    transition: transform 0.2s ease, box-shadow 0.2s ease;
-    display: flex;
-    flex-direction: column;
-    height: 100%;
-}
-
-.event-card:hover {
-    transform: translateY(-2px);
-    box-shadow: 0 10px 15px -3px rgba(0,0,0,0.08);
-}
-
-.event-card-header {
-    margin-bottom: 14px;
-}
-
-/* Định dạng Badge chuẩn Design */
-.badge-pill {
-    padding: 4px 10px;
-    border-radius: 20px;
-    font-size: 11px;
-    font-weight: 600;
-    display: inline-block;
-}
-
-.badge-yellow { background-color: #FEF3C7; color: #92400E; } /* Sắp diễn ra */
-.badge-blue { background-color: #DBEAFE; color: #1E40AF; }   /* Đang lên kế hoạch */
-.badge-green { background-color: #DCFCE7; color: #166534; }  /* Đã hoàn thành */
-.badge-gray { background-color: #F3F4F6; color: #374151; }   /* Đã hủy */
-
-/* Tiêu đề Sự Kiện */
-.event-title {
-    font-size: 15px;
-    font-weight: 700;
-    color: #111827;
-    margin: 0 0 12px 0;
-    line-height: 1.4;
-}
-
-/* Các dòng thông tin (Location, Date) */
-.event-detail-row {
-    display: flex;
-    align-items: flex-start;
-    gap: 8px;
-    margin-bottom: 8px;
-    font-size: 12px;
-    color: #6B7280;
-    line-height: 1.4;
-}
-
-.event-detail-icon {
-    flex-shrink: 0;
-    margin-top: 2px;
-}
-
-/* Khu vực chứa nút bấm dưới đáy thẻ */
-.event-actions {
-    display: flex;
-    justify-content: flex-end; /* Đẩy toàn bộ nút sang bên phải */
-    align-items: center;
-    gap: 8px; /* Khoảng cách giữa nút sửa và xóa */
-    margin-top: auto; /* Đẩy khu vực này xuống sát đáy thẻ */
-    padding-top: 16px; /* Cách nội dung bên trên ra một chút */
-}
-
-/* =========================================================
-   16. BỔ SUNG CHO TÍNH NĂNG SỰ KIỆN (EVENTS)
-   ========================================================= */
-/* Tiêu đề khu vực (Có vạch màu bên trái) */
-.section-title {
-    font-size: 18px;
-    font-weight: 600;
-    margin-bottom: 16px;
-    color: var(--text-primary);
-    padding-left: 8px;
-    border-left: 4px solid var(--primary-color);
-}
+/* 16. BỔ SUNG SỰ KIỆN & KANBAN */
+.section-title { font-size: 18px; font-weight: 600; margin-bottom: 16px; color: var(--text-primary); padding-left: 8px; border-left: 4px solid var(--primary-color); }
 .section-title.warning { border-left-color: var(--warning-color); }
-
-/* Trạng thái "Nháp" */
-.status-draft {
-    background-color: #FFFBEB; 
-    color: #B45309; 
-    border: 1px solid #FDE68A;
-}
-
-/* Đường kẻ phân cách trong thẻ sự kiện */
-.event-divider {
-    height: 1px;
-    background-color: var(--border-neutral);
-    width: 100%;
-    margin: 12px 0;
-}
-
-/* Nút Công bố sự kiện (Màu xanh lá) */
-.btn-publish {
-    background-color: #10B981;
-    color: #FFFFFF;
-    border: none;
-    font-weight: 600; 
-    border-radius: 8px; 
-    cursor: pointer; 
-    transition: all 0.2s ease;
-    padding: 10px 24px; 
-    font-size: 14px;
-}
+.status-draft { background-color: #FFFBEB; color: #B45309; border: 1px solid #FDE68A; }
+.event-divider { height: 1px; background-color: var(--border-neutral); width: 100%; margin: 12px 0; }
+.btn-publish { background-color: #10B981; color: #FFFFFF; border: none; font-weight: 600; border-radius: 8px; cursor: pointer; transition: all 0.2s ease; padding: 10px 24px; font-size: 14px; }
 .btn-publish:hover { background-color: #059669; }
+.btn-trash { display: flex; align-items: center; gap: 6px; padding: 8px 16px; background-color: #ffffff; color: #ef4444; border: 1px solid #fca5a5; border-radius: 6px; font-weight: 600; cursor: pointer; box-shadow: 0 1px 2px rgba(0,0,0,0.05); transition: all 0.2s ease; }
+.btn-trash:hover { background-color: #fef2f2; }
 
-.btn-trash {
-    display: flex;
-    align-items: center;
-    gap: 6px;
-    padding: 8px 16px;
-    background-color: #ffffff;
-    color: #ef4444; 
-    border: 1px solid #fca5a5; 
-    border-radius: 6px;
-    font-weight: 600;
-    cursor: pointer;
-    box-shadow: 0 1px 2px rgba(0,0,0,0.05);
-    transition: all 0.2s ease;
-}
+/* KANBAN BOARD */
+.kanban-board { display: flex; gap: 16px; overflow-x: auto; padding-bottom: 16px; min-height: 70vh; align-items: flex-start; }
+.kanban-column { flex: 0 0 300px; background-color: #f1f2f4; border-radius: 12px; padding: 12px; display: flex; flex-direction: column; max-height: 100%; transition: background-color 0.2s ease; }
+.kanban-column.drag-over { background-color: #e4e6ea; border: 2px dashed #091e4240; }
+.kanban-col-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px; padding: 4px 8px; }
+.kanban-col-count { background-color: #091e420f; color: #172b4d; padding: 2px 8px; border-radius: 12px; font-size: 12px; font-weight: 600; }
+.kanban-card { background-color: #ffffff; padding: 12px 16px; border-radius: 8px; box-shadow: 0 1px 1px #091e4240; cursor: grab; position: relative; margin-bottom: 8px; border: 1px solid transparent; }
+.kanban-card:active { cursor: grabbing; box-shadow: 0 4px 8px #091e4240; transform: rotate(2deg); }
+.kanban-card:hover { background-color: #f7f8f9; }
+.kanban-card.locked { cursor: not-allowed; background-color: #f0fdf4; border: 1px solid #bbf7d0; box-shadow: none; }
+.kanban-card.locked:active { transform: none; }
+.kanban-tags { display: flex; justify-content: space-between; gap: 8px; margin-bottom: 8px; flex-wrap: wrap; }
+.kanban-tag { font-size: 11px; padding: 2px 8px; border-radius: 4px; font-weight: 600; }
+.kanban-tag.event-name { background-color: #e0e7ff; color: #4338ca; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 110px; }
+.kanban-card-title { margin: 0 0 8px 0; font-size: 14px; color: #172b4d; line-height: 1.4; font-weight: 500; }
+.kanban-card-date { margin: 0; font-size: 12px; color: #626f86; }
+.kanban-locked-status { display: flex; align-items: center; justify-content: center; gap: 6px; margin-top: 12px; padding-top: 8px; border-top: 1px dashed #bbf7d0; }
+.kanban-locked-status p { margin: 0; font-size: 12px; color: #16a34a; font-weight: 600; }
+.btn-file { display: inline-flex; align-items: center; gap: 6px; padding: 6px 12px; border-radius: 6px; font-size: 13px; font-weight: 600; cursor: pointer; transition: all 0.2s ease; border: 1px solid #bfdbfe; background-color: #eff6ff; color: #3b82f6; margin-left: 8px; }
+.btn-file:hover { background-color: #dbeafe; border-color: #93c5fd; }
 
-/* Hiệu ứng khi rê chuột vào */
-.btn-trash:hover {
-    background-color: #fef2f2; 
-}
-
-/* --- KANBAN BOARD (TRELLO STYLE) --- */
-.kanban-board {
-    display: flex;
-    gap: 16px;
-    overflow-x: auto;
-    padding-bottom: 16px;
-    min-height: 70vh;
-    align-items: flex-start; /* Để các cột không bị kéo giãn chiều cao bằng nhau */
-}
-
-/* Các cột Kanban (Giống Trello) */
-.kanban-column {
-    flex: 0 0 300px; /* Độ rộng cố định */
-    background-color: #f1f2f4; /* Màu nền xám nhạt đặc trưng của Trello */
-    border-radius: 12px;
-    padding: 12px;
-    display: flex;
-    flex-direction: column;
-    max-height: 100%;
-    transition: background-color 0.2s ease;
-}
-
-/* Hiệu ứng khi đang kéo thẻ lơ lửng trên cột */
-.kanban-column.drag-over {
-    background-color: #e4e6ea;
-    border: 2px dashed #091e4240;
-}
-
-.kanban-col-header {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    margin-bottom: 12px;
-    padding: 4px 8px;
-}
-
-.kanban-col-count {
-    background-color: #091e420f;
-    color: #172b4d;
-    padding: 2px 8px;
-    border-radius: 12px;
-    font-size: 12px;
-    font-weight: 600;
-}
-
-/* --- KANBAN CARD --- */
-.kanban-card {
-    background-color: #ffffff;
-    padding: 12px 16px;
-    border-radius: 8px;
-    box-shadow: 0 1px 1px #091e4240; /* Bóng mờ kiểu Trello */
-    cursor: grab; /* Con trỏ hình bàn tay bóp */
-    position: relative;
-    margin-bottom: 8px;
-    border: 1px solid transparent;
-}
-
-.kanban-card:active {
-    cursor: grabbing; /* Bàn tay nắm lại khi đang kéo */
-    box-shadow: 0 4px 8px #091e4240;
-    transform: rotate(2deg); /* Hơi nghiêng nhẹ khi kéo */
-}
-
-.kanban-card:hover {
-    background-color: #f7f8f9;
-}
-
-/* Thẻ bị KHÓA ở cột Done */
-.kanban-card.locked {
-    cursor: not-allowed; /* Không cho kéo nữa */
-    background-color: #f0fdf4;
-    border: 1px solid #bbf7d0;
-    box-shadow: none;
-}
-.kanban-card.locked:active {
-    transform: none;
-}
-
-/* Nhãn bên trong Card */
-.kanban-tags {
-    display: flex;
-    justify-content: space-between;
-    gap: 8px;
-    margin-bottom: 8px;
-    flex-wrap: wrap;
-}
-
-.kanban-tag {
-    font-size: 11px;
-    padding: 2px 8px;
-    border-radius: 4px;
-    font-weight: 600;
-}
-
-.kanban-tag.event-name {
-    background-color: #e0e7ff;
-    color: #4338ca;
-    white-space: nowrap;
-    overflow: hidden;
-    text-overflow: ellipsis;
-    max-width: 110px;
-}
-
-.kanban-card-title {
-    margin: 0 0 8px 0;
-    font-size: 14px;
-    color: #172b4d;
-    line-height: 1.4;
-    font-weight: 500;
-}
-
-.kanban-card-date {
-    margin: 0;
-    font-size: 12px;
-    color: #626f86;
-}
-
-/* Chỗ hiển thị ổ khóa */
-.kanban-locked-status {
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    gap: 6px;
-    margin-top: 12px;
-    padding-top: 8px;
-    border-top: 1px dashed #bbf7d0;
-}
-
-.kanban-locked-status p {
-    margin: 0;
-    font-size: 12px;
-    color: #16a34a;
-    font-weight: 600;
-}
-
-/* ========================= */
-/* Nút Xem File (Có chứa chữ) */
-/* ========================= */
-.btn-file {
-    display: inline-flex;
-    align-items: center;
-    gap: 6px; /* Khoảng cách giữa icon và chữ */
-    padding: 6px 12px; /* Kích thước co giãn tự do theo chữ */
-    border-radius: 6px;
-    font-size: 13px;
-    font-weight: 600;
-    cursor: pointer;
-    transition: all 0.2s ease;
-    
-    /* Tông màu xanh dương */
-    border: 1px solid #bfdbfe;     
-    background-color: #eff6ff;     
-    color: #3b82f6;
-    
-    /* Đẩy nhẹ ra xa các nút bên cạnh */
-    margin-left: 8px; 
-}
-
-.btn-file:hover {
-    background-color: #dbeafe;
-    border-color: #93c5fd;
-}
-
-/* =========================================================
-   17. VIEW TASK DETAIL COMPONENT (Trang chi tiết công việc)
-   ========================================================= */
-
-/* Khóa độ rộng và chia cột chuẩn cho màn hình to */
-.task-view-wrapper {
-    display: grid;
-    grid-template-columns: 2fr 1fr; /* Cột trái chiếm 2 phần, cột phải chiếm 1 phần */
-    gap: 24px;
-    max-width: 1100px; /* Khóa độ rộng tối đa để không bị giãn bành trướng */
-    margin: 0 auto;    /* Tự động canh giữa màn hình */
-    align-items: flex-start;
-}
-
-/* Ép tiêu đề Header của trang Chi tiết cũng canh giữa và bằng kích thước ở dưới */
-.task-page .page-header-form {
-    max-width: 1100px;
-    margin: 0 auto 20px auto;
-}
-
-/* ĐIỂM GÃY RESPONSIVE: Khi thu nhỏ màn hình xuống (Tablet/Mobile) -> Gộp thành 1 cột dọc */
-@media screen and (max-width: 1024px) {
-    .task-view-wrapper {
-        grid-template-columns: 1fr;
-    }
-}
-
-.task-info-grid {
-    display: grid; 
-    grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); 
-    gap: 16px 24px;
-    margin-bottom: 32px; 
-    padding: 20px; 
-    background-color: var(--bg-neutral);
-    border-radius: 12px;
-    font-size: 14px;
-}
-
-.task-grid-item {
-    display: flex; 
-    align-items: center; 
-    gap: 8px; 
-    color: var(--text-secondary);
-}
-
-.task-grid-label {
-    font-weight: 600; 
-    color: var(--text-primary);
-}
-
-/* Các nhãn trạng thái đặc trưng */
+/* 17. VIEW TASK DETAIL */
+.task-view-wrapper { display: grid; grid-template-columns: 2fr 1fr; gap: 24px; max-width: 1100px; margin: 0 auto; align-items: flex-start; }
+.task-page .page-header-form { max-width: 1100px; margin: 0 auto 20px auto; }
+@media screen and (max-width: 1024px) { .task-view-wrapper { grid-template-columns: 1fr; } }
+.task-info-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 16px 24px; margin-bottom: 32px; padding: 20px; background-color: var(--bg-neutral); border-radius: 12px; font-size: 14px; }
+.task-grid-item { display: flex; align-items: center; gap: 8px; color: var(--text-secondary); }
+.task-grid-label { font-weight: 600; color: var(--text-primary); }
 .badge-creator { color: var(--primary-color); background-color: var(--primary-light); padding: 4px 10px; border-radius: 6px; font-weight: 500; }
 .badge-assignee { color: #059669; background-color: #ecfdf5; padding: 4px 10px; border-radius: 6px; font-weight: 500; }
 .badge-priority-high { color: #dc2626; background-color: #fef2f2; padding: 4px 10px; border-radius: 6px; font-weight: 600; }
 .badge-priority-medium { color: #d97706; background-color: #fffbeb; padding: 4px 10px; border-radius: 6px; font-weight: 600; }
 .badge-priority-low { color: #4b5563; background-color: #f3f4f6; padding: 4px 10px; border-radius: 6px; font-weight: 600; }
 .badge-deadline-empty { color: var(--text-secondary); background-color: var(--border-neutral); padding: 4px 10px; border-radius: 6px; font-weight: 600; }
+.task-desc-title { font-size: 16px; font-weight: 600; color: var(--text-primary); margin: 0 0 12px 0; display: inline-flex; align-items: center; gap: 8px; }
+.task-desc-box { color: #334155; line-height: 1.7; white-space: pre-wrap; font-size: 15px; background-color: var(--card-bg); border: 1px solid var(--border-neutral); padding: 16px; border-radius: 8px; }
+.task-desc-empty { color: var(--text-secondary); font-style: italic; }
 
-/* Phần hiển thị mô tả */
-.task-desc-title {
-    font-size: 16px; 
-    font-weight: 600; 
-    color: var(--text-primary); 
-    margin: 0 0 12px 0;
-    display: inline-flex;
-    align-items: center;
-    gap: 8px;
-}
-
-.task-desc-box {
-    color: #334155; 
-    line-height: 1.7; 
-    white-space: pre-wrap; 
-    font-size: 15px;
-    background-color: var(--card-bg);
-    border: 1px solid var(--border-neutral);
-    padding: 16px;
-    border-radius: 8px;
-}
-
-.task-desc-empty {
-    color: var(--text-secondary);
-    font-style: italic;
-}
-
-
-/* =========================================================
-   19. GIAO DIỆN LỊCH LÀM VIỆC & MÀU SẮC TRẠNG THÁI
-   ========================================================= */
-
-/* --- Khu vực Header & Chú thích --- */
-.calendar-header-section {
-    margin-bottom: 24px;
-    max-width: 100% !important;
-}
-
-/* CHÚ THÍCH MÀU SẮC (LEGEND) */
+/* 19. CALENDAR */
+.calendar-header-section { margin-bottom: 24px; max-width: 100% !important; }
 .calendar-legend { display: flex; gap: 16px; margin-top: 12px; font-size: 11px; flex-wrap: wrap; align-items: center; }
 .legend-item { display: flex; align-items: center; gap: 6px; font-weight: 500; color: #475569; }
 .legend-color-box { width: 14px; height: 14px; border-radius: 4px; }
-
-/* Đổ màu chuẩn cho cục chú thích */
-.legend-color-box.pending { background-color: #f59e0b; }     
-.legend-color-box.in-progress { background-color: #3b82f6; } 
-.legend-color-box.completed { background-color: #10b981; }   
-.legend-color-box.overdue { background-color: #ef4444; }     
-
-/* ĐỒNG BỘ MÀU THẺ CÔNG VIỆC TRÊN LỊCH KHỚP VỚI CHÚ THÍCH */
+.legend-color-box.pending { background-color: #f59e0b !important; }     
+.legend-color-box.in-progress { background-color: #3b82f6 !important; } 
+.legend-color-box.submitted { background-color: #8e8b85 !important; }
+.legend-color-box.completed { background-color: #10b981 !important; }   
+.legend-color-box.overdue { background-color: #ef4444 !important; }     
+.legend-color-box.event-progress { background-color: #c76dd1 !important; }
 .calendar-event-submitted { background-color: #8e8b85 !important; color: #fff !important; }
 .calendar-event-pending { background-color: #f59e0b !important; color: #fff !important; }
 .calendar-event-in-progress { background-color: #3b82f6 !important; color: #fff !important; }
@@ -1203,41 +620,19 @@ body {
 .calendar-event-overdue { background-color: #ef4444 !important; color: #fff !important; }
 .calendar-event-cancelled { background-color: #94a3b8 !important; color: #fff !important; text-decoration: line-through; }
 .calendar-project-block { background-color: #c76dd1 !important; color: #fff !important; font-weight: 600 !important; }
-
-/* CSS RIÊNG CHO CÁC Ô ĐỔ MÀU CHÚ THÍCH (LEGEND BOX) */
-.legend-color-box.pending { background-color: #f59e0b !important; }
-.legend-color-box.in-progress { background-color: #3b82f6 !important; }
-.legend-color-box.submitted { background-color: #8e8b85 !important; }
-.legend-color-box.completed { background-color: #10b981 !important; }
-.legend-color-box.overdue { background-color: #ef4444 !important; }
-.legend-color-box.event-progress { background-color: #c76dd1 !important; }
-/* --- Khung chứa bộ Lịch --- */
 .calendar-wrapper { margin: 0; padding: 20px; height: 75vh; min-height: 600px; max-width: 100% !important; }
 .calendar-wrapper .rbc-calendar { height: 100%; }
-
-/* --- THANH CÔNG CỤ CHUẨN GOOGLE CALENDAR --- */
 .rbc-toolbar { display: none !important; }
 .gg-toolbar { display: flex; justify-content: space-between; align-items: center; margin-bottom: 24px; padding: 0 4px; }
 .gg-toolbar-left { display: flex; align-items: center; gap: 16px; }
-
 .gg-btn-today { padding: 8px 16px; border: 1px solid #d1d5db; background-color: transparent; border-radius: 6px; font-size: 14px; font-weight: 500; color: #374151; cursor: pointer; transition: all 0.2s; }
 .gg-btn-today:hover { background-color: #f3f4f6; color: #111827; }
-
 .gg-nav-group { display: flex; gap: 4px; }
 .gg-btn-nav { width: 32px; height: 32px; border: none; background: transparent; border-radius: 50%; cursor: pointer; font-size: 14px; color: #4b5563; display: flex; align-items: center; justify-content: center; transition: background-color 0.2s; }
 .gg-btn-nav:hover { background-color: #f3f4f6; }
-
 .gg-toolbar-label { font-size: 22px; font-weight: 400; color: #374151; margin-left: 8px; text-transform: capitalize; }
-
-.gg-view-select {
-    padding: 8px 16px; border: 1px solid #d1d5db; background-color: transparent; border-radius: 6px; font-size: 14px; font-weight: 500; color: #374151; cursor: pointer; outline: none;
-    -webkit-appearance: none; -moz-appearance: none; appearance: none;
-    background-image: url("data:image/svg+xml;charset=US-ASCII,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20width%3D%22292.4%22%20height%3D%22292.4%22%3E%3Cpath%20fill%3D%22%23374151%22%20d%3D%22M287%2069.4a17.6%2017.6%200%200%200-13-5.4H18.4c-5%200-9.3%201.8-12.9%205.4A17.6%2017.6%200%200%200%200%2082.2c0%205%201.8%209.3%205.4%2012.9l128%20127.9c3.6%203.6%207.8%205.4%2012.8%205.4s9.2-1.8%2012.8-5.4L287%2095c3.5-3.5%205.4-7.8%205.4-12.8%200-5-1.9-9.2-5.5-12.8z%22%2F%3E%3C%2Fsvg%3E");
-    background-repeat: no-repeat; background-position: right 12px top 50%; background-size: 10px auto; padding-right: 32px;
-}
+.gg-view-select { padding: 8px 16px; border: 1px solid #d1d5db; background-color: transparent; border-radius: 6px; font-size: 14px; font-weight: 500; color: #374151; cursor: pointer; outline: none; -webkit-appearance: none; -moz-appearance: none; appearance: none; background-image: url("data:image/svg+xml;charset=US-ASCII,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20width%3D%22292.4%22%20height%3D%22292.4%22%3E%3Cpath%20fill%3D%22%23374151%22%20d%3D%22M287%2069.4a17.6%2017.6%200%200%200-13-5.4H18.4c-5%200-9.3%201.8-12.9%205.4A17.6%2017.6%200%200%200%200%2082.2c0%205%201.8%209.3%205.4%2012.9l128%20127.9c3.6%203.6%207.8%205.4%2012.8%205.4s9.2-1.8%2012.8-5.4L287%2095c3.5-3.5%205.4-7.8%205.4-12.8%200-5-1.9-9.2-5.5-12.8z%22%2F%3E%3C%2Fsvg%3E"); background-repeat: no-repeat; background-position: right 12px top 50%; background-size: 10px auto; padding-right: 32px; }
 .gg-view-select:hover { background-color: #f3f4f6; }
-
-/* Các cấu hình làm mỏng thẻ Lịch */
 .rbc-event { padding: 2px 6px !important; border-radius: 4px !important; min-height: 20px !important; margin-bottom: 2px !important; }
 .rbc-event-content { font-size: 11px !important; font-weight: 500 !important; line-height: 1.3 !important; white-space: nowrap !important; overflow: hidden !important; text-overflow: ellipsis !important; }
 .rbc-date-cell { font-size: 12px !important; padding: 4px !important; }
@@ -1245,431 +640,182 @@ body {
 .rbc-show-more { font-size: 11px !important; color: #4b5563 !important; background-color: #f3f4f6 !important; padding: 2px 6px !important; border-radius: 4px; display: inline-block; margin-top: 2px; }
 .rbc-show-more:hover { background-color: #e5e7eb !important; text-decoration: none !important; }
 
+/* =========================================================
+   NOTIFICATION DROPDOWN & TOAST
+   ========================================================= */
+.notification-badge { position: absolute; top: -4px; right: -4px; display: flex; align-items: center; justify-content: center; height: 18px; min-width: 18px; padding: 0 5px; border-radius: 10px; background-color: #ef4444; border: 2px solid #ffffff; color: white; font-size: 11px; font-weight: bold; }
+.notif-dropdown { position: absolute; top: 100%; right: 0; margin-top: 12px; background-color: #ffffff; border: 1px solid #e2e8f0; border-radius: 12px; box-shadow: 0 10px 25px rgba(0,0,0,0.15); width: 350px; z-index: 9999 !important; display: block !important; overflow: hidden; }
+.notif-dropdown::before { content: ""; position: absolute; top: -6px; right: 20px; width: 12px; height: 12px; background-color: #ffffff; border-top: 1px solid #e2e8f0; border-left: 1px solid #e2e8f0; transform: rotate(45deg); z-index: 0; }
+.notif-header { display: flex; justify-content: space-between; align-items: center; padding: 16px; border-bottom: 1px solid #e2e8f0; position: relative; z-index: 1; background-color: #ffffff; }
+.notif-header h4 { margin: 0; font-size: 16px; font-weight: 700; color: #1e293b; }
+.btn-read-all { background: none; border: none; color: #3b82f6; font-size: 13px; font-weight: 600; cursor: pointer; }
+.btn-read-all:hover { text-decoration: underline; color: #2563eb; }
+.notif-body { max-height: 400px; overflow-y: auto; background-color: #ffffff; }
+.notif-empty { padding: 32px 16px; text-align: center; color: #64748b; font-size: 14px; margin: 0; }
+.notif-item { display: flex; justify-content: space-between; align-items: flex-start; padding: 14px 16px; border-bottom: 1px solid #f1f5f9; cursor: pointer; transition: background-color 0.2s; position: relative; z-index: 1; }
+.notif-item:hover { background-color: #f8fafc; }
+.notif-item.unread { background-color: #eff6ff; }
+.notif-item.unread:hover { background-color: #e0f2fe; }
+.notif-toast { position: fixed; top: 88px; right: 24px; z-index: 10000; background-color: #ffffff; color: #111827; padding: 14px 18px; border-radius: 14px; border: 1px solid #e2e8f0; box-shadow: 0 18px 40px rgba(15, 23, 42, 0.12); display: inline-flex; align-items: center; justify-content: space-between; gap: 12px; min-width: 260px; max-width: 340px; animation: toastFadeIn 0.22s ease-out; }
+.toast-close { background: none; border: none; color: #475569; font-size: 16px; cursor: pointer; padding: 0; }
+.toast-close:hover { color: #ffffff; }
+@keyframes toastFadeIn { from { opacity: 0; transform: translateY(-8px); } to { opacity: 1; transform: translateY(0); } }
+.notif-content-box { flex: 1; padding-right: 12px; }
+.notif-title { margin: 0 0 6px 0; font-size: 14px; font-weight: 700; color: #0f172a; }
+.notif-desc { margin: 0 0 8px 0; font-size: 13px; color: #475569; line-height: 1.4; }
+.notif-time { margin: 0; font-size: 11px; color: #94a3b8; font-weight: 500; }
+.notif-delete-btn { background: none; border: none; color: #cbd5e1; font-size: 16px; font-weight: bold; cursor: pointer; padding: 4px; transition: color 0.2s; }
+.notif-item:hover .notif-delete-btn { color: #ef4444; }
 
 /* =========================================================
-   GIAO DIỆN HỘP THÔNG BÁO (NOTIFICATION DROPDOWN)
+   GIAO DIỆN CHAT FULL VIỀN
    ========================================================= */
 
-/* Căn chỉnh lại cái chấm đỏ (Badge) chứa số lượng thông báo */
-.notification-badge {
-    position: absolute; 
-    top: -4px; 
-    right: -4px; 
+/* Layout Tổng Thể - Giao diện Full viền sát lề */
+.chat-page-container {
     display: flex;
-    align-items: center;
-    justify-content: center;
-    height: 18px; 
-    min-width: 18px; 
-    padding: 0 5px;
-    border-radius: 10px; 
-    background-color: #ef4444; 
-    border: 2px solid #ffffff; 
-    color: white;
-    font-size: 11px;
-    font-weight: bold;
-}
-
-/* Khung Dropdown thông báo */
-.notif-dropdown {
-    position: absolute;
-    top: 100%;
-    right: 0;
-    margin-top: 12px;
-    background-color: #ffffff;
-    border: 1px solid #e2e8f0;
-    border-radius: 12px;
-    box-shadow: 0 10px 25px rgba(0,0,0,0.15);
-    width: 350px;
-    z-index: 9999 !important; /* Đảm bảo luôn nổi lên trên cùng */
-    display: block !important;
+    height: calc(100vh - var(--header-height)); 
+    margin: 0; /* Xóa các số margin âm lúc nãy đi, trả về 0 */
+    background: #ffffff;
+    border-radius: 0; 
+    box-shadow: none; 
+    border: none; 
+    border-top: none; 
     overflow: hidden;
 }
 
-/* Mũi tên chỉ lên trên của hộp thông báo */
-.notif-dropdown::before { 
-    content: ""; position: absolute; top: -6px; right: 20px; 
-    width: 12px; height: 12px; background-color: #ffffff; 
-    border-top: 1px solid #e2e8f0; border-left: 1px solid #e2e8f0; 
-    transform: rotate(45deg); z-index: 0;
-}
-
-/* Header của thông báo */
-.notif-header {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    padding: 16px;
-    border-bottom: 1px solid #e2e8f0;
-    position: relative;
-    z-index: 1;
-    background-color: #ffffff;
-}
-
-.notif-header h4 {
-    margin: 0;
-    font-size: 16px;
-    font-weight: 700;
-    color: #1e293b;
-}
-
-/* Nút đánh dấu đã đọc tất cả */
-.btn-read-all {
-    background: none; border: none;
-    color: #3b82f6;
-    font-size: 13px; font-weight: 600;
-    cursor: pointer;
-}
-.btn-read-all:hover { text-decoration: underline; color: #2563eb; }
-
-/* Thân của thông báo (có scroll) */
-.notif-body {
-    max-height: 400px;
-    overflow-y: auto;
-    background-color: #ffffff;
-}
-
-.notif-empty {
-    padding: 32px 16px;
-    text-align: center;
-    color: #64748b;
-    font-size: 14px;
-    margin: 0;
-}
-
-/* Từng dòng thông báo */
-.notif-item {
-    display: flex;
-    justify-content: space-between;
-    align-items: flex-start;
-    padding: 14px 16px;
-    border-bottom: 1px solid #f1f5f9;
-    cursor: pointer;
-    transition: background-color 0.2s;
-    position: relative;
-    z-index: 1;
-}
-
-.notif-item:hover { background-color: #f8fafc; }
-
-/* Thông báo CHƯA ĐỌC sẽ có nền hơi xanh */
-.notif-item.unread { background-color: #eff6ff; }
-.notif-item.unread:hover { background-color: #e0f2fe; }
-
-.notif-toast {
-    position: fixed;
-    top: 88px;
-    right: 24px;
-    z-index: 10000;
-    background-color: #ffffff;
-    color: #111827;
-    padding: 14px 18px;
-    border-radius: 14px;
-    border: 1px solid #e2e8f0;
-    box-shadow: 0 18px 40px rgba(15, 23, 42, 0.12);
-    display: inline-flex;
-    align-items: center;
-    justify-content: space-between;
-    gap: 12px;
-    min-width: 260px;
-    max-width: 340px;
-    animation: toastFadeIn 0.22s ease-out;
-}
-
-.toast-close {
-    background: none;
-    border: none;
-    color: #475569;
-    font-size: 16px;
-    cursor: pointer;
+.page-container:has(.chat-page-container) {
+    max-width: 100%;
     padding: 0;
 }
 
-.toast-close:hover {
-    color: #ffffff;
-}
-
-@keyframes toastFadeIn {
-    from { opacity: 0; transform: translateY(-8px); }
-    to { opacity: 1; transform: translateY(0); }
-}
-
-.notif-content-box {
-    flex: 1;
-    padding-right: 12px;
-}
-
-.notif-title {
-    margin: 0 0 6px 0;
-    font-size: 14px;
-    font-weight: 700;
-    color: #0f172a;
-}
-
-.notif-desc {
-    margin: 0 0 8px 0;
-    font-size: 13px;
-    color: #475569;
-    line-height: 1.4;
-}
-
-.notif-time {
-    margin: 0;
-    font-size: 11px;
-    color: #94a3b8;
-    font-weight: 500;
-}
-
-/* Nút dấu X để xóa thông báo */
-.notif-delete-btn {
-    background: none;
-    border: none;
-    color: #cbd5e1;
-    font-size: 16px;
-    font-weight: bold;
-    cursor: pointer;
-    padding: 4px;
-    transition: color 0.2s;
-}
-.notif-item:hover .notif-delete-btn { color: #ef4444; }
-
-/* Layout Tổng Thể */
-.chat-page-container {
-    display: flex;
-    height: calc(100vh - 120px); 
-    background: #ffffff;
-    border-radius: 12px;
-    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.05);
-    border: 1px solid #e2e8f0;
-    overflow: hidden;
-    margin-top: 10px;
-}
-
-/* Thanh Cuộn */
+/* Thanh Cuộn cho Chat */
 .chat-list::-webkit-scrollbar,
-.chat-messages-area::-webkit-scrollbar {
-    width: 6px;
-}
+.chat-messages-area::-webkit-scrollbar { width: 6px; }
 .chat-list::-webkit-scrollbar-track,
-.chat-messages-area::-webkit-scrollbar-track {
-    background: transparent;
-}
+.chat-messages-area::-webkit-scrollbar-track { background: transparent; }
 .chat-list::-webkit-scrollbar-thumb,
-.chat-messages-area::-webkit-scrollbar-thumb {
-    background: #cbd5e1;
-    border-radius: 10px;
-}
+.chat-messages-area::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 10px; }
 .chat-list:hover::-webkit-scrollbar-thumb,
-.chat-messages-area:hover::-webkit-scrollbar-thumb {
-    background: #94a3b8; 
-}
+.chat-messages-area:hover::-webkit-scrollbar-thumb { background: #94a3b8; }
 
-/* SIDEBAR */
+/* SIDEBAR CHAT (Chỉnh sang màu trắng cho đồng bộ với giao diện ảnh) */
 .chat-sidebar {
-    width: 320px;
-    background: #f8fafc;
-    border-right: 1px solid #e2e8f0;
+    width: 390px;
+    background: #ffffff; 
+    border-right: none; /* QUAN TRỌNG: Đã xóa viền bên phải */
+    box-shadow: 2px 0 12px rgba(0,0,0,0.03); /* Thêm bóng đổ mờ tạo chiều sâu */
     display: flex;
     flex-direction: column;
+    z-index: 2; /* Đảm bảo bóng đổ nổi lên trên khung chat bên phải */
 }
-.chat-tabs {
-    display: flex;
-    padding: 20px 15px 10px;
-    gap: 10px;
-}
-.chat-tab-btn {
-    flex: 1;
-    padding: 10px 0;
-    border: none;
-    border-radius: 20px; 
-    background: #e2e8f0;
-    color: #475569;
-    font-weight: 600;
-    font-size: 14px;
-    cursor: pointer;
-    transition: all 0.2s ease;
-}
-.chat-tab-btn.active {
-    background: #2563eb;
-    color: #ffffff;
-    box-shadow: 0 4px 10px rgba(37, 99, 235, 0.2); 
-}
-.chat-new-btn-container {
-    padding: 5px 15px 15px;
-}
-.chat-new-btn {
-    width: 100%;
-    padding: 10px;
-    background: #ffffff;
-    border: 1px solid #cbd5e1;
-    border-radius: 10px;
-    color: #334155;
-    font-weight: 600;
-    cursor: pointer;
-    transition: 0.2s;
-}
+
+.chat-tabs { display: flex; padding: 20px 15px 10px; gap: 10px; }
+.chat-tab-btn { flex: 1; padding: 10px 0; border: none; border-radius: 20px; background: #e2e8f0; color: #475569; font-weight: 600; font-size: 14px; cursor: pointer; transition: all 0.2s ease; }
+.chat-tab-btn.active { background: #2563eb; color: #ffffff; box-shadow: 0 4px 10px rgba(37, 99, 235, 0.2); }
+.chat-new-btn-container { padding: 5px 15px 15px; }
+.chat-new-btn { width: 100%; padding: 10px; background: #ffffff; border: 1px solid #cbd5e1; border-radius: 10px; color: #334155; font-weight: 600; cursor: pointer; transition: 0.2s; }
 .chat-new-btn:hover { background: #f1f5f9; }
 .chat-new-btn.active { background: #ef4444; color: #fff; border-color: #ef4444; }
-.chat-search-input {
-    width: calc(100% - 30px);
-    margin: 0 15px 10px;
-    padding: 10px 15px;
-    border-radius: 10px;
-    border: 1px solid #cbd5e1;
-    outline: none;
-    font-size: 14px;
-}
+.chat-search-input { width: calc(100% - 30px); margin: 0 15px 10px; padding: 10px 15px; border-radius: 10px; border: 1px solid #cbd5e1; outline: none; font-size: 14px; }
 
 /* Danh Sách Chat Bên Trái */
-.chat-list {
-    flex: 1;
-    overflow-y: auto;
-}
-.chat-list-item {
-    padding: 16px 20px;
-    border-bottom: 1px solid #f1f5f9;
-    cursor: pointer;
-    transition: all 0.2s ease;
-}
-.chat-list-item:hover {
-    background: #f1f5f9;
-}
-.chat-list-item.selected {
-    background: #eff6ff;
-    border-left: 4px solid #2563eb;
-}
-.chat-list-item.unread-bg {
-    background-color: #f0f9ff;
-}
-.chat-item-name.unread-text {
-    font-weight: 700;
-    color: #0f172a;
-}
-.chat-item-last-msg.unread-text {
-    font-weight: 600;
-    color: #1e293b;
-}
-.chat-item-header {
+/* Danh Sách Chat Bên Trái */
+.chat-list { flex: 1; overflow-y: auto; padding-top: 8px; }
+
+.chat-list-item { 
+    padding: 12px 14px; /* Chỉnh lại padding một chút cho cân đối */
+    margin: 0 12px 6px 12px; 
+    border-bottom: none; 
+    border-radius: 12px; 
+    cursor: pointer; 
+    transition: all 0.2s ease; 
+    
+    /* THÊM 3 DÒNG NÀY ĐỂ AVATAR VÀ CHỮ NẰM NGANG */
     display: flex;
-    justify-content: space-between;
     align-items: center;
-    margin-bottom: 6px;
+    gap: 12px;
 }
-.chat-item-name {
-    font-size: 15px;
-    color: #334155;
-    font-weight: 500;
-}
-.chat-unread-dot {
-    width: 10px;
-    height: 10px;
-    background: #ef4444;
+
+.chat-list-item:hover { background: #f1f5f9; }
+.chat-list-item.selected { background: #eff6ff; border-left: none; }
+.chat-list-item.unread-bg { background-color: #f0f9ff; }
+
+/* =========================================
+   THÊM 2 CLASS MỚI NÀY DÀNH CHO AVATAR
+   ========================================= */
+.chat-item-avatar {
+    width: 44px;
+    height: 44px;
     border-radius: 50%;
-    display: inline-block;
-    box-shadow: 0 0 5px rgba(239, 68, 68, 0.4);
-}
-.chat-item-last-msg {
-    font-size: 13px;
-    color: #64748b;
-    white-space: nowrap;
-    overflow: hidden;
-    text-overflow: ellipsis;
-}
-
-/* THỜI GIAN SIDEBAR BÊN TRÁI */
-.chat-sidebar-time {
-    font-size: 11px;
-    color: #94a3b8;
-    font-weight: 400;
-}
-.chat-sidebar-time.unread-time {
-    color: #2563eb;
-    font-weight: 600;
-}
-
-/* KHU VỰC MAIN CHAT */
-.chat-main {
-    flex: 1;
+    background-color: var(--primary-light, #DBEAFE);
+    color: var(--primary-color, #2563EB);
     display: flex;
-    flex-direction: column;
-    background: #ffffff;
+    align-items: center;
+    justify-content: center;
+    font-size: 15px;
+    font-weight: 700;
+    flex-shrink: 0; /* Đảm bảo avatar không bị bóp méo */
 }
-.chat-empty-state {
+
+.chat-item-content {
+    flex: 1;
+    overflow: hidden;
     display: flex;
     flex-direction: column;
     justify-content: center;
-    align-items: center;
-    height: 100%;
-    color: #64748b;
 }
+/* ========================================= */
 
-/* ĐÃ XÓA Z-INDEX 10 Ở ĐÂY ĐỂ KHÔNG BỊ ĐÈ THÔNG BÁO */
+.chat-item-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 4px; }
+.chat-item-name { font-size: 15px; color: #334155; font-weight: 500; }
+.chat-item-name.unread-text { font-weight: 700; color: #0f172a; }
+
+.chat-item-last-msg { font-size: 13px; color: #64748b; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.chat-item-last-msg.unread-text { font-weight: 600; color: #1e293b; }
+
+.chat-sidebar-time { font-size: 11px; color: #94a3b8; font-weight: 400; }
+.chat-sidebar-time.unread-time { color: #2563eb; font-weight: 600; }
+.chat-unread-dot { width: 10px; height: 10px; background: #ef4444; border-radius: 50%; display: inline-block; box-shadow: 0 0 5px rgba(239, 68, 68, 0.4); }
+
+/* KHU VỰC MAIN CHAT */
+.chat-main { flex: 1; display: flex; flex-direction: column; background: #ffffff; }
+.chat-empty-state { display: flex; flex-direction: column; justify-content: center; align-items: center; height: 100%; color: #64748b; }
 .chat-header {
     display: flex;
     align-items: center;
-    padding: 16px 24px;
-    border-bottom: 1px solid #e2e8f0;
+    /* Giới hạn nội dung 900px ở giữa, nếu màn nhỏ tự co lại 24px */
+    padding: 16px max(24px, calc((100% - 900px) / 2));
     background: #ffffff;
-}
-.chat-header-avatar {
-    width: 42px;
-    height: 42px;
-    background: #2563eb;
-    color: #ffffff;
-    border-radius: 50%;
-    display: flex;
-    justify-content: center;
-    align-items: center;
-    font-size: 18px;
-    font-weight: bold;
-    margin-right: 15px;
-}
-.chat-header-info h4 {
-    margin: 0 0 4px 0;
-    font-size: 16px;
-    color: #1e293b;
-    font-weight: 600;
-}
-.chat-header-status {
-    font-size: 12px;
-    color: #10b981;
-    font-weight: 500;
-}
+    box-shadow: 0 4px 15px rgba(0,0,0,0.02);
+    z-index: 2;
+    position: relative;
+}.chat-header-avatar { width: 42px; height: 42px; background: #2563eb; color: #ffffff; border-radius: 50%; display: flex; justify-content: center; align-items: center; font-size: 18px; font-weight: bold; margin-right: 10px; }
+.chat-header-info h4 { margin: 0 0 4px 0; font-size: 16px; color: #1e293b; font-weight: 600; }
+.chat-header-status { font-size: 12px; color: #10b981; font-weight: 500; }
 
-/* Khu Vực Hiển Thị Tin Nhắn */
+/* Khu Vực Hiển Thị Tin Nhắn (Cập nhật sang nền trắng) */
 .chat-messages-area {
     flex: 1;
-    padding: 24px;
+    /* Gom tin nhắn vào giữa thẳng hàng với Header */
+    padding: 24px max(24px, calc((100% - 900px) / 2));
     overflow-y: auto;
-    background: #f8fafc; 
+    background: #ffffff;
     display: flex;
     flex-direction: column;
     gap: 16px; 
 }
-.chat-message-wrapper {
-    display: flex;
-    flex-direction: column;
-}
-.chat-message-wrapper.me {
+.chat-message-wrapper { display: flex; flex-direction: column; }
+.chat-message-wrapper.me { align-items: flex-end; }
+.chat-message-wrapper.other { align-items: flex-start; }
+.chat-message-sender { font-size: 12px; color: #64748b; margin-bottom: 6px; margin-left: 4px; }
+.chat-message-row { 
+    display: flex; 
     align-items: flex-end; 
+    gap: 10px; 
+    max-width: 550px; /* Khóa độ dài bong bóng chat, giúp khối chữ gọn gàng hơn */
 }
-.chat-message-wrapper.other {
-    align-items: flex-start; 
-}
-.chat-message-sender {
-    font-size: 12px;
-    color: #64748b;
-    margin-bottom: 6px;
-    margin-left: 4px;
-}
-.chat-message-row {
-    display: flex;
-    align-items: flex-end; 
-    gap: 10px;
-    max-width: 70%;
-}
-.chat-message-row.me {
-    flex-direction: row-reverse; 
-}
+.chat-message-row.me { flex-direction: row-reverse; }
 
 /* Bong Bóng Chat */
 .chat-message-bubble {
@@ -1685,95 +831,30 @@ body {
     color: #ffffff;
     border-bottom-right-radius: 4px; 
 }
+/* Cập nhật thiết kế bóng chat người nhận (Bỏ viền, nền xám nhạt) */
 .chat-message-bubble.other {
-    background: #ffffff;
-    color: #1e293b;
-    border: 1px solid #e2e8f0;
+    background: #f1f5f9; 
+    color: var(--text-primary);
+    border: none; 
     border-bottom-left-radius: 4px; 
 }
 
 /* THỜI GIAN GỬI TIN NHẮN (DƯỚI BONG BÓNG) */
-.chat-message-time {
-    font-size: 11px;
-    color: #94a3b8;
-    margin-top: 4px;
-    padding: 0 4px;
-}
+.chat-message-time { font-size: 11px; color: #94a3b8; margin-top: 4px; padding: 0 4px; }
 
 /* UI TIN NHẮN ĐÃ THU HỒI */
-.chat-message-bubble.revoked {
-    background: #f1f5f9;
-    color: #94a3b8;
-    border: 1px solid #e2e8f0;
-    font-style: italic;
-    padding: 10px 16px;
-    border-radius: 20px;
-    box-shadow: none;
-}
+.chat-message-bubble.revoked { background: #f1f5f9; color: #94a3b8; border: 1px solid #e2e8f0; font-style: italic; padding: 10px 16px; border-radius: 20px; box-shadow: none; }
 
 /* Nút xóa tin nhắn */
-.chat-msg-delete-btn {
-    background: none;
-    border: none;
-    color: #cbd5e1;
-    cursor: pointer;
-    padding: 5px;
-    opacity: 0;
-    transition: all 0.2s;
-    border-radius: 50%;
-}
-.chat-message-row:hover .chat-msg-delete-btn {
-    opacity: 1; 
-}
-.chat-msg-delete-btn:hover {
-    color: #ef4444;
-    background: #fee2e2;
-}
+.chat-msg-delete-btn { background: none; border: none; color: #cbd5e1; cursor: pointer; padding: 5px; opacity: 0; transition: all 0.2s; border-radius: 50%; }
+.chat-message-row:hover .chat-msg-delete-btn { opacity: 1; }
+.chat-msg-delete-btn:hover { color: #ef4444; background: #fee2e2; }
 
 /* KHU VỰC NHẬP TEXT */
-.chat-input-area {
-    display: flex;
-    padding: 16px 24px;
-    border-top: 1px solid #e2e8f0;
-    background: #ffffff;
-    gap: 12px;
-    align-items: center;
-}
-.chat-input-field {
-    flex: 1;
-    padding: 14px 20px;
-    border: 1px solid transparent;
-    border-radius: 30px; 
-    outline: none;
-    background: #f1f5f9;
-    font-size: 15px;
-    transition: 0.2s;
-}
-.chat-input-field:focus {
-    border-color: #2563eb;
-    background: #ffffff;
-    box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.1); 
-}
-.chat-send-btn {
-    padding: 0 24px;
-    height: 48px;
-    border: none;
-    border-radius: 30px;
-    font-weight: 600;
-    font-size: 14px;
-    transition: all 0.2s;
-}
-.chat-send-btn.active {
-    background: #2563eb;
-    color: #ffffff;
-    cursor: pointer;
-}
-.chat-send-btn.active:hover {
-    background: #1d4ed8;
-    transform: translateY(-1px);
-}
-.chat-send-btn.disabled {
-    background: #e2e8f0;
-    color: #94a3b8;
-    cursor: not-allowed;
-}
+.chat-input-area { display: flex; padding: 16px 24px; border-top: 1px solid #e2e8f0; background: #ffffff; gap: 12px; align-items: center; }
+.chat-input-field { flex: 1; padding: 14px 20px; border: 1px solid transparent; border-radius: 30px; outline: none; background: #f1f5f9; font-size: 15px; transition: 0.2s; }
+.chat-input-field:focus { border-color: #2563eb; background: #ffffff; box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.1); }
+.chat-send-btn { padding: 0 24px; height: 48px; border: none; border-radius: 30px; font-weight: 600; font-size: 14px; transition: all 0.2s; }
+.chat-send-btn.active { background: #2563eb; color: #ffffff; cursor: pointer; }
+.chat-send-btn.active:hover { background: #1d4ed8; transform: translateY(-1px); }
+.chat-send-btn.disabled { background: #e2e8f0; color: #94a3b8; cursor: not-allowed; }

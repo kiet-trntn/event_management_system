@@ -116,7 +116,7 @@ function TaskList() {
                     
                     {groupedTasks.map(group => {
                         const isExpanded = expandedEvents[group.eventId];
-                        const displayTasks = isExpanded ? group.tasks : group.tasks.slice(0, 4);
+                        const displayTasks = isExpanded ? group.tasks : group.tasks.slice(0, 5);
                         const hasMore = group.tasks.length > 4;
 
                         return (
@@ -161,7 +161,7 @@ function TaskList() {
                                             onClick={() => toggleExpand(group.eventId)}
                                             style={{ background: 'none', border: 'none', color: 'var(--primary-color)', fontSize: '14px', fontWeight: '600', cursor: 'pointer' }}
                                         >
-                                            {isExpanded ? 'Thu gọn ⏶' : `Xem thêm ${group.tasks.length - 4} công việc nữa ⏷`}
+                                            {isExpanded ? 'Thu gọn ⏶' : `Xem thêm ${group.tasks.length - 5} công việc nữa ⏷`}
                                         </button>
                                     </div>
                                 )}
