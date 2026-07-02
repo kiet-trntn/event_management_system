@@ -361,6 +361,47 @@ const getAvailableUsersForEvent = async (req, res) => {
 
 };
 
+const getMe = async (req, res) => {
+
+    try {
+
+        const [users] = await db.query(
+            `
+            SELECT
+                id,
+                full_name,
+                email,
+                role,
+                status,
+                created_at
+            FROM users
+            WHERE id = ?
+            `,
+            [req.user.id]
+        );
+
+        if (users.length === 0) {
+            return res.status(404).json({
+                message: "Không tìm thấy người dùng"
+            });
+        }
+
+        res.json({
+            user: users[0]
+        });
+
+    } catch (error) {
+
+        console.log(error);
+
+        res.status(500).json({
+            message: error.message
+        });
+
+    }
+
+};
+
 module.exports = {
     getAllUsers,
     getUserById,
@@ -368,5 +409,6 @@ module.exports = {
     updateUser,
     updateStatus,
     deleteUser,
-    getAvailableUsersForEvent
+    getAvailableUsersForEvent,
+    getMe
 }

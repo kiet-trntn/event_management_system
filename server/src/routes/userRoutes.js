@@ -8,7 +8,8 @@ const {
     updateUser,
     updateStatus,
     deleteUser,
-    getAvailableUsersForEvent
+    getAvailableUsersForEvent,
+    getMe
 } = require("../controllers/userController"); // Import hàm createUser từ userController
 
 //  Gọi các "người gác cổng" (Middleware) để bảo mật đường dẫn
@@ -28,6 +29,13 @@ router.get(
     roleMiddleware("admin"), 
     getAllUsers
 ); 
+
+// XEM THÔNG TIN CÁ NHÂN: User đang đăng nhập xem thông tin của chính mình
+router.get(
+    "/me",
+    authMiddleware,
+    getMe
+);
 
 // XEM CHI TIẾT: Đường dẫn lấy thông tin chi tiết của một người dùng theo ID (Chỉ Admin mới được phép xem thông tin chi tiết người dùng)
 router.get(
@@ -68,6 +76,8 @@ router.delete(
     roleMiddleware("admin"),
     deleteUser
 );
+
+
 
 
 
