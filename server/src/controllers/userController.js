@@ -2,32 +2,106 @@ const db = require("../config/db"); // Gọi file kết nối db
 const bcrypt = require("bcrypt"); // Gọi thư viện mã hóa mật khẩu
 
 const getAllUsers = async (req, res) => {
+
     try {
-        // Thực hiện câu lệnh SQL để lấy các thông tin cần thiết của toàn bộ người dùng từ bảng 'users'
-        // Không lấy cột 'password' để đảm bảo an toàn bảo mật
-        const [users] = await db.query(`
+
+        const {
+            search,
+            role,
+            status
+        } = req.query;
+
+        // Kiểm tra role hợp lệ nếu có truyền lên
+        if (
+            role &&
+            role !== "admin" &&
+            role !== "employee"
+        ) {
+            return res.status(400).json({
+                message: "Role không hợp lệ"
+            });
+        }
+
+        // Kiểm tra status hợp lệ nếu có truyền lên
+        if (
+            status &&
+            status !== "active" &&
+            status !== "inactive"
+        ) {
+            return res.status(400).json({
+                message: "Status không hợp lệ"
+            });
+        }
+
+        let sql = `
             SELECT 
                 id, 
                 full_name, 
                 email, 
                 role, 
                 status, 
-                created_at 
-            FROM users 
-            ORDER BY id DESC`);
+                created_at
+            FROM users
+            WHERE 1 = 1
+        `;
 
-        // Trả về danh sách người dùng dưới dạng JSON
-        res.json(users);
+        let params = [];
+
+        // Tìm kiếm theo họ tên hoặc email
+        if (search) {
+            sql += `
+                AND (
+                    full_name LIKE ?
+                    OR email LIKE ?
+                )
+            `;
+
+            params.push(
+                `%${search}%`,
+                `%${search}%`
+            );
+        }
+
+        // Lọc theo role
+        if (role) {
+            sql += `
+                AND role = ?
+            `;
+
+            params.push(role);
+        }
+
+        // Lọc theo trạng thái
+        if (status) {
+            sql += `
+                AND status = ?
+            `;
+
+            params.push(status);
+        }
+
+        sql += `
+            ORDER BY id DESC
+        `;
+
+        const [users] = await db.query(sql, params);
+
+        res.json({
+            total: users.length,
+            users
+        });
+
     } catch (error) {
-        // In lỗi ra màn hình Terminal của Server để dễ dàng theo dõi và xử lý
+
         console.log(error);
 
-        // Nếu lỗi hệ thống trả về 500 kèm nội dung lỗi
         res.status(500).json({
             message: error.message || "Đã xảy ra lỗi khi lấy danh sách người dùng"
         });
+
     }
-}
+
+};
 
 const getUserById = async (req, res) => {
     try {
