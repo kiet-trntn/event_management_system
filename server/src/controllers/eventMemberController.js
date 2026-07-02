@@ -240,6 +240,7 @@ const removeMemberFromEvent = async (req, res) => {
             SELECT *
             FROM events
             WHERE id = ?
+            AND deleted_at IS NULL
             `,
             [eventId]
         );
@@ -247,6 +248,15 @@ const removeMemberFromEvent = async (req, res) => {
         if (events.length === 0) {
             return res.status(404).json({
                 message: "Không tìm thấy sự kiện"
+            });
+        }
+
+        const event = events[0];
+
+        // Không cho xóa Leader khỏi sự kiện bằng chức năng xóa thành viên
+        if (Number(userId) === Number(event.leader_id)) {
+            return res.status(400).json({
+                message: "Không thể xóa Leader của sự kiện. Vui lòng đổi Leader trước"
             });
         }
 
@@ -267,9 +277,11 @@ const removeMemberFromEvent = async (req, res) => {
             });
         }
 
-        const event = events[0];
-
-        if (req.user.role !== "admin" && Number(req.user.id) !== Number(event.leader_id)) {
+        // Chỉ Admin hoặc Leader được xóa thành viên
+        if (
+            req.user.role !== "admin" &&
+            Number(req.user.id) !== Number(event.leader_id)
+        ) {
             return res.status(403).json({
                 message: "Bạn không có quyền thực hiện hành động này trong sự kiện"
             });
@@ -285,10 +297,29 @@ const removeMemberFromEvent = async (req, res) => {
             });
         }
 
+        // Lấy danh sách công việc đang giao cho thành viên bị xóa
+        // Phải lấy trước khi SET assigned_to = NULL
+        const [assignedTasks] = await db.query(
+            `
+            SELECT
+                id,
+                title,
+                created_by
+            FROM tasks
+            WHERE event_id = ?
+            AND assigned_to = ?
+            AND is_deleted = FALSE
+            `,
+            [eventId, userId]
+        );
+
+        // Bỏ giao các công việc của thành viên bị xóa
         await db.query(
             `
             UPDATE tasks
-            SET assigned_to = NULL
+            SET
+                assigned_to = NULL,
+                updated_at = NOW()
             WHERE event_id = ?
             AND assigned_to = ?
             `,
@@ -305,7 +336,7 @@ const removeMemberFromEvent = async (req, res) => {
             [eventId, userId]
         );
 
-        // Tạo thông báo cho thành viên bị xóa
+        // Thông báo cho thành viên bị xóa
         await createNotification({
             user_id: userId,
             title: "Bạn đã bị xóa khỏi sự kiện",
@@ -314,8 +345,52 @@ const removeMemberFromEvent = async (req, res) => {
             related_id: eventId
         });
 
+        // Nếu thành viên đó đang có công việc thì thông báo cho Leader/người tạo task
+        if (assignedTasks.length > 0) {
+
+            const taskNames = assignedTasks
+                .slice(0, 5)
+                .map(task => `"${task.title}"`)
+                .join(", ");
+
+            const moreText =
+                assignedTasks.length > 5
+                    ? ` và ${assignedTasks.length - 5} công việc khác`
+                    : "";
+
+            const receivers = new Set();
+
+            // Leader sự kiện cần biết để phân công lại
+            if (event.leader_id) {
+                receivers.add(Number(event.leader_id));
+            }
+
+            // Người tạo task cũng nên biết
+            for (const task of assignedTasks) {
+                if (task.created_by) {
+                    receivers.add(Number(task.created_by));
+                }
+            }
+
+            // Không gửi cho người bị xóa
+            receivers.delete(Number(userId));
+
+            for (const receiverId of receivers) {
+                await createNotification({
+                    user_id: receiverId,
+                    title: "Cần phân công lại công việc",
+                    content: `Thành viên bị xóa khỏi sự kiện "${event.title}" đang phụ trách ${assignedTasks.length} công việc: ${taskNames}${moreText}. Vui lòng phân công lại.`,
+                    type: "task",
+                    related_id: eventId
+                });
+            }
+
+        }
+
         res.json({
-            message: "Xóa thành viên khỏi sự kiện thành công"
+            message: "Xóa thành viên khỏi sự kiện thành công",
+            unassigned_task_count: assignedTasks.length,
+            need_reassign: assignedTasks.length > 0
         });
 
     } catch (error) {
