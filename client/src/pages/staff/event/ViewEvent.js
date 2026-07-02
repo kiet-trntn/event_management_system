@@ -166,6 +166,17 @@ const renderTaskStatusText = (status) => {
 
     const leaderName = event.leader_name || 'Chưa cập nhật';
 
+    const formatDateTime = (value) => {
+        if (!value) return 'Không xác định';
+        return new Date(value).toLocaleString('vi-VN', {
+            day: '2-digit',
+            month: '2-digit',
+            year: 'numeric',
+            hour: '2-digit',
+            minute: '2-digit'
+        });
+    };
+
     return (
         <div className="page-container event-page">
             <button className="btn-back" onClick={() => navigate('/staff/events')}>
@@ -194,7 +205,7 @@ const renderTaskStatusText = (status) => {
                         <div style={{ display: 'flex', gap: '24px', marginTop: '16px', fontSize: '14px', color: 'var(--text-secondary)', flexWrap: 'wrap' }}>
                             <div><strong>Phụ trách: </strong> <span className="text-brand font-medium">{leaderName}</span></div>
                             <div><strong>Địa điểm: </strong> {event.location}</div>
-                            <div><strong>Thời gian: </strong> {new Date(event.start_date).toLocaleDateString('vi-VN')} - {new Date(event.end_date).toLocaleDateString('vi-VN')}</div>
+                            <div><strong>Thời gian: </strong> {formatDateTime(event.start_date)} - {formatDateTime(event.end_date)}</div>
                         </div>
                     </div>
 

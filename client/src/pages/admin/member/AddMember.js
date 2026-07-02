@@ -67,7 +67,6 @@ const handleSubmit = async (e) => {
             {/* Header Form thẳng tắp */}
             <div className="page-header-form">
                 <button type="button" className="btn-back" onClick={() => navigate(-1)}>
-                    {/* Icon mũi tên xịn thay cho &larr; */}
                     <svg width="18" height="18" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth="2">
                         <path strokeLinecap="round" strokeLinejoin="round" d="M10 19l-7-7m0 0l7-7m-7 7h18"></path>
                     </svg>

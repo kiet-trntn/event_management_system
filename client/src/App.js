@@ -5,7 +5,7 @@ import Login from './pages/login';
 import ProtectedRouter from './components/ProtectedRouter';
 import AdminHeader from './components/admin/header';
 import StaffHeader from './components/staff/header';
-import ChangePassword from './pages/changepassword';
+import Profile from './pages/profile';
 
 import MembersList from './pages/admin/member/MembersList';
 import AddMember from './pages/admin/member/AddMember';
@@ -50,10 +50,6 @@ function App() {
       <Routes> 
         <Route path="/" element={<Navigate to="/login" replace />} />
         <Route path="/login" element={<Login />} />
-
-        {/* =========================================================
-            1. PHÂN HỆ ROUTE DÀNH CHO ADMIN
-           ========================================================= */}
         <Route 
           path="/admin"
           element={ 
@@ -62,31 +58,25 @@ function App() {
             </ProtectedRouter>
           }
         >
-          <Route path="changepassword" element={<ChangePassword />} />
-
+          <Route index element={<Navigate to="dashboard" replace />} />
+          <Route path="profile" element={<Profile />} />
           <Route path="dashboard" element={<ManagerDashboard />} />
-
           <Route path="members" element={<MembersList />} />
           <Route path="members/add" element={<AddMember />} />
           <Route path="members/edit/:id" element={<EditMember />} />
           <Route path="members/view/:id" element={<ViewMember />} />
-
           <Route path="events" element={<EventList />} />
           <Route path="events/add" element={<AddEvent />} />
           <Route path="events/view/:id" element={<ViewEvent />} />
           <Route path="events/edit/:id" element={<EditEvent />} />
-          
           <Route path="events/:eventId/members" element={<EventMembers />} />
           <Route path="events/:eventId/members/add" element={<AddEventMember />} />
           <Route path="events/:eventId/members/edit/:userId" element={<EditEventMember />} />
-
           <Route path="tasks" element={<TaskList />} />
           <Route path="tasks/add" element={<AddTask />} />
           <Route path="tasks/view/:id" element={<ViewTask />} />
           <Route path="tasks/edit/:id" element={<EditTask />} />
-
           <Route path="/admin/tasks/:id/attachments" element={<AttachmentList />} />
-
           <Route path="trash" element={<Trash />} />
           <Route path="messages" element={<Messages />} />
         </Route>
@@ -99,22 +89,19 @@ function App() {
             </ProtectedRouter>
           }
         >  
-          <Route path="changepassword" element={<ChangePassword />} />
-
+          <Route index element={<Navigate to="dashboard" replace />} />
+          <Route path="profile" element={<Profile />} />
           <Route path="dashboard" element={<Dashboard />} />
-
           <Route path="events" element={<EventListStaff />} />
           <Route path="events/view/:id" element={<ViewEventStaff />} />
-
           <Route path="tasks" element={<TaskListStaff />} />
           <Route path="tasks/view/:id" element={<ViewTaskStaff />} />
           <Route path="calendar" element={<WorkCalendar />} />
-
           <Route path="events/:eventId/tasks/add" element={<AddTask />} />
           <Route path="tasks/edit/:id" element={<EditTask />} />
           <Route path="events/:eventId/members/add" element={<AddEventMember />} />
           <Route path="events/:eventId/members/edit/:userId" element={<EditEventMember />} />
-          
+          <Route path="members/view/:id" element={<ViewMember />} />
           <Route path="trash" element={<Trash />} />
           <Route path="messages" element={<Messages />} />
         </Route>

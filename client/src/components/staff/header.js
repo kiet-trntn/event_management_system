@@ -234,7 +234,7 @@ function Layout() {
 
                     {/* NÚT THÙNG RÁC NẰM Ở GÓC DƯỚI */}
                     <div style={{ marginTop: 'auto', paddingTop: '16px', borderTop: '1px solid #E5E7EB' }}>
-                        <NavLink to="/admin/trash" className="nav-item" style={{ color: '#EF4444' }}>
+                        <NavLink to="/staff/trash" className="nav-item" style={{ color: '#EF4444' }}>
                             <svg className="nav-icon" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"></path>
                             </svg>
@@ -299,13 +299,34 @@ function Layout() {
                             <div className="user-avatar">{user?.full_name ? user.full_name.substring(0, 2).toUpperCase() : "US"}</div>
                             <div className="user-info">
                                 <p className="user-name">{user?.full_name || "Chưa đăng nhập"}</p>
-                                <p className="user-role">{user?.role || "Admin"}</p>
+                                <p className="user-role">{user?.role || "staff"}</p>
                             </div>
                             {isDropdownOpen && (
                                 <div className="dropdown-menu">
-                                    <NavLink to="/admin/changepassword" className="dropdown-item" onClick={() => setIsDropdownOpen(false)}>Đổi Mật Khẩu</NavLink>
+                                    <NavLink 
+                                        to="/staff/profile" 
+                                        className="dropdown-item" 
+                                        onClick={() => setIsDropdownOpen(false)}
+                                        style={{ display: 'flex', alignItems: 'center', gap: '8px' }}
+                                    >
+                                        <svg width="18" height="18" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth="2">
+                                            <path strokeLinecap="round" strokeLinejoin="round" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
+                                        </svg>
+                                        Tài Khoản
+                                    </NavLink>
+                                    
                                     <div className="dropdown-divider" />
-                                    <button onClick={(e) => { setIsDropdownOpen(false); handleSignOut(e); }} className="dropdown-item text-error" style={{ width: '100%', textAlign: 'left' }}>Đăng Xuất</button>
+                                    
+                                    <button 
+                                        onClick={(e) => { setIsDropdownOpen(false); handleSignOut(e); }} 
+                                        className="dropdown-item text-error" 
+                                        style={{ width: '100%', textAlign: 'left', display: 'flex', alignItems: 'center', gap: '8px' }}
+                                    >
+                                        <svg width="18" height="18" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth="2">
+                                            <path strokeLinecap="round" strokeLinejoin="round" d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" />
+                                        </svg>
+                                        Đăng Xuất
+                                    </button>
                                 </div>
                             )}
                         </div>

@@ -350,6 +350,8 @@ body {
 
 .event-page .page-header-form { max-width: 800px; }
 .task-page .page-header-form { max-width: 1000px; }
+.member-page .page-header-form { max-width: 580px; }
+.profile-page .page-header-form { max-width: 970px; }
 
 .btn-back {
     background: transparent;

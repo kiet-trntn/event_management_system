@@ -48,11 +48,14 @@ const formatDate = (dateString) => {
     if (!member) return null; 
 
     return (
-        <div className="page-container">
+        <div className="page-container member-page">
             
             <div className="page-header-form">
                 <button type="button" className="btn-back" onClick={() => navigate(-1)}>
-                    &larr; Quay lại
+                    <svg width="18" height="18" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth="2">
+                        <path strokeLinecap="round" strokeLinejoin="round" d="M10 19l-7-7m0 0l7-7m-7 7h18"></path>
+                    </svg>
+                    Quay lại
                 </button>
                 <h3 className="m-0 font-semibold text-lg">Hồ sơ nhân sự</h3>
             </div>
