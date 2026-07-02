@@ -65,13 +65,19 @@ function WorkCalendar() {
                 
                 const formattedTasks = myTasks.map(task => {
                     const taskDate = task.due_date ? new Date(task.due_date) : new Date(task.created_at);
+                    // Set start time to 9:00 AM and end time to 5:00 PM for better visibility
+                    const startTime = new Date(taskDate);
+                    startTime.setHours(9, 0, 0, 0);
+                    const endTime = new Date(taskDate);
+                    endTime.setHours(17, 0, 0, 0);
+                    
                     return {
                         id: `task_${task.id}`,
                         real_id: task.id,
                         title: task.title,
-                        start: taskDate,
-                        end: taskDate, 
-                        allDay: true, 
+                        start: startTime,
+                        end: endTime, 
+                        allDay: false,
                         type: 'task', 
                         resource: task 
                     };
@@ -83,16 +89,27 @@ function WorkCalendar() {
                 const data = await leaderEventsRes.json();
                 const ledEvents = data.events || [];
 
-                const formattedEvents = ledEvents.map(evt => {
-                    const eventDeadline = evt.end_date ? new Date(evt.end_date) : new Date(evt.start_date);
+                const formattedEvents = ledEvents
+                    .filter(evt => evt.status !== 'Nháp') // Không hiển thị sự kiện nháp
+                    .map(evt => {
+                    let eventStart = new Date(evt.start_date);
+                    let eventEnd = new Date(evt.end_date);
+                    
+                    // If no time info in dates, set default business hours
+                    if (eventStart.getHours() === 0 && eventStart.getMinutes() === 0) {
+                        eventStart.setHours(9, 0, 0, 0);
+                    }
+                    if (eventEnd.getHours() === 0 && eventEnd.getMinutes() === 0) {
+                        eventEnd.setHours(17, 0, 0, 0);
+                    }
 
                     return {
                         id: `event_${evt.id}`,
                         real_id: evt.id,
                         title: `${evt.title}`, 
-                        start: eventDeadline, 
-                        end: eventDeadline,   
-                        allDay: true,
+                        start: eventStart, 
+                        end: eventEnd,   
+                        allDay: false,
                         type: 'event', 
                         resource: evt
                     };

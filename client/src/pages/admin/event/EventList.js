@@ -8,7 +8,7 @@ function EventList() {
     
     const [currentOfficialPage, setCurrentOfficialPage] = useState(1);
     const [currentDraftPage, setCurrentDraftPage] = useState(1);
-    const eventsPerPage = 6; 
+    const eventsPerPage = 8; 
 
     useEffect(() => {
         document.title = "Quản lý Sự kiện | TaskFlow";
@@ -30,8 +30,19 @@ function EventList() {
 
     const handleCardClick = (id) => navigate(`/admin/events/view/${id}`);
 
-    const officialEvents = events.filter(event => event.status !== 'Nháp');
-    const draftEvents = events.filter(event => event.status === 'Nháp');
+    // Sort: gần tới lên đầu, hủy xuống cuối
+    const sortedOfficialEvents = events
+        .filter(event => event.status !== 'Nháp')
+        .sort((a, b) => {
+            if (a.status === 'Đã hủy' && b.status !== 'Đã hủy') return 1;
+            if (a.status !== 'Đã hủy' && b.status === 'Đã hủy') return -1;
+            return new Date(a.start_date) - new Date(b.start_date);
+        });
+    
+    const officialEvents = sortedOfficialEvents;
+    const draftEvents = events
+        .filter(event => event.status === 'Nháp')
+        .sort((a, b) => new Date(a.start_date) - new Date(b.start_date));
 
     const indexOfLastOfficial = currentOfficialPage * eventsPerPage;
     const currentOfficialEvents = officialEvents.slice(indexOfLastOfficial - eventsPerPage, indexOfLastOfficial);

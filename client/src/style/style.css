@@ -1432,3 +1432,348 @@ body {
 }
 .notif-item:hover .notif-delete-btn { color: #ef4444; }
 
+/* Layout Tổng Thể */
+.chat-page-container {
+    display: flex;
+    height: calc(100vh - 120px); 
+    background: #ffffff;
+    border-radius: 12px;
+    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.05);
+    border: 1px solid #e2e8f0;
+    overflow: hidden;
+    margin-top: 10px;
+}
+
+/* Thanh Cuộn */
+.chat-list::-webkit-scrollbar,
+.chat-messages-area::-webkit-scrollbar {
+    width: 6px;
+}
+.chat-list::-webkit-scrollbar-track,
+.chat-messages-area::-webkit-scrollbar-track {
+    background: transparent;
+}
+.chat-list::-webkit-scrollbar-thumb,
+.chat-messages-area::-webkit-scrollbar-thumb {
+    background: #cbd5e1;
+    border-radius: 10px;
+}
+.chat-list:hover::-webkit-scrollbar-thumb,
+.chat-messages-area:hover::-webkit-scrollbar-thumb {
+    background: #94a3b8; 
+}
+
+/* SIDEBAR */
+.chat-sidebar {
+    width: 320px;
+    background: #f8fafc;
+    border-right: 1px solid #e2e8f0;
+    display: flex;
+    flex-direction: column;
+}
+.chat-tabs {
+    display: flex;
+    padding: 20px 15px 10px;
+    gap: 10px;
+}
+.chat-tab-btn {
+    flex: 1;
+    padding: 10px 0;
+    border: none;
+    border-radius: 20px; 
+    background: #e2e8f0;
+    color: #475569;
+    font-weight: 600;
+    font-size: 14px;
+    cursor: pointer;
+    transition: all 0.2s ease;
+}
+.chat-tab-btn.active {
+    background: #2563eb;
+    color: #ffffff;
+    box-shadow: 0 4px 10px rgba(37, 99, 235, 0.2); 
+}
+.chat-new-btn-container {
+    padding: 5px 15px 15px;
+}
+.chat-new-btn {
+    width: 100%;
+    padding: 10px;
+    background: #ffffff;
+    border: 1px solid #cbd5e1;
+    border-radius: 10px;
+    color: #334155;
+    font-weight: 600;
+    cursor: pointer;
+    transition: 0.2s;
+}
+.chat-new-btn:hover { background: #f1f5f9; }
+.chat-new-btn.active { background: #ef4444; color: #fff; border-color: #ef4444; }
+.chat-search-input {
+    width: calc(100% - 30px);
+    margin: 0 15px 10px;
+    padding: 10px 15px;
+    border-radius: 10px;
+    border: 1px solid #cbd5e1;
+    outline: none;
+    font-size: 14px;
+}
+
+/* Danh Sách Chat Bên Trái */
+.chat-list {
+    flex: 1;
+    overflow-y: auto;
+}
+.chat-list-item {
+    padding: 16px 20px;
+    border-bottom: 1px solid #f1f5f9;
+    cursor: pointer;
+    transition: all 0.2s ease;
+}
+.chat-list-item:hover {
+    background: #f1f5f9;
+}
+.chat-list-item.selected {
+    background: #eff6ff;
+    border-left: 4px solid #2563eb;
+}
+.chat-list-item.unread-bg {
+    background-color: #f0f9ff;
+}
+.chat-item-name.unread-text {
+    font-weight: 700;
+    color: #0f172a;
+}
+.chat-item-last-msg.unread-text {
+    font-weight: 600;
+    color: #1e293b;
+}
+.chat-item-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 6px;
+}
+.chat-item-name {
+    font-size: 15px;
+    color: #334155;
+    font-weight: 500;
+}
+.chat-unread-dot {
+    width: 10px;
+    height: 10px;
+    background: #ef4444;
+    border-radius: 50%;
+    display: inline-block;
+    box-shadow: 0 0 5px rgba(239, 68, 68, 0.4);
+}
+.chat-item-last-msg {
+    font-size: 13px;
+    color: #64748b;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+/* THỜI GIAN SIDEBAR BÊN TRÁI */
+.chat-sidebar-time {
+    font-size: 11px;
+    color: #94a3b8;
+    font-weight: 400;
+}
+.chat-sidebar-time.unread-time {
+    color: #2563eb;
+    font-weight: 600;
+}
+
+/* KHU VỰC MAIN CHAT */
+.chat-main {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    background: #ffffff;
+}
+.chat-empty-state {
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    align-items: center;
+    height: 100%;
+    color: #64748b;
+}
+
+/* ĐÃ XÓA Z-INDEX 10 Ở ĐÂY ĐỂ KHÔNG BỊ ĐÈ THÔNG BÁO */
+.chat-header {
+    display: flex;
+    align-items: center;
+    padding: 16px 24px;
+    border-bottom: 1px solid #e2e8f0;
+    background: #ffffff;
+}
+.chat-header-avatar {
+    width: 42px;
+    height: 42px;
+    background: #2563eb;
+    color: #ffffff;
+    border-radius: 50%;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    font-size: 18px;
+    font-weight: bold;
+    margin-right: 15px;
+}
+.chat-header-info h4 {
+    margin: 0 0 4px 0;
+    font-size: 16px;
+    color: #1e293b;
+    font-weight: 600;
+}
+.chat-header-status {
+    font-size: 12px;
+    color: #10b981;
+    font-weight: 500;
+}
+
+/* Khu Vực Hiển Thị Tin Nhắn */
+.chat-messages-area {
+    flex: 1;
+    padding: 24px;
+    overflow-y: auto;
+    background: #f8fafc; 
+    display: flex;
+    flex-direction: column;
+    gap: 16px; 
+}
+.chat-message-wrapper {
+    display: flex;
+    flex-direction: column;
+}
+.chat-message-wrapper.me {
+    align-items: flex-end; 
+}
+.chat-message-wrapper.other {
+    align-items: flex-start; 
+}
+.chat-message-sender {
+    font-size: 12px;
+    color: #64748b;
+    margin-bottom: 6px;
+    margin-left: 4px;
+}
+.chat-message-row {
+    display: flex;
+    align-items: flex-end; 
+    gap: 10px;
+    max-width: 70%;
+}
+.chat-message-row.me {
+    flex-direction: row-reverse; 
+}
+
+/* Bong Bóng Chat */
+.chat-message-bubble {
+    padding: 12px 16px;
+    border-radius: 20px;
+    font-size: 14.5px;
+    line-height: 1.5;
+    word-wrap: break-word;
+    box-shadow: 0 1px 2px rgba(0,0,0,0.05); 
+}
+.chat-message-bubble.me {
+    background: #2563eb;
+    color: #ffffff;
+    border-bottom-right-radius: 4px; 
+}
+.chat-message-bubble.other {
+    background: #ffffff;
+    color: #1e293b;
+    border: 1px solid #e2e8f0;
+    border-bottom-left-radius: 4px; 
+}
+
+/* THỜI GIAN GỬI TIN NHẮN (DƯỚI BONG BÓNG) */
+.chat-message-time {
+    font-size: 11px;
+    color: #94a3b8;
+    margin-top: 4px;
+    padding: 0 4px;
+}
+
+/* UI TIN NHẮN ĐÃ THU HỒI */
+.chat-message-bubble.revoked {
+    background: #f1f5f9;
+    color: #94a3b8;
+    border: 1px solid #e2e8f0;
+    font-style: italic;
+    padding: 10px 16px;
+    border-radius: 20px;
+    box-shadow: none;
+}
+
+/* Nút xóa tin nhắn */
+.chat-msg-delete-btn {
+    background: none;
+    border: none;
+    color: #cbd5e1;
+    cursor: pointer;
+    padding: 5px;
+    opacity: 0;
+    transition: all 0.2s;
+    border-radius: 50%;
+}
+.chat-message-row:hover .chat-msg-delete-btn {
+    opacity: 1; 
+}
+.chat-msg-delete-btn:hover {
+    color: #ef4444;
+    background: #fee2e2;
+}
+
+/* KHU VỰC NHẬP TEXT */
+.chat-input-area {
+    display: flex;
+    padding: 16px 24px;
+    border-top: 1px solid #e2e8f0;
+    background: #ffffff;
+    gap: 12px;
+    align-items: center;
+}
+.chat-input-field {
+    flex: 1;
+    padding: 14px 20px;
+    border: 1px solid transparent;
+    border-radius: 30px; 
+    outline: none;
+    background: #f1f5f9;
+    font-size: 15px;
+    transition: 0.2s;
+}
+.chat-input-field:focus {
+    border-color: #2563eb;
+    background: #ffffff;
+    box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.1); 
+}
+.chat-send-btn {
+    padding: 0 24px;
+    height: 48px;
+    border: none;
+    border-radius: 30px;
+    font-weight: 600;
+    font-size: 14px;
+    transition: all 0.2s;
+}
+.chat-send-btn.active {
+    background: #2563eb;
+    color: #ffffff;
+    cursor: pointer;
+}
+.chat-send-btn.active:hover {
+    background: #1d4ed8;
+    transform: translateY(-1px);
+}
+.chat-send-btn.disabled {
+    background: #e2e8f0;
+    color: #94a3b8;
+    cursor: not-allowed;
+}

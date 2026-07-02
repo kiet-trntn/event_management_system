@@ -9,7 +9,7 @@ function Dashboard() {
     const [tasks, setTasks] = useState([]);
     const [myTasks, setMyTasks] = useState([]);
     const [leaderPendingTasks, setLeaderPendingTasks] = useState([]);
-    const [isLeader, setIsLeader] = useState(false); // Thêm state quản lý quyền Leader
+    const [isLeader, setIsLeader] = useState(false); 
     const [loading, setLoading] = useState(true);
     
     const getTokenUser = () => {
@@ -21,6 +21,7 @@ function Dashboard() {
     const currentUser = getTokenUser();
     const rolePath = currentUser?.role === 'admin' ? 'admin' : 'staff';
 
+    // Tối ưu hóa: Lọc dữ liệu biểu đồ dựa trên vai trò (Leader xem tổng thể, Staff xem cá nhân)
     const { taskStats, eventStats, COLORS } = useMemo(() => {
         const taskStatusList = [
             { id: 'pending', name: 'Chờ xử lý' },
@@ -30,9 +31,12 @@ function Dashboard() {
             { id: 'cancelled', name: 'Đã hủy' }
         ];
 
+        // Nếu là leader/admin thì thống kê trên cụm 'tasks' tổng, nếu là staff thì thống kê trên cụm 'myTasks' cá nhân
+        const targetTasks = isLeader ? tasks : myTasks;
+
         const taskStatsData = taskStatusList.map(status => ({
             name: status.name,
-            value: tasks.filter(t => t.status === status.id).length
+            value: targetTasks.filter(t => t.status === status.id).length
         })).filter(item => item.value > 0);
 
         const eventStatusList = [
@@ -53,7 +57,7 @@ function Dashboard() {
             eventStats: eventStatsData,
             COLORS: ['#3b82f6', '#10b981', '#f59e0b', '#ef4444', '#64748b']
         };
-    }, [tasks, events]);
+    }, [tasks, myTasks, events, isLeader]);
 
     const fetchDashboardData = useCallback(async () => {
         try {
@@ -61,39 +65,41 @@ function Dashboard() {
             const token = localStorage.getItem('my_token');
             const headers = { 'Authorization': `Bearer ${token}` };
 
-            // Gọi thêm API overview để xác nhận chính xác quyền Leader
-            const [eventsRes, tasksRes, myTasksRes, pendingRes, overviewRes] = await Promise.all([
-                fetch('http://localhost:5000/api/events', { headers }),
-                fetch('http://localhost:5000/api/tasks', { headers }),
+            const [eventsRes, tasksRes, myTasksRes, pendingRes] = await Promise.all([
+                fetch('http://localhost:5000/api/events', { headers }).catch(() => null),
+                fetch('http://localhost:5000/api/tasks', { headers }).catch(() => null),
                 fetch('http://localhost:5000/api/tasks/my-tasks', { headers }).catch(() => null),
-                fetch('http://localhost:5000/api/task-submissions/pending', { headers }).catch(() => null),
-                fetch('http://localhost:5000/api/reports/overview', { headers }).catch(() => null)
+                fetch('http://localhost:5000/api/task-submissions/pending', { headers }).catch(() => null)
             ]);
 
-            if (eventsRes.ok && tasksRes.ok) {
-                const eventsData = await eventsRes.json();
-                const tasksData = await tasksRes.json();
-                const myTasksData = (myTasksRes && myTasksRes.ok) ? await myTasksRes.json() : { tasks: [] };
-                const pendingData = (pendingRes && pendingRes.ok) ? await pendingRes.json() : { submissions: [] };
-                const overviewData = (overviewRes && overviewRes.ok) ? await overviewRes.json() : { total_events: 0 };
-                
-                setEvents(eventsData.events || []);
-                setTasks(tasksData.tasks || []);
-                setMyTasks(myTasksData.tasks || []);
-                setLeaderPendingTasks(pendingData.submissions || []);
-                
-                // Nếu tổng sự kiện phụ trách > 0 hoặc role là admin -> Bật cờ Leader
-                setIsLeader(overviewData.total_events > 0 || currentUser?.role === 'admin');
-
+            const eventsData = (eventsRes && eventsRes.ok) ? await eventsRes.json() : { events: [] };
+            const tasksData = (tasksRes && tasksRes.ok) ? await tasksRes.json() : { tasks: [] };
+            const myTasksData = (myTasksRes && myTasksRes.ok) ? await myTasksRes.json() : { tasks: [] };
+            const pendingData = (pendingRes && pendingRes.ok) ? await pendingRes.json() : { submissions: [] };
+            
+            setEvents(eventsData.events || []);
+            setTasks(tasksData.tasks || []);
+            setMyTasks(myTasksData.tasks || []);
+            setLeaderPendingTasks(pendingData.submissions || []);
+            
+            // LOGIC KIỂM TRA LEADER MỚI:
+            if (currentUser?.role === 'admin') {
+                setIsLeader(true);
             } else {
-                Swal.fire('Lỗi', 'Không thể tải dữ liệu tổng quan', 'error');
+                // Kiểm tra xem user hiện tại có phải là leader của event thông qua event_leader_id không
+                const isManagingAnyEvent = (tasksData.tasks || []).some(
+                    task => task.event_leader_id === currentUser?.id
+                );
+                
+                setIsLeader(isManagingAnyEvent);
             }
+
         } catch (error) {
             Swal.fire('Lỗi', 'Lỗi kết nối đến máy chủ', 'error');
         } finally {
             setLoading(false);
         }
-    }, [currentUser?.role]);
+    }, [currentUser?.role, currentUser?.id]);
 
     useEffect(() => {
         document.title = "Tổng quan | TaskFlow";
@@ -145,6 +151,7 @@ function Dashboard() {
             ) : (
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '24px' }}>
                     
+                    {/* HÀNG 1: Các số liệu đếm số lượng */}
                     <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: '20px' }}>
                         <div className="form-card" style={{ margin: 0, padding: '20px', maxWidth: '100%' }}>
                             <div className="text-secondary" style={{ fontSize: '13px', fontWeight: '600' }}>SỰ KIỆN THAM GIA</div>
@@ -164,10 +171,11 @@ function Dashboard() {
                         </div>
                     </div>
 
+                    {/* HÀNG 2: Tiến độ cá nhân & Việc cần làm ngay (Nhân viên thường + Leader đều nhìn thấy cái này) */}
                     <div style={{ display: 'flex', gap: '24px', flexWrap: 'wrap', alignItems: 'stretch' }}>
                         <div className="form-card large" style={{ flex: '1 1 40%', margin: 0, padding: '24px', display: 'flex', flexDirection: 'column', justifyContent: 'center', alignItems: 'center' }}>
                             <h3 className="section-title" style={{ width: '100%', borderLeftColor: 'var(--secondary-color)' }}>Hiệu Suất Cá Nhân</h3>
-                            <div style={{ width: '130px', height: '130px', borderRadius: '50%', border: '10px solid var(--primary-light)', display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '24px 0' }}>
+                            <div style={{ width: '130px', height: '130px', borderRadius: '50%', border: '1px solid var(--primary-light)', display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '24px 0' }}>
                                 <span className="text-2xl font-semibold text-brand">{overallProgress}%</span>
                             </div>
                             <div style={{ width: '100%', marginTop: '12px' }}>
@@ -215,12 +223,12 @@ function Dashboard() {
                         </div>
                     </div>
 
-                    {/* HÀNG 3: DÀNH RIÊNG CHO LEADER (Luôn hiện nếu là Leader) */}
+                    {/* HÀNG 3: DÀNH RIÊNG CHO LEADER (Ẩn hoàn toàn nếu isLeader = false) */}
                     {isLeader && (
                         <>
                             <div style={{ display: 'flex', gap: '24px', flexWrap: 'wrap' }}>
                                 <div style={{ flex: '1 1 400px', backgroundColor: '#fff', padding: '24px', borderRadius: '12px', border: '1px solid #e2e8f0' }}>
-                                    <h4 style={{ margin: '0 0 20px 0', fontSize: '16px', color: '#1e293b' }}>Trạng thái Công việc Leader</h4>
+                                    <h4 style={{ margin: '0 0 20px 0', fontSize: '16px', color: '#1e293b' }}>Thống kê Trạng thái Công việc</h4>
                                     <div style={{ height: '300px', width: '100%' }}>
                                         <ResponsiveContainer width="100%" height="100%">
                                             <PieChart>
@@ -234,7 +242,7 @@ function Dashboard() {
                                     </div>
                                 </div>
                                 <div style={{ flex: '1 1 400px', backgroundColor: '#fff', padding: '24px', borderRadius: '12px', border: '1px solid #e2e8f0' }}>
-                                    <h4 style={{ margin: '0 0 20px 0', fontSize: '16px', color: '#1e293b' }}>Trạng thái Sự kiện Leader</h4>
+                                    <h4 style={{ margin: '0 0 20px 0', fontSize: '16px', color: '#1e293b' }}>Trạng thái Sự kiện Quản lý</h4>
                                     <div style={{ height: '300px', width: '100%' }}>
                                         <ResponsiveContainer width="100%" height="100%">
                                             <BarChart data={eventStats} margin={{ top: 20, right: 30, left: 0, bottom: 5 }}>

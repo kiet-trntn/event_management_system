@@ -31,6 +31,8 @@ import AttachmentList from './pages/admin/attachment/AttachmentList';
 // Import Thùng rác dùng chung nằm ở folder admin
 import Trash from './pages/Trash';
 
+import Messages from './pages/Chat';
+
 import Dashboard from './pages/staff/Dashboard';
 import ManagerDashboard from './pages/admin/ManagerDashboard';
 
@@ -86,6 +88,7 @@ function App() {
           <Route path="/admin/tasks/:id/attachments" element={<AttachmentList />} />
 
           <Route path="trash" element={<Trash />} />
+          <Route path="messages" element={<Messages />} />
         </Route>
 
         <Route 
@@ -113,6 +116,7 @@ function App() {
           <Route path="events/:eventId/members/edit/:userId" element={<EditEventMember />} />
           
           <Route path="trash" element={<Trash />} />
+          <Route path="messages" element={<Messages />} />
         </Route>
 
         <Route path="*" element={<h2>404 - Trang không tồn tại</h2>} />

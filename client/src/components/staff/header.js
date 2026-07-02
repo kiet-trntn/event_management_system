@@ -88,6 +88,7 @@ function Layout() {
             setIsNotifOpen(false);
             if (type === 'task' && relatedId) navigate(`/staff/tasks/view/${relatedId}`);
             else if (type === 'event' && relatedId) navigate(`/staff/events/view/${relatedId}`);
+            else if (type === 'message' && relatedId) navigate(`/staff/messages`);
         } catch (error) { console.error(error); }
     };
 
@@ -226,7 +227,7 @@ function Layout() {
                             </div>
                             {isDropdownOpen && (
                                 <div className="dropdown-menu">
-                                    <NavLink to="/admin/changepassword" className="dropdown-item" onClick={() => setIsDropdownOpen(false)}>Đổi Mật Khẩu</NavLink>
+                                    <NavLink to="/staff/changepassword" className="dropdown-item" onClick={() => setIsDropdownOpen(false)}>Đổi Mật Khẩu</NavLink>
                                     <div className="dropdown-divider" />
                                     <button onClick={(e) => { setIsDropdownOpen(false); handleSignOut(e); }} className="dropdown-item text-error" style={{ width: '100%', textAlign: 'left' }}>Đăng Xuất</button>
                                 </div>
