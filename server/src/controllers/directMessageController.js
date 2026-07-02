@@ -426,10 +426,100 @@ const getChatUsers = async (req, res) => {
 
 };
 
+// thu hồi tin nhắn
+const recallDirectMessage = async (req, res) => {
+
+    try {
+
+        const { id } = req.params;
+
+        const [messages] = await db.query(
+            `
+            SELECT *
+            FROM direct_messages
+            WHERE id = ?
+            `,
+            [id]
+        );
+
+        if (messages.length === 0) {
+            return res.status(404).json({
+                message: "Không tìm thấy tin nhắn"
+            });
+        }
+
+        const message = messages[0];
+
+        // Chỉ người gửi mới được thu hồi tin nhắn
+        if (Number(req.user.id) !== Number(message.sender_id)) {
+            return res.status(403).json({
+                message: "Bạn chỉ có thể thu hồi tin nhắn do mình gửi"
+            });
+        }
+
+        // Nếu đã bị xóa cả hai phía rồi thì không cần thu hồi nữa
+        if (
+            message.is_deleted_by_sender &&
+            message.is_deleted_by_receiver
+        ) {
+            return res.status(400).json({
+                message: "Tin nhắn này đã được thu hồi trước đó"
+            });
+        }
+
+        // Thu hồi: ẩn tin nhắn ở cả người gửi và người nhận
+        await db.query(
+            `
+            UPDATE direct_messages
+            SET
+                is_deleted_by_sender = TRUE,
+                is_deleted_by_receiver = TRUE
+            WHERE id = ?
+            `,
+            [id]
+        );
+
+        const recallData = {
+            id: Number(id),
+            sender_id: message.sender_id,
+            receiver_id: message.receiver_id
+        };
+
+        // Realtime cho người gửi
+        emitToUser(
+            message.sender_id,
+            "direct_message_recalled",
+            recallData
+        );
+
+        // Realtime cho người nhận
+        emitToUser(
+            message.receiver_id,
+            "direct_message_recalled",
+            recallData
+        );
+
+        res.json({
+            message: "Thu hồi tin nhắn thành công"
+        });
+
+    } catch (error) {
+
+        console.log(error);
+
+        res.status(500).json({
+            message: error.message
+        });
+
+    }
+
+};
+
 module.exports = {
     sendDirectMessage,
     getConversationWithUser,
     getMyConversations,
     deleteDirectMessage,
-    getChatUsers
+    getChatUsers,
+    recallDirectMessage
 };

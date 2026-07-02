@@ -8,7 +8,8 @@ const {
     getConversationWithUser,
     getMyConversations,
     deleteDirectMessage,
-    getChatUsers 
+    getChatUsers,
+    recallDirectMessage
 } = require("../controllers/directMessageController");
 
 // Gửi tin nhắn riêng
@@ -38,12 +39,21 @@ router.get(
     getConversationWithUser
 );
 
+// Thu hồi tin nhắn
+router.patch(
+    "/:id/recall",
+    authMiddleware,
+    recallDirectMessage
+);
+
 // Xóa tin nhắn phía mình
 router.delete(
     "/:id",
     authMiddleware,
     deleteDirectMessage
 );
+
+
 
 
 
