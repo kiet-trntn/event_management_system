@@ -91,74 +91,154 @@ const publishEvent = async (req, res) => {
 const getAllEvents = async (req, res) => {
  
     try {
-        let events;
 
-        // Admin xem tất cả
-        if (req.user.role === "admin") {
+        const {
+            search,
+            status,
+            from_date,
+            to_date,
+            leader_id
+        } = req.query;
 
-            [events] = await db.query(`
-                SELECT
-                    e.id,
-                    e.title,
-                    e.location,
-                    e.start_date,
-                    e.end_date,
-                    e.max_members,
-                    e.status,
-                    u.full_name AS leader_name
-                FROM events e
-                LEFT JOIN users u
-                    ON e.leader_id = u.id
-                WHERE e.deleted_at IS NULL
-                ORDER BY e.id DESC
-            `);
+        const validStatuses = [
+            "Nháp",
+            "Sắp diễn ra",
+            "Đang diễn ra",
+            "Đã kết thúc",
+            "Đã hủy"
+        ];
 
+        if (status && !validStatuses.includes(status)) {
+            return res.status(400).json({
+                message: "Trạng thái sự kiện không hợp lệ"
+            });
         }
-        // Employee không xem được sự kiện Nháp và chỉ xem được sự kiện tham gia
-        else {
 
-            [events] = await db.query(`
-                SELECT DISTINCT
+        if (
+            from_date &&
+            to_date &&
+            new Date(from_date) > new Date(to_date)
+        ) {
+            return res.status(400).json({
+                message: "Ngày bắt đầu lọc không được lớn hơn ngày kết thúc lọc"
+            });
+        }
 
-                    e.id,
-                    e.title,
-                    e.location,
-                    e.start_date,
-                    e.end_date,
-                    e.max_members,
-                    e.status,
+        let sql = `
+            SELECT DISTINCT
+                e.id,
+                e.title,
+                e.location,
+                e.start_date,
+                e.end_date,
+                e.max_members,
+                e.status,
+                e.leader_id,
+                u.full_name AS leader_name
+            FROM events e
 
-                    u.full_name AS leader_name
+            LEFT JOIN users u
+                ON e.leader_id = u.id
 
-                FROM events e
+            LEFT JOIN event_members em
+                ON e.id = em.event_id
 
-                LEFT JOIN users u
-                    ON e.leader_id = u.id
+            WHERE e.deleted_at IS NULL
+        `;
 
-                LEFT JOIN event_members em
-                    ON e.id = em.event_id
+        let params = [];
 
-                WHERE
-                    e.deleted_at IS NULL
+        // Phân quyền xem sự kiện
+        if (req.user.role !== "admin") {
 
-                    AND e.status <> 'Nháp'
-
-                    AND (
+            sql += `
+                AND (
+                    e.leader_id = ?
+                    OR (
                         em.user_id = ?
-                        OR
-                        e.leader_id = ?
+                        AND e.status <> 'Nháp'
                     )
+                )
+            `;
 
-                ORDER BY e.id DESC
-            `,
-            [
+            params.push(
                 req.user.id,
                 req.user.id
-            ]);
+            );
 
         }
 
-        res.json({ events });
+        // Tìm kiếm theo tên sự kiện hoặc địa điểm
+        if (search) {
+
+            sql += `
+                AND (
+                    e.title LIKE ?
+                    OR e.location LIKE ?
+                )
+            `;
+
+            params.push(
+                `%${search}%`,
+                `%${search}%`
+            );
+
+        }
+
+        // Lọc theo trạng thái
+        if (status) {
+
+            sql += `
+                AND e.status = ?
+            `;
+
+            params.push(status);
+
+        }
+
+        // Lọc từ ngày bắt đầu
+        if (from_date) {
+
+            sql += `
+                AND DATE(e.start_date) >= ?
+            `;
+
+            params.push(from_date);
+
+        }
+
+        // Lọc đến ngày kết thúc
+        if (to_date) {
+
+            sql += `
+                AND DATE(e.end_date) <= ?
+            `;
+
+            params.push(to_date);
+
+        }
+
+        // Chỉ Admin mới được lọc theo Leader
+        if (leader_id && req.user.role === "admin") {
+
+            sql += `
+                AND e.leader_id = ?
+            `;
+
+            params.push(leader_id);
+
+        }
+
+        sql += `
+            ORDER BY e.id DESC
+        `;
+
+        const [events] = await db.query(sql, params);
+
+        res.json({
+            total: events.length,
+            events
+        });
 
     } catch (error) {
 
@@ -169,6 +249,7 @@ const getAllEvents = async (req, res) => {
         });
 
     }
+
 };
 
 const getEventById = async (req, res) => {
