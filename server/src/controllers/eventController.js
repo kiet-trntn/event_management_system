@@ -149,15 +149,15 @@ const getAllEvents = async (req, res) => {
         let params = [];
 
         // Phân quyền xem sự kiện
+        // Sự kiện Nháp chỉ Admin được xem
         if (req.user.role !== "admin") {
 
             sql += `
+                AND e.status <> 'Nháp'
+
                 AND (
                     e.leader_id = ?
-                    OR (
-                        em.user_id = ?
-                        AND e.status <> 'Nháp'
-                    )
+                    OR em.user_id = ?
                 )
             `;
 
@@ -781,18 +781,41 @@ const getTrashEvents = async (req, res) => {
 
 // Thêm vào eventController.js
 const getLeaderEventsForCalendar = async (req, res) => {
+
     try {
+
         const userId = req.user.id;
+
         const [events] = await db.query(
-            `SELECT id, title, start_date, end_date, status 
-             FROM events 
-             WHERE leader_id = ? AND deleted_at IS NULL`,
+            `
+            SELECT
+                id,
+                title,
+                start_date,
+                end_date,
+                status
+            FROM events
+            WHERE leader_id = ?
+            AND deleted_at IS NULL
+            AND status <> 'Nháp'
+            `,
             [userId]
         );
-        res.json({ events });
+
+        res.json({
+            events
+        });
+
     } catch (error) {
-        res.status(500).json({ message: error.message });
+
+        console.log(error);
+
+        res.status(500).json({
+            message: error.message
+        });
+
     }
+
 };
 
 const permanentDeleteEvent = async (req, res) => {
