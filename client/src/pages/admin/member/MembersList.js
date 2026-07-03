@@ -7,25 +7,63 @@ function MembersList() {
     const [loading, setLoading] = useState(true);
 
     const [currentPage, setCurrentPage] = useState(1);
-    const usersPerPage = 5;
+    const usersPerPage = 4;
 
+    // --- 1. STATE CHO BỘ LỌC TÌM KIẾM ---
+    const [search, setSearch] = useState('');
+    const [debouncedSearch, setDebouncedSearch] = useState('');
+    const [role, setRole] = useState('');
+    const [status, setStatus] = useState('');
+
+    // --- 2. KỸ THUẬT DEBOUNCE CHỐNG LAG SERVER ---
+    useEffect(() => {
+        const timerId = setTimeout(() => {
+            setDebouncedSearch(search);
+        }, 500); 
+        return () => clearTimeout(timerId);
+    }, [search]);
+
+    // --- 3. HÀM GỌI API KÈM THEO BỘ LỌC ---
+    const fetchMembers = async () => {
+        setLoading(true);
+        try {
+            const queryParams = new URLSearchParams();
+            
+            // Lấy các giá trị hiện tại để gửi xuống Backend[cite: 9]
+            if (debouncedSearch) queryParams.append('search', debouncedSearch);
+            if (role) queryParams.append('role', role);
+            if (status) queryParams.append('status', status);
+
+            const response = await fetch(`http://localhost:5000/api/users?${queryParams.toString()}`, {
+                headers: { 'Authorization': `Bearer ${localStorage.getItem('my_token')}` }
+            });
+            const data = await response.json();
+            
+            // Backend trả về { total, users } nên cần lấy data.users[cite: 9]
+            setMembers(data.users || data); 
+        } catch (err) { 
+            console.error(err); 
+        } finally { 
+            setLoading(false); 
+        }
+    };
+
+    // --- 4. TỰ ĐỘNG LỌC KHI CÓ THAY ĐỔI & FIX WARNING ---
     useEffect(() => {
         document.title = "Danh sách thành viên | TaskFlow";
-        const fetchMembers = async () => {
-            try {
-                const response = await fetch('http://localhost:5000/api/users', {
-                    headers: { 'Authorization': `Bearer ${localStorage.getItem('my_token')}` }
-                });
-                const data = await response.json();
-                setMembers(data);
-            } catch (err) { 
-                console.error(err); 
-            } finally { 
-                setLoading(false); 
-            }
-        };
+        setCurrentPage(1); // Trở về trang 1 khi bộ lọc thay đổi
         fetchMembers();
-    }, []);
+        // Dòng bên dưới giúp tắt cảnh báo của React
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [debouncedSearch, role, status]);
+
+    // --- 5. HÀM KHÔI PHỤC BỘ LỌC ---
+    const handleReset = () => {
+        setSearch('');
+        setDebouncedSearch('');
+        setRole('');
+        setStatus('');
+    };
 
     const handleDelete = async (id) => {
         if (window.confirm('Bạn có chắc muốn vô hiệu hóa (khóa) thành viên này?')) {
@@ -63,11 +101,10 @@ function MembersList() {
                         'Content-Type': 'application/json',
                         'Authorization': `Bearer ${localStorage.getItem('my_token')}` 
                     },
-                    body: JSON.stringify({ status: 'active' }) // Ép trạng thái thành 'active'
+                    body: JSON.stringify({ status: 'active' }) // Ép trạng thái thành 'active'[cite: 8]
                 });
                 
                 if (response.ok) {
-                    // Đổi trạng thái trên giao diện thành 'active' (màu xanh)
                     setMembers(prevMembers => prevMembers.map(m => 
                         m.id === id ? { ...m, status: 'active' } : m
                     ));
@@ -82,6 +119,7 @@ function MembersList() {
         }
     };
 
+    // Logic Phân trang
     const indexOfLastUser = currentPage * usersPerPage;
     const indexOfFirstUser = indexOfLastUser - usersPerPage;
     const currentUsers = members.slice(indexOfFirstUser, indexOfLastUser); 
@@ -89,14 +127,50 @@ function MembersList() {
 
     return (
         <div className="page-container">
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '24px' }}>
-                <h1 style={{ fontSize: '20px', fontWeight: '700', margin: 0}}>Danh sách thành viên</h1>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '24px', marginTop: '24px' }}>
+                <h1 style={{ fontSize: '20px', fontWeight: '700', margin: 0, color: 'var(--text-primary)' }}>Danh sách thành viên</h1>
                 <button className="btn-primary" onClick={() => navigate('/admin/members/add')} >
                     + Thêm thành viên
                 </button>
             </div>
+
+            {/* --- GIAO DIỆN BỘ LỌC TÌM KIẾM --- */}
+            <div className="form-card mb-6" style={{ maxWidth: '100%', padding: '20px' }}>
+                <div style={{ display: 'flex', gap: '16px', alignItems: 'flex-end', flexWrap: 'wrap' }}>
+                    <div style={{ flex: '1 1 250px' }}>
+                        <label className="form-label" style={{ marginBottom: '6px' }}>Tìm kiếm</label>
+                        <input 
+                            type="text" 
+                            className="form-input" 
+                            placeholder="Họ tên, địa chỉ email..." 
+                            value={search} 
+                            onChange={(e) => setSearch(e.target.value)} 
+                        />
+                    </div>
+                    <div style={{ flex: '1 1 200px' }}>
+                        <label className="form-label" style={{ marginBottom: '6px' }}>Vai trò hệ thống</label>
+                        <select className="form-input" value={role} onChange={(e) => setRole(e.target.value)}>
+                            <option value="">Tất cả vai trò</option>
+                            <option value="admin">Quản trị viên (Admin)</option>
+                            <option value="employee">Nhân viên (Employee)</option>
+                        </select>
+                    </div>
+                    <div style={{ flex: '1 1 200px' }}>
+                        <label className="form-label" style={{ marginBottom: '6px' }}>Trạng thái hoạt động</label>
+                        <select className="form-input" value={status} onChange={(e) => setStatus(e.target.value)}>
+                            <option value="">Tất cả trạng thái</option>
+                            <option value="active">Đang hoạt động</option>
+                            <option value="inactive">Đã khóa</option>
+                        </select>
+                    </div>
+                    <div style={{ display: 'flex', gap: '8px', flex: '0 0 auto' }}>
+                        <button type="button" className="btn-secondary" onClick={handleReset}>Khôi phục</button>
+                    </div>
+                </div>
+            </div>
             
-            <div className="data-table-container">
+            {/* --- BẢNG DỮ LIỆU --- */}
+            <div className="data-table-container" style={{ marginTop: '32px' }}>
                 <table className="data-table">
                     <thead>
                         <tr>
@@ -108,9 +182,9 @@ function MembersList() {
                     </thead>
                     <tbody>
                         {loading ? (
-                            <tr><td colSpan="4" style={{textAlign: 'center'}}>Đang tải dữ liệu...</td></tr>
+                            <tr><td colSpan="4" style={{textAlign: 'center', padding: '20px'}}>Đang tải dữ liệu...</td></tr>
                         ) : currentUsers.length === 0 ? (
-                            <tr><td colSpan="4" style={{textAlign: 'center'}}>Không có thành viên nào.</td></tr>
+                            <tr><td colSpan="4" style={{textAlign: 'center', padding: '20px'}}>Không tìm thấy thành viên nào phù hợp.</td></tr>
                         ) : (
                             currentUsers.map(m => (
                                 <tr key={m.id}>
