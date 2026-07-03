@@ -110,7 +110,6 @@ function MembersList() {
             <div className="form-card mb-6" style={{ maxWidth: '100%', padding: '20px' }}>
                 <div style={{ display: 'flex', gap: '16px', alignItems: 'flex-end', flexWrap: 'wrap' }}>
                     <div style={{ flex: '1 1 200px' }}>
-                        <label className="form-label" style={{ marginBottom: '6px' }}>Vai trò hệ thống</label>
                         <select className="form-input" value={role} onChange={(e) => setRole(e.target.value)}>
                             <option value="">Tất cả vai trò</option>
                             <option value="admin">Quản trị viên (Admin)</option>
@@ -118,7 +117,6 @@ function MembersList() {
                         </select>
                     </div>
                     <div style={{ flex: '1 1 200px' }}>
-                        <label className="form-label" style={{ marginBottom: '6px' }}>Trạng thái hoạt động</label>
                         <select className="form-input" value={status} onChange={(e) => setStatus(e.target.value)}>
                             <option value="">Tất cả trạng thái</option>
                             <option value="active">Đang hoạt động</option>

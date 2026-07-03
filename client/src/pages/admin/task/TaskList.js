@@ -104,9 +104,8 @@ function TaskList() {
             <div className="form-card" style={{ maxWidth: '100%', padding: '20px', marginBottom: '32px' }}>
                 <div style={{ display: 'flex', gap: '16px', alignItems: 'flex-end', flexWrap: 'wrap' }}>
                     <div style={{ flex: '1 1 150px' }}>
-                        <label className="form-label" style={{ marginBottom: '6px' }}>Trạng thái</label>
                         <select className="form-input" value={filterStatus} onChange={(e) => setFilterStatus(e.target.value)}>
-                            <option value="">Tất cả</option>
+                            <option value="">Tất cả trạng thái</option>
                             <option value="pending">Chờ xử lý</option>
                             <option value="in_progress">Đang tiến hành</option>
                             <option value="submitted">Chờ phê duyệt</option>
@@ -115,21 +114,36 @@ function TaskList() {
                         </select>
                     </div>
                     <div style={{ flex: '1 1 120px' }}>
-                        <label className="form-label" style={{ marginBottom: '6px' }}>Độ ưu tiên</label>
                         <select className="form-input" value={filterPriority} onChange={(e) => setFilterPriority(e.target.value)}>
-                            <option value="">Tất cả</option>
+                            <option value="">Tất cả độ ưu tiên</option>
                             <option value="high">Cao</option>
                             <option value="medium">Trung bình</option>
                             <option value="low">Thấp</option>
                         </select>
                     </div>
                     <div style={{ flex: '1 1 140px' }}>
-                        <label className="form-label" style={{ marginBottom: '6px' }}>Hạn từ ngày</label>
-                        <input type="date" className="form-input" value={fromDate} onChange={(e) => setFromDate(e.target.value)} />
+                        <input 
+                                    type={toDate ? 'date' : 'text'} 
+                                    placeholder="Đến ngày..." 
+                                    className="form-input" 
+                                    value={toDate} 
+                                    onFocus={(e) => e.target.type = 'date'} 
+                                    onBlur={(e) => { if (!e.target.value) e.target.type = 'text'; }}
+                                    onChange={(e) => setToDate(e.target.value)} 
+                                    style={{ padding: '6px 30px 6px 12px', height: '36px', width: '100%' }} 
+                                />
                     </div>
                     <div style={{ flex: '1 1 140px' }}>
-                        <label className="form-label" style={{ marginBottom: '6px' }}>Hạn đến ngày</label>
-                        <input type="date" className="form-input" value={toDate} onChange={(e) => setToDate(e.target.value)} />
+                                <input 
+                                    type={toDate ? 'date' : 'text'} 
+                                    placeholder="Đến ngày..." 
+                                    className="form-input" 
+                                    value={toDate} 
+                                    onFocus={(e) => e.target.type = 'date'} 
+                                    onBlur={(e) => { if (!e.target.value) e.target.type = 'text'; }}
+                                    onChange={(e) => setToDate(e.target.value)} 
+                                    style={{ padding: '6px 30px 6px 12px', height: '36px', width: '100%' }} 
+                                />                   
                     </div>
                     <div style={{ display: 'flex', gap: '8px', flex: '0 0 auto' }}>
                         <button type="button" className="btn-secondary" onClick={handleReset}>Xóa lọc</button>

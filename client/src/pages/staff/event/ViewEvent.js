@@ -1,23 +1,33 @@
 import React, { useState, useEffect, useCallback } from 'react';
-import { useParams, useNavigate } from 'react-router-dom';
+import { useParams, useNavigate, useLocation } from 'react-router-dom';
 import Swal from 'sweetalert2';
 
 function ViewEvent() {
     const { id } = useParams();
     const navigate = useNavigate();
+    const location = useLocation();
     
+    // --- ĐỌC TỪ KHÓA TÌM KIẾM TỪ HEADER ---
+    const urlSearch = new URLSearchParams(location.search).get('search') || '';
+    const [debouncedSearch, setDebouncedSearch] = useState(urlSearch);
+
     const [event, setEvent] = useState(null);
     const [tasks, setTasks] = useState([]);
     const [members, setMembers] = useState([]);
     const [loading, setLoading] = useState(true);
     const [currentUser, setCurrentUser] = useState(null); 
 
-    // --- CÁC BỘ LỌC CÔNG VIỆC TRONG SỰ KIỆN TỐI ĐA ---
+    // --- BỘ LỌC CÔNG VIỆC TRONG SỰ KIỆN ---
     const [filterTaskStatus, setFilterTaskStatus] = useState('');
     const [filterTaskPriority, setFilterTaskPriority] = useState('');
     const [filterTaskFromDate, setFilterTaskFromDate] = useState('');
     const [filterTaskToDate, setFilterTaskToDate] = useState('');
 
+    // --- BỘ LỌC THÀNH VIÊN (MINI FILTER) ---
+    const [filterMemberRole, setFilterMemberRole] = useState('');
+    const [filterMemberStatus, setFilterMemberStatus] = useState('');
+
+    // Giải mã token
     useEffect(() => {
         try {
             const token = localStorage.getItem('my_token');
@@ -32,16 +42,26 @@ function ViewEvent() {
         }
     }, []);
 
+    // Chống lag khi gõ tìm kiếm Header
+    useEffect(() => {
+        const timerId = setTimeout(() => { setDebouncedSearch(urlSearch); }, 500); 
+        return () => clearTimeout(timerId);
+    }, [urlSearch]);
+
     const fetchViewEvent = useCallback(async () => {
         try {
             setLoading(true);
             const token = localStorage.getItem('my_token');
             const headers = { 'Authorization': `Bearer ${token}` };
 
+            const queryParams = new URLSearchParams();
+            if (debouncedSearch) queryParams.append('search', debouncedSearch);
+
+            // Gửi chữ tìm kiếm vào cả 2 API (Công việc & Thành viên)
             const [eventRes, tasksRes, membersRes] = await Promise.all([
                 fetch(`http://localhost:5000/api/events/${id}`, { headers }),
-                fetch(`http://localhost:5000/api/tasks`, { headers }),
-                fetch(`http://localhost:5000/api/events/${id}/members`, { headers }).catch(() => null)
+                fetch(`http://localhost:5000/api/tasks?event_id=${id}&${queryParams.toString()}`, { headers }),
+                fetch(`http://localhost:5000/api/events/${id}/members?${queryParams.toString()}`, { headers }).catch(() => null)
             ]);
 
             if (eventRes.ok && tasksRes.ok) {
@@ -50,7 +70,8 @@ function ViewEvent() {
                 
                 setEvent(eventData.event || eventData);
                 
-                const filteredTasks = (tasksData.tasks || []).filter(t => t.event_id.toString() === id && !t.is_deleted);
+                // Lọc bỏ task đã xóa
+                const filteredTasks = (tasksData.tasks || []).filter(t => !t.is_deleted);
                 setTasks(filteredTasks);
 
                 if (membersRes && membersRes.ok) {
@@ -59,7 +80,7 @@ function ViewEvent() {
                 }
             } else {
                 Swal.fire('Lỗi', 'Không thể tải dữ liệu chi tiết', 'error');
-                navigate('/staff/events');
+                navigate('/admin/events');
             }
         } catch (error) {
             console.error(error);
@@ -67,7 +88,7 @@ function ViewEvent() {
         } finally {
             setLoading(false);
         }
-    }, [id, navigate]);
+    }, [id, navigate, debouncedSearch]);
 
     useEffect(() => {
         fetchViewEvent();
@@ -75,7 +96,6 @@ function ViewEvent() {
 
     const handleDeleteTask = async (e, taskId) => {
         e.stopPropagation(); 
-        
         const result = await Swal.fire({
             title: 'Xóa công việc này?',
             text: "Công việc sẽ được chuyển vào Thùng rác hệ thống.",
@@ -139,7 +159,7 @@ function ViewEvent() {
         }
     };
 
-    const handleResetFilter = () => {
+    const handleResetTaskFilter = () => {
         setFilterTaskStatus('');
         setFilterTaskPriority('');
         setFilterTaskFromDate('');
@@ -180,7 +200,6 @@ function ViewEvent() {
     const isAdmin = currentUser?.role === 'admin';
     const isLeader = currentUser && event && (Number(event.leader_id) === Number(currentUser.id));
     const hasManagerRights = isAdmin || isLeader; 
-
     const leaderName = event.leader_name || 'Chưa cập nhật';
 
     const formatDateTime = (value) => {
@@ -191,27 +210,31 @@ function ViewEvent() {
         });
     };
 
-    // --- LỌC CÔNG VIỆC NHIỀU ĐIỀU KIỆN TẠI FRONTEND ---
+    // --- LỌC CÔNG VIỆC Ở FRONTEND ---
     const displayTasks = tasks.filter(t => {
         const matchStatus = filterTaskStatus ? t.status === filterTaskStatus : true;
         const matchPriority = filterTaskPriority ? t.priority === filterTaskPriority : true;
-        
         let matchFromDate = true;
         let matchToDate = true;
-
         if (filterTaskFromDate) {
             matchFromDate = t.due_date ? new Date(t.due_date) >= new Date(filterTaskFromDate) : false;
         }
         if (filterTaskToDate) {
             matchToDate = t.due_date ? new Date(t.due_date) <= new Date(filterTaskToDate) : false;
         }
-
         return matchStatus && matchPriority && matchFromDate && matchToDate;
+    });
+
+    // --- LỌC THÀNH VIÊN Ở FRONTEND ---
+    const displayMembers = members.filter(m => {
+        const matchRole = filterMemberRole ? m.role_in_event === filterMemberRole : true;
+        const matchStatus = filterMemberStatus ? m.status === filterMemberStatus : true;
+        return matchRole && matchStatus;
     });
 
     return (
         <div className="page-container event-page">
-            <button className="btn-back" onClick={() => navigate('/staff/events')}>
+            <button className="btn-back" onClick={() => navigate('/admin/events')}>
                 <svg width="18" height="18" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
                     <path strokeLinecap="round" strokeLinejoin="round" d="M10 19l-7-7m0 0l7-7m-7 7h18" />
                 </svg>
@@ -246,18 +269,17 @@ function ViewEvent() {
                             <h3 className="section-title" style={{ margin: 0 }}>Công việc trong sự kiện ({displayTasks.length}/{tasks.length})</h3>
                             
                             {hasManagerRights && (
-                                <button className="btn-primary" style={{ padding: '6px 12px', fontSize: '14px', height: '36px', whiteSpace: 'nowrap' }} onClick={() => navigate(`/staff/events/${id}/tasks/add`)}>
+                                <button className="btn-primary" style={{ padding: '6px 12px', fontSize: '14px', height: '36px', whiteSpace: 'nowrap' }} onClick={() => navigate(`/admin/tasks/add?event_id=${id}`)}>
                                     + Thêm công việc
                                 </button>
                             )}
                         </div>
 
-                        {/* --- BỘ LỌC CÔNG VIỆC TRONG SỰ KIỆN --- */}
+                        {/* BỘ LỌC CÔNG VIỆC */}
                         <div style={{ display: 'flex', gap: '12px', alignItems: 'flex-end', flexWrap: 'wrap', marginBottom: '24px', paddingBottom: '16px', borderBottom: '1px solid var(--border-neutral)' }}>
                             <div style={{ flex: '1 1 120px' }}>
-                                <label className="form-label" style={{ marginBottom: '6px', fontSize: '12px' }}>Trạng thái</label>
                                 <select className="form-input" value={filterTaskStatus} onChange={(e) => setFilterTaskStatus(e.target.value)} style={{ padding: '6px 12px', height: '36px' }}>
-                                    <option value="">Tất cả</option>
+                                    <option value="">Tất cả trạng thái</option>
                                     <option value="pending">Chờ xử lý</option>
                                     <option value="in_progress">Đang tiến hành</option>
                                     <option value="submitted">Chờ phê duyệt</option>
@@ -266,23 +288,39 @@ function ViewEvent() {
                                 </select>
                             </div>
                             <div style={{ flex: '1 1 120px' }}>
-                                <label className="form-label" style={{ marginBottom: '6px', fontSize: '12px' }}>Ưu tiên</label>
                                 <select className="form-input" value={filterTaskPriority} onChange={(e) => setFilterTaskPriority(e.target.value)} style={{ padding: '6px 12px', height: '36px' }}>
-                                    <option value="">Tất cả</option>
+                                    <option value="">Tất cả ưu tiên</option>
                                     <option value="high">Cao</option>
                                     <option value="medium">Trung bình</option>
                                     <option value="low">Thấp</option>
                                 </select>
                             </div>
-                            <div style={{ flex: '1 1 120px' }}>
-                                <label className="form-label" style={{ marginBottom: '6px', fontSize: '12px' }}>Hạn từ ngày</label>
-                                <input type="date" className="form-input" value={filterTaskFromDate} onChange={(e) => setFilterTaskFromDate(e.target.value)} style={{ padding: '6px 12px', height: '36px' }} />
+                            <div style={{ flex: '1 1 140px', position: 'relative' }}>
+                                <input 
+                                    type={filterTaskFromDate ? 'date' : 'text'} 
+                                    placeholder="Từ ngày..." 
+                                    className="form-input" 
+                                    value={filterTaskFromDate} 
+                                    onFocus={(e) => e.target.type = 'date'} 
+                                    onBlur={(e) => { if (!e.target.value) e.target.type = 'text'; }}
+                                    onChange={(e) => setFilterTaskFromDate(e.target.value)} 
+                                    style={{ padding: '6px 30px 6px 12px', height: '36px', width: '100%' }} 
+                                />
                             </div>
-                            <div style={{ flex: '1 1 120px' }}>
-                                <label className="form-label" style={{ marginBottom: '6px', fontSize: '12px' }}>Hạn đến ngày</label>
-                                <input type="date" className="form-input" value={filterTaskToDate} onChange={(e) => setFilterTaskToDate(e.target.value)} style={{ padding: '6px 12px', height: '36px' }} />
+                            
+                            <div style={{ flex: '1 1 140px', position: 'relative' }}>
+                                <input 
+                                    type={filterTaskToDate ? 'date' : 'text'} 
+                                    placeholder="Đến ngày..." 
+                                    className="form-input" 
+                                    value={filterTaskToDate} 
+                                    onFocus={(e) => e.target.type = 'date'} 
+                                    onBlur={(e) => { if (!e.target.value) e.target.type = 'text'; }}
+                                    onChange={(e) => setFilterTaskToDate(e.target.value)} 
+                                    style={{ padding: '6px 30px 6px 12px', height: '36px', width: '100%' }} 
+                                />
                             </div>
-                            <button type="button" className="btn-secondary" onClick={handleResetFilter} style={{ height: '36px', padding: '0 12px', fontSize: '13px' }}>Khôi phục</button>
+                            <button type="button" className="btn-secondary" onClick={handleResetTaskFilter} style={{ height: '36px', padding: '0 12px', fontSize: '13px' }}>Khôi phục</button>
                         </div>
                         
                         {displayTasks.length === 0 ? (
@@ -292,7 +330,7 @@ function ViewEvent() {
                                 {displayTasks.map((task, index) => (
                                     <div 
                                         key={task.id} 
-                                        onClick={() => navigate(`/staff/tasks/view/${task.id}`)} 
+                                        onClick={() => navigate(`/admin/tasks/view/${task.id}`)} 
                                         style={{ 
                                             display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '14px 16px', 
                                             borderBottom: index === displayTasks.length - 1 ? 'none' : '1px solid var(--border-neutral)',
@@ -341,27 +379,54 @@ function ViewEvent() {
 
                 <div style={{ flex: '1 1 28%', minWidth: '300px', margin: 0 }}>
                     <div className="form-card" style={{ maxWidth: '100%', margin: 0, padding: '24px', height: 'fit-content' }}>
-                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px' }}>
-                            <h3 className="section-title" style={{ margin: 0 }}>Thành viên tham gia ({members.length})</h3>
+                        
+                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px' }}>
+                            <h3 className="section-title" style={{ margin: 0 }}>Thành viên ({displayMembers.length}/{members.length})</h3>
                             {hasManagerRights && (
-                                <button className="btn-secondary" style={{ padding: '4px 8px', fontSize: '12px' }} onClick={() => navigate(`/staff/events/${id}/members/add`)}>
+                                <button className="btn-secondary" style={{ padding: '4px 8px', fontSize: '12px' }} onClick={() => navigate(`/admin/events/${id}/members/add`)}>
                                     + Thêm
                                 </button>
                             )}
                         </div>
+
+                        <div style={{ display: 'flex', gap: '8px', marginBottom: '20px', paddingBottom: '16px', borderBottom: '1px solid var(--border-neutral)' }}>
+                            <select
+                                className="form-input" 
+                                style={{ padding: '4px 8px', fontSize: '12px', height: '30px', flex: 1 }} 
+                                value={filterMemberRole} 
+                                onChange={(e) => setFilterMemberRole(e.target.value)}
+                            >
+                                <option value="">Tất cả vai trò</option>
+                                <option value="coordinator">Điều phối viên</option>
+                                <option value="member">Thành viên</option>
+                            </select>
+                            <select 
+                                className="form-input" 
+                                style={{ padding: '4px 8px', fontSize: '12px', height: '30px', flex: 1 }} 
+                                value={filterMemberStatus} 
+                                onChange={(e) => setFilterMemberStatus(e.target.value)}
+                            >
+                                <option value="">Tất cả trạng thái</option>
+                                <option value="active">Hoạt động</option>
+                                <option value="inactive">Đã khóa</option>
+                            </select>
+                        </div>
                         
-                        {members.length === 0 ? (
-                            <p className="text-secondary text-center" style={{ fontSize: '13px' }}>Chưa có thành viên.</p>
+                        {displayMembers.length === 0 ? (
+                            <p className="text-secondary text-center" style={{ fontSize: '13px' }}>Không có thành viên nào khớp bộ lọc.</p>
                         ) : (
                             <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
-                                {members.map((member, index) => (
+                                {displayMembers.map((member, index) => (
                                     <div key={index} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
                                         <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
                                             <div className="user-avatar" style={{ backgroundColor: 'var(--primary-color)' }}>
                                                 {member.full_name ? member.full_name.charAt(0).toUpperCase() : 'U'}
                                             </div>
                                             <div>
-                                                <p className="user-name" style={{ margin: 0, fontSize: '14px', fontWeight: '500' }}>{member.full_name}</p>
+                                                <p className="user-name" style={{ margin: 0, fontSize: '14px', fontWeight: '500' }}>
+                                                    {member.full_name} 
+                                                    {member.status === 'inactive' && <span style={{color: '#ef4444', fontSize: '11px', marginLeft: '4px'}}>(Đã khóa)</span>}
+                                                </p>
                                                 <p className="user-role" style={{ margin: '2px 0 0 0', color: 'var(--text-secondary)', fontSize: '12px' }}>
                                                     {member.role_in_event === 'coordinator' ? 'Điều phối viên' : 'Thành viên'}
                                                 </p>

@@ -94,7 +94,6 @@ function EventList() {
             <div className="form-card mb-6" style={{ maxWidth: '100%', padding: '20px' }}>
                 <div style={{ display: 'flex', gap: '16px', alignItems: 'flex-end', flexWrap: 'wrap' }}>
                     <div style={{ flex: '1 1 150px' }}>
-                        <label className="form-label" style={{ marginBottom: '6px' }}>Trạng thái</label>
                         <select className="form-input" value={status} onChange={(e) => setStatus(e.target.value)}>
                             <option value="">Tất cả trạng thái</option>
                             <option value="Sắp diễn ra">Sắp diễn ra</option>
@@ -105,15 +104,30 @@ function EventList() {
                         </select>
                     </div>
                     <div style={{ flex: '1 1 140px' }}>
-                        <label className="form-label" style={{ marginBottom: '6px' }}>Từ ngày</label>
-                        <input type="date" className="form-input" value={fromDate} onChange={(e) => setFromDate(e.target.value)} />
-                    </div>
+                                <input 
+                                    type={toDate ? 'date' : 'text'} 
+                                    placeholder="Đến ngày..." 
+                                    className="form-input" 
+                                    value={toDate} 
+                                    onFocus={(e) => e.target.type = 'date'} 
+                                    onBlur={(e) => { if (!e.target.value) e.target.type = 'text'; }}
+                                    onChange={(e) => setToDate(e.target.value)} 
+                                    style={{ padding: '6px 30px 6px 12px', height: '36px', width: '100%' }} 
+                                />                   
+                     </div>
                     <div style={{ flex: '1 1 140px' }}>
-                        <label className="form-label" style={{ marginBottom: '6px' }}>Đến ngày</label>
-                        <input type="date" className="form-input" value={toDate} onChange={(e) => setToDate(e.target.value)} />
+                        <input 
+                                    type={toDate ? 'date' : 'text'} 
+                                    placeholder="Đến ngày..." 
+                                    className="form-input" 
+                                    value={toDate} 
+                                    onFocus={(e) => e.target.type = 'date'} 
+                                    onBlur={(e) => { if (!e.target.value) e.target.type = 'text'; }}
+                                    onChange={(e) => setToDate(e.target.value)} 
+                                    style={{ padding: '6px 30px 6px 12px', height: '36px', width: '100%' }} 
+                                />
                     </div>
                     <div style={{ flex: '1 1 120px' }}>
-                        <label className="form-label" style={{ marginBottom: '6px' }}>ID Leader</label>
                         <input type="text" className="form-input" placeholder="ID người phụ trách" value={leaderId} onChange={(e) => setLeaderId(e.target.value)} />
                     </div>
                     <div style={{ display: 'flex', gap: '8px', flex: '0 0 auto' }}>
