@@ -13,6 +13,7 @@ const taskSubmissionRoutes = require("./routes/taskSubmissionRoutes");
 const messageRoutes = require("./routes/messageRoutes");
 const directMessageRoutes = require("./routes/directMessageRoutes");
 const reportRoutes = require("./routes/reportRoutes");
+const calendarRoutes = require("./routes/calendarRoutes");
 
 const app = express(); // Tạo ra một ứng dụng server
 
@@ -37,6 +38,7 @@ app.use("/api/task-submissions", taskSubmissionRoutes);
 app.use("/api/messages", messageRoutes);
 app.use("/api/direct-messages", directMessageRoutes);
 app.use("/api/reports", reportRoutes); // Gắn tiền tố "/api/reports" cho các đường dẫn trong reportRoutes (Ví dụ: /api/reports/overview)
+app.use("/api/calendar", calendarRoutes);
 
 // Error Handler
 app.use((err, req, res, next) => {
