@@ -7,7 +7,54 @@ const getAllTasks = async (req, res) => {
 
     try {
 
-        const { event_id } = req.query;
+        const {
+            search,
+            event_id,
+            status,
+            priority,
+            assigned_to,
+            from_date,
+            to_date
+        } = req.query;
+
+        const validStatuses = [
+            "pending",
+            "in_progress",
+            "submitted",
+            "completed",
+            "cancelled"
+        ];
+
+        const validPriorities = [
+            "low",
+            "medium",
+            "high"
+        ];
+
+        // Kiểm tra status hợp lệ
+        if (status && !validStatuses.includes(status)) {
+            return res.status(400).json({
+                message: "Trạng thái công việc không hợp lệ"
+            });
+        }
+
+        // Kiểm tra priority hợp lệ
+        if (priority && !validPriorities.includes(priority)) {
+            return res.status(400).json({
+                message: "Độ ưu tiên không hợp lệ"
+            });
+        }
+
+        // Kiểm tra ngày lọc
+        if (
+            from_date &&
+            to_date &&
+            new Date(from_date) > new Date(to_date)
+        ) {
+            return res.status(400).json({
+                message: "Ngày bắt đầu lọc không được lớn hơn ngày kết thúc lọc"
+            });
+        }
 
         let sql = `
             SELECT
@@ -18,6 +65,7 @@ const getAllTasks = async (req, res) => {
                 t.priority,
                 t.due_date,
                 t.created_at,
+                t.updated_at,
 
                 e.id AS event_id,
                 e.title AS event_title,
@@ -41,7 +89,7 @@ const getAllTasks = async (req, res) => {
 
         let params = [];
 
-        // Employee / Leader
+        // Phân quyền xem task
         if (req.user.role !== "admin") {
 
             sql += `
@@ -65,14 +113,31 @@ const getAllTasks = async (req, res) => {
             `;
 
             params.push(
-                req.user.id, // Leader được xem task của Event Nháp
-                req.user.id, // Là thành viên của Event
-                req.user.id  // Là Leader của Event
+                req.user.id,
+                req.user.id,
+                req.user.id
             );
 
         }
 
-        // Lọc theo Event
+        // Tìm kiếm theo tên công việc hoặc mô tả
+        if (search) {
+
+            sql += `
+                AND (
+                    t.title LIKE ?
+                    OR t.description LIKE ?
+                )
+            `;
+
+            params.push(
+                `%${search}%`,
+                `%${search}%`
+            );
+
+        }
+
+        // Lọc theo sự kiện
         if (event_id) {
 
             sql += `
@@ -80,6 +145,61 @@ const getAllTasks = async (req, res) => {
             `;
 
             params.push(event_id);
+
+        }
+
+        // Lọc theo trạng thái
+        if (status) {
+
+            sql += `
+                AND t.status = ?
+            `;
+
+            params.push(status);
+
+        }
+
+        // Lọc theo độ ưu tiên
+        if (priority) {
+
+            sql += `
+                AND t.priority = ?
+            `;
+
+            params.push(priority);
+
+        }
+
+        // Lọc theo người được giao
+        if (assigned_to) {
+
+            sql += `
+                AND t.assigned_to = ?
+            `;
+
+            params.push(assigned_to);
+
+        }
+
+        // Lọc từ ngày hạn hoàn thành
+        if (from_date) {
+
+            sql += `
+                AND DATE(t.due_date) >= ?
+            `;
+
+            params.push(from_date);
+
+        }
+
+        // Lọc đến ngày hạn hoàn thành
+        if (to_date) {
+
+            sql += `
+                AND DATE(t.due_date) <= ?
+            `;
+
+            params.push(to_date);
 
         }
 
