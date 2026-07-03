@@ -7,12 +7,41 @@ const getEventMembers = async (req, res) => {
 
         const { eventId } = req.params;
 
+        const {
+            search,
+            role_in_event,
+            status
+        } = req.query;
+
+        // Kiểm tra role_in_event hợp lệ
+        if (
+            role_in_event &&
+            role_in_event !== "member" &&
+            role_in_event !== "coordinator"
+        ) {
+            return res.status(400).json({
+                message: "Vai trò trong sự kiện không hợp lệ"
+            });
+        }
+
+        // Kiểm tra status hợp lệ
+        if (
+            status &&
+            status !== "active" &&
+            status !== "inactive"
+        ) {
+            return res.status(400).json({
+                message: "Trạng thái tài khoản không hợp lệ"
+            });
+        }
+
         // Kiểm tra event tồn tại
         const [events] = await db.query(
             `
             SELECT *
             FROM events
             WHERE id = ?
+            AND deleted_at IS NULL
             `,
             [eventId]
         );
@@ -23,8 +52,44 @@ const getEventMembers = async (req, res) => {
             });
         }
 
-        const [members] = await db.query(
-            `
+        const event = events[0];
+
+        // Phân quyền xem danh sách thành viên
+        // Admin xem được tất cả
+        if (req.user.role !== "admin") {
+
+            const isLeader =
+                Number(req.user.id) === Number(event.leader_id);
+
+            const [memberCheck] = await db.query(
+                `
+                SELECT id
+                FROM event_members
+                WHERE event_id = ?
+                AND user_id = ?
+                `,
+                [eventId, req.user.id]
+            );
+
+            const isMember = memberCheck.length > 0;
+
+            if (!isLeader && !isMember) {
+                return res.status(403).json({
+                    message: "Bạn không có quyền xem danh sách thành viên sự kiện này"
+                });
+            }
+
+            // Employee không được xem member của event Nháp
+            // Trừ khi người đó là Leader
+            if (event.status === "Nháp" && !isLeader) {
+                return res.status(403).json({
+                    message: "Bạn không có quyền xem danh sách thành viên sự kiện này"
+                });
+            }
+
+        }
+
+        let sql = `
             SELECT
                 u.id,
                 u.full_name,
@@ -39,11 +104,48 @@ const getEventMembers = async (req, res) => {
                 ON em.user_id = u.id
 
             WHERE em.event_id = ?
+        `;
 
+        let params = [eventId];
+
+        // Tìm kiếm theo tên hoặc email
+        if (search) {
+            sql += `
+                AND (
+                    u.full_name LIKE ?
+                    OR u.email LIKE ?
+                )
+            `;
+
+            params.push(
+                `%${search}%`,
+                `%${search}%`
+            );
+        }
+
+        // Lọc theo vai trò trong sự kiện
+        if (role_in_event) {
+            sql += `
+                AND em.role_in_event = ?
+            `;
+
+            params.push(role_in_event);
+        }
+
+        // Lọc theo trạng thái tài khoản
+        if (status) {
+            sql += `
+                AND u.status = ?
+            `;
+
+            params.push(status);
+        }
+
+        sql += `
             ORDER BY em.id DESC
-            `,
-            [eventId]
-        );
+        `;
+
+        const [members] = await db.query(sql, params);
 
         res.json({
             event_id: Number(eventId),
