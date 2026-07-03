@@ -1,4 +1,5 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useRef } from 'react';
+import io from 'socket.io-client';
 import { useParams, useNavigate } from 'react-router-dom';
 import Swal from 'sweetalert2';
 
@@ -74,11 +75,48 @@ function TaskDetail() {
         } catch (err) { console.error("Lỗi tải lịch sử bài nộp:", err); }
     }, [id]);
 
+    // Socket ref for realtime updates (auto-refresh when leader/admin reviews)
+    const socketRef = useRef(null);
+
     useEffect(() => { 
         document.title = "Chi tiết công việc | TaskFlow";
         fetchTaskData(); 
         fetchSubmissionHistory(); // Gọi hàm lấy lịch sử khi load trang
     }, [fetchTaskData, fetchSubmissionHistory]);
+
+    // Thiết lập socket để lắng nghe thông báo duyệt bài và tự động reload
+    useEffect(() => {
+        const token = localStorage.getItem('my_token');
+        if (!token) return;
+
+        socketRef.current = io('http://localhost:5000', { auth: { token } });
+
+        socketRef.current.on('connect', () => {
+            // console.log('Socket connected in ViewTask');
+        });
+
+        socketRef.current.on('connect_error', (err) => {
+            // console.error('Socket error in ViewTask:', err.message);
+        });
+
+        // Khi server gửi notification mới (createNotification emits 'new_notification')
+        socketRef.current.on('new_notification', (notif) => {
+            try {
+                // Nếu notification liên quan tới task hiện tại, refresh
+                if (!notif) return;
+                // related_id được dùng cho task id
+                if (Number(notif.related_id) === Number(id)) {
+                    // Cập nhật lại task và lịch sử nộp
+                    fetchTaskData();
+                    fetchSubmissionHistory();
+                }
+            } catch (e) { /* ignore */ }
+        });
+
+        return () => {
+            if (socketRef.current) socketRef.current.disconnect();
+        };
+    }, [id, fetchTaskData, fetchSubmissionHistory]);
 
     const handleFileUpload = async (e) => {
         const file = e.target.files[0];

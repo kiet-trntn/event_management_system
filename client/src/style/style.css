@@ -860,3 +860,46 @@ body {
 .chat-send-btn.active { background: #2563eb; color: #ffffff; cursor: pointer; }
 .chat-send-btn.active:hover { background: #1d4ed8; transform: translateY(-1px); }
 .chat-send-btn.disabled { background: #e2e8f0; color: #94a3b8; cursor: not-allowed; }
+
+/* =========================================================
+   CHẶN TOÀN BỘ TRÊN ĐIỆN THOẠI (GLOBAL MOBILE BLOCK)
+   Giấu toàn bộ App và chỉ hiện 1 bảng thông báo duy nhất
+   ========================================================= */
+@media screen and (max-width: 768px) {
+    
+    /* 1. Biến toàn bộ nền web thành một khung căn giữa */
+    body {
+        display: flex !important;
+        align-items: center !important;
+        justify-content: center !important;
+        height: 100vh !important;
+        background-color: var(--bg-neutral) !important;
+        margin: 0 !important;
+        overflow: hidden !important;
+    }
+
+    /* 2. KHẢM ĐAO: Giấu sạch sẽ toàn bộ code React (Sidebar, Header, Nội dung) */
+    body > * {
+        display: none !important;
+    }
+
+    /* 3. Hiện tấm lệnh bài chặn cửa */
+    body::after {
+        content: "💻\A\A Hệ thống TaskFlow chứa dữ liệu phức tạp.\A Vui lòng sử dụng Máy tính (PC/Laptop) \A để có trải nghiệm làm việc tốt nhất!";
+        white-space: pre-wrap;
+        display: block;
+        text-align: center;
+        font-size: 15px;
+        color: #475569;
+        font-weight: 600;
+        line-height: 1.6;
+        background: #ffffff;
+        padding: 40px 24px;
+        border-radius: 16px;
+        box-shadow: 0 15px 35px rgba(0,0,0,0.1);
+        border: 1px solid #e2e8f0;
+        width: 85%;
+        max-width: 350px;
+        margin: auto;
+    }
+}
