@@ -1,24 +1,49 @@
 import React, { useState, useEffect, useCallback } from 'react';
-import { useNavigate } from 'react-router-dom';
-import Swal from 'sweetalert2';
+import { useNavigate, useLocation } from 'react-router-dom';
 
 function EventList() {
     const navigate = useNavigate();
+    const location = useLocation();
+    
+    // Đọc URL từ Header
+    const urlSearch = new URLSearchParams(location.search).get('search') || '';
+    const [debouncedSearch, setDebouncedSearch] = useState(urlSearch);
+
     const [events, setEvents] = useState([]);
     const [tasks, setTasks] = useState([]);
     const [loading, setLoading] = useState(true);
 
+    // --- CÁC BỘ LỌC SỰ KIỆN TỐI ĐA ---
+    const [status, setStatus] = useState('');
+    const [fromDate, setFromDate] = useState('');
+    const [toDate, setToDate] = useState('');
+
     const [currentPage, setCurrentPage] = useState(1);
-    const eventsPerPage =`10`;
+    const eventsPerPage = 10;
+
+    // Chống lag khi gõ
+    useEffect(() => {
+        const timerId = setTimeout(() => {
+            setDebouncedSearch(urlSearch);
+        }, 500); 
+        return () => clearTimeout(timerId);
+    }, [urlSearch]);
 
     const fetchData = useCallback(async () => {
         try {
             setLoading(true);
             const token = localStorage.getItem('my_token');
+            const queryParams = new URLSearchParams();
+            
+            if (debouncedSearch) queryParams.append('search', debouncedSearch);
+            if (status) queryParams.append('status', status);
+            if (fromDate) queryParams.append('from_date', fromDate);
+            if (toDate) queryParams.append('to_date', toDate);
 
+            // Gửi toàn bộ filter xuống API Sự kiện
             const [eventsRes, tasksRes] = await Promise.all([
-                fetch('http://localhost:5000/api/events', { headers: { 'Authorization': `Bearer ${token}` } }),
-                fetch('http://localhost:5000/api/tasks', { headers: { 'Authorization': `Bearer ${token}` } })
+                fetch(`http://localhost:5000/api/events?${queryParams.toString()}`, { headers: { 'Authorization': `Bearer ${token}` } }),
+                fetch(`http://localhost:5000/api/tasks`, { headers: { 'Authorization': `Bearer ${token}` } })
             ]);
 
             if (eventsRes.ok && tasksRes.ok) {
@@ -26,21 +51,27 @@ function EventList() {
                 const tasksData = await tasksRes.json();
                 setEvents(eventsData.events || []);
                 setTasks(tasksData.tasks || []);
-            } else {
-                Swal.fire('Lỗi', 'Không thể tải dữ liệu sự kiện', 'error');
             }
         } catch (error) {
             console.error(error);
-            Swal.fire('Lỗi', 'Lỗi kết nối đến máy chủ', 'error');
         } finally {
             setLoading(false);
         }
-    }, []);
+    }, [debouncedSearch, status, fromDate, toDate]);
 
     useEffect(() => {
         document.title = "Sự kiện của tôi | TaskFlow";
+        setCurrentPage(1);
         fetchData();
-    }, [fetchData]);
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [debouncedSearch, status, fromDate, toDate]);
+
+    const handleReset = () => {
+        setStatus('');
+        setFromDate('');
+        setToDate('');
+        navigate(location.pathname, { replace: true });
+    };
 
     const calculateProgress = (eventId) => {
         const eventTasks = tasks.filter(t => t.event_id === eventId);
@@ -49,88 +80,85 @@ function EventList() {
         return Math.round((completedTasks / eventTasks.length) * 100);
     };
 
-    const getBadgeClass = (status) => {
-        switch(status) {
+    const getBadgeClass = (statusStr) => {
+        switch(statusStr) {
             case 'Đã kết thúc': return 'badge-pill badge-green';
             case 'Đang diễn ra': return 'badge-pill badge-blue';
             case 'Đã hủy': return 'badge-pill badge-gray';
-            case 'Nháp': return 'badge-pill status-draft';
             default: return 'badge-pill badge-yellow';
         }
     };
 
-    // --- LOGIC TÍNH TOÁN PHÂN TRANG Ở FRONTEND ---
     const indexOfLastEvent = currentPage * eventsPerPage;
     const indexOfFirstEvent = indexOfLastEvent - eventsPerPage;
-    // Cắt mảng sự kiện chỉ lấy từ vị trí First đến Last của trang hiện tại
     const currentEvents = events.slice(indexOfFirstEvent, indexOfLastEvent);
-    // Tính tổng số trang cần có
     const totalPages = Math.ceil(events.length / eventsPerPage);
 
-    // Hàm chuyển trang mượt mà
     const handlePageChange = (pageNumber) => {
         setCurrentPage(pageNumber);
-        // Tự động cuộn lên đầu trang khi chuyển trang
         window.scrollTo({ top: 0, behavior: 'smooth' });
     };
 
     return (
         <div className="page-container event-page">
-            
             <div className="page-header-form" style={{ maxWidth: '100%', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                 <h3>Sự Kiện Của Tôi</h3>
+            </div>
+
+            {/* --- KHU VỰC BỘ LỌC ĐẦY ĐỦ --- */}
+            <div className="form-card mb-6" style={{ maxWidth: '100%', padding: '20px', marginTop: '16px', marginBottom: '24px' }}>
+                <div style={{ display: 'flex', gap: '16px', alignItems: 'flex-end', flexWrap: 'wrap' }}>
+                    <div style={{ flex: '1 1 150px' }}>
+                        <label className="form-label" style={{ marginBottom: '6px' }}>Trạng thái</label>
+                        <select className="form-input" value={status} onChange={(e) => setStatus(e.target.value)}>
+                            <option value="">Tất cả trạng thái</option>
+                            <option value="Sắp diễn ra">Sắp diễn ra</option>
+                            <option value="Đang diễn ra">Đang diễn ra</option>
+                            <option value="Đã kết thúc">Đã kết thúc</option>
+                            <option value="Đã hủy">Đã hủy</option>
+                        </select>
+                    </div>
+                    <div style={{ flex: '1 1 140px' }}>
+                        <label className="form-label" style={{ marginBottom: '6px' }}>Từ ngày</label>
+                        <input type="date" className="form-input" value={fromDate} onChange={(e) => setFromDate(e.target.value)} />
+                    </div>
+                    <div style={{ flex: '1 1 140px' }}>
+                        <label className="form-label" style={{ marginBottom: '6px' }}>Đến ngày</label>
+                        <input type="date" className="form-input" value={toDate} onChange={(e) => setToDate(e.target.value)} />
+                    </div>
+                    <div style={{ display: 'flex', gap: '8px', flex: '0 0 auto' }}>
+                        <button type="button" className="btn-secondary" onClick={handleReset}>Khôi phục</button>
+                    </div>
+                </div>
             </div>
 
             {loading ? (
                 <div className="form-card text-center text-secondary">Đang tải dữ liệu...</div>
             ) : events.length === 0 ? (
-                <div className="form-card text-center text-secondary">Bạn chưa được thêm vào sự kiện nào.</div>
+                <div className="form-card text-center text-secondary">
+                    {debouncedSearch || status || fromDate || toDate ? `Không tìm thấy sự kiện nào khớp với bộ lọc.` : "Bạn chưa được thêm vào sự kiện nào."}
+                </div>
             ) : (
                 <>
-                    {/* Render danh sách sự kiện của TRANG HIỆN TẠI */}
                     <div className="event-grid">
                         {currentEvents.map(event => {
                             const progress = calculateProgress(event.id);
-                            
                             return (
-                                <div 
-                                    key={event.id} 
-                                    className="event-card" 
-                                    onClick={() => navigate(`/staff/events/view/${event.id}`)}
-                                    style={{ cursor: 'pointer' }}
-                                >
+                                <div key={event.id} className="event-card" onClick={() => navigate(`/staff/events/view/${event.id}`)} style={{ cursor: 'pointer' }}>
                                     <div className="event-card-header" style={{ display: 'flex', justifyContent: 'flex-end' }}>
-                                        <span className={getBadgeClass(event.status)}>
-                                            {event.status}
-                                        </span>
+                                        <span className={getBadgeClass(event.status)}>{event.status}</span>
                                     </div>
-                                    
                                     <h3 className="event-title">{event.title}</h3>
-                                    
-                                    <p className="event-detail-row">
-                                        {event.location}
-                                    </p>
-
-                                    <p className="event-detail-row"> 
-                                        {new Date(event.start_date).toLocaleDateString('vi-VN')} - {new Date(event.end_date).toLocaleDateString('vi-VN')}
-                                    </p>
-                                    
+                                    <p className="event-detail-row">{event.location}</p>
+                                    <p className="event-detail-row">{new Date(event.start_date).toLocaleDateString('vi-VN')} - {new Date(event.end_date).toLocaleDateString('vi-VN')}</p>
                                     <div className="event-divider"></div>
-                                    
                                     <div style={{ marginTop: 'auto' }}>
                                         <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '12px', marginBottom: '8px', color: 'var(--text-secondary)' }}>
                                             <span>Tiến độ công việc</span>
                                             <strong className={progress === 100 ? 'text-success' : 'text-brand'}>{progress}%</strong>
                                         </div>
                                         <div style={{ width: '100%', height: '8px', backgroundColor: 'var(--border-neutral)', borderRadius: '4px', overflow: 'hidden' }}>
-                                            <div 
-                                                style={{ 
-                                                    height: '100%', 
-                                                    backgroundColor: progress === 100 ? 'var(--success-color)' : 'var(--primary-color)', 
-                                                    width: `${progress}%`,
-                                                    transition: 'width 0.5s ease-in-out'
-                                                }} 
-                                            />
+                                            <div style={{ height: '100%', backgroundColor: progress === 100 ? 'var(--success-color)' : 'var(--primary-color)', width: `${progress}%`, transition: 'width 0.5s ease-in-out' }} />
                                         </div>
                                     </div>
                                 </div>
@@ -138,40 +166,13 @@ function EventList() {
                         })}
                     </div>
 
-                    {/* --- THANH ĐIỀU HƯỚNG PHÂN TRANG (Áp dụng class từ style.css) --- */}
                     {totalPages > 1 && (
                         <div className="pagination-container">
-                            {/* Nút lùi lại 1 trang */}
-                            <button 
-                                className="btn-page" 
-                                onClick={() => handlePageChange(currentPage - 1)}
-                                disabled={currentPage === 1}
-                            >
-                                &lsaquo;
-                            </button>
-
-                            {/* Khởi tạo danh sách số trang */}
-                            {Array.from({ length: totalPages }, (_, index) => {
-                                const pageNum = index + 1;
-                                return (
-                                    <button
-                                        key={pageNum}
-                                        className={`btn-page ${currentPage === pageNum ? 'active' : ''}`}
-                                        onClick={() => handlePageChange(pageNum)}
-                                    >
-                                        {pageNum}
-                                    </button>
-                                );
-                            })}
-
-                            {/* Nút tiến lên 1 trang */}
-                            <button 
-                                className="btn-page" 
-                                onClick={() => handlePageChange(currentPage + 1)}
-                                disabled={currentPage === totalPages}
-                            >
-                                &rsaquo;
-                            </button>
+                            <button className="btn-page" onClick={() => handlePageChange(currentPage - 1)} disabled={currentPage === 1}>&lsaquo;</button>
+                            {Array.from({ length: totalPages }, (_, index) => (
+                                <button key={index + 1} className={`btn-page ${currentPage === index + 1 ? 'active' : ''}`} onClick={() => handlePageChange(index + 1)}>{index + 1}</button>
+                            ))}
+                            <button className="btn-page" onClick={() => handlePageChange(currentPage + 1)} disabled={currentPage === totalPages}>&rsaquo;</button>
                         </div>
                     )}
                 </>

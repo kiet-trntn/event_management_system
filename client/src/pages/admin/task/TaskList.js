@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback, useMemo } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import Swal from 'sweetalert2';
 
@@ -7,13 +7,26 @@ function TaskList() {
     const [tasks, setTasks] = useState([]);
     const [loading, setLoading] = useState(true);
     
-    const [expandedEvents, setExpandedEvents] = useState({});
+    // --- STATE CHO BỘ LỌC CÔNG VIỆC ---
     const [filterStatus, setFilterStatus] = useState('');
+    const [filterPriority, setFilterPriority] = useState('');
+    const [fromDate, setFromDate] = useState('');
+    const [toDate, setToDate] = useState('');
 
+    const [expandedEvents, setExpandedEvents] = useState({});
+
+    // --- GỌI API LỌC TỪ BACKEND ---
     const fetchTasks = useCallback(async () => {
         try {
             setLoading(true);
-            const response = await fetch('http://localhost:5000/api/tasks', {
+            const queryParams = new URLSearchParams();
+            
+            if (filterStatus) queryParams.append('status', filterStatus);
+            if (filterPriority) queryParams.append('priority', filterPriority);
+            if (fromDate) queryParams.append('from_date', fromDate);
+            if (toDate) queryParams.append('to_date', toDate);
+
+            const response = await fetch(`http://localhost:5000/api/tasks?${queryParams.toString()}`, {
                 headers: { 'Authorization': `Bearer ${localStorage.getItem('my_token')}` }
             });
             const data = await response.json();
@@ -28,35 +41,32 @@ function TaskList() {
         } finally {
             setLoading(false);
         }
-    }, []);
+    }, [filterStatus, filterPriority, fromDate, toDate]);
 
     useEffect(() => {
         document.title = "Quản lý công việc | TaskFlow";
         fetchTasks();
     }, [fetchTasks]);
 
-    const filteredTasks = useMemo(() => {
-        if (!filterStatus) return tasks;
-        return tasks.filter(t => t.status === filterStatus);
-    }, [tasks, filterStatus]);
+    const handleReset = () => {
+        setFilterStatus('');
+        setFilterPriority('');
+        setFromDate('');
+        setToDate('');
+    };
 
-    const groupedTasks = useMemo(() => {
-        const groups = {};
-        filteredTasks.forEach(task => {
-            const eventId = task.event_id || 'other';
-            const eventTitle = task.event_title || 'Công việc độc lập';
-            
-            if (!groups[eventId]) {
-                groups[eventId] = {
-                    eventId: eventId,
-                    eventTitle: eventTitle,
-                    tasks: []
-                };
-            }
-            groups[eventId].tasks.push(task);
-        });
-        return Object.values(groups);
-    }, [filteredTasks]);
+    // Gom nhóm công việc theo Sự kiện 
+    const groupedTasks = [];
+    const groups = {};
+    tasks.forEach(task => {
+        const eventId = task.event_id || 'other';
+        const eventTitle = task.event_title || 'Công việc độc lập';
+        if (!groups[eventId]) {
+            groups[eventId] = { eventId: eventId, eventTitle: eventTitle, tasks: [] };
+        }
+        groups[eventId].tasks.push(task);
+    });
+    groupedTasks.push(...Object.values(groups));
 
     const toggleExpand = (eventId) => {
         setExpandedEvents(prev => ({ ...prev, [eventId]: !prev[eventId] }));
@@ -83,37 +93,56 @@ function TaskList() {
 
     return (
         <div className="page-container event-page">
-            
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '24px' }}>
                 <h1 style={{ fontSize: '20px', fontWeight: '700', margin: 0, color: 'var(--text-primary)' }}>Quản lý Công việc</h1>
-                
-                <div style={{ display: 'flex', gap: '12px', alignItems: 'center' }}>
-                    <select 
-                        className="form-input" 
-                        style={{ width: 'auto', padding: '8px 12px', height: '40px' }} 
-                        value={filterStatus}
-                        onChange={(e) => setFilterStatus(e.target.value)}
-                    >
-                        <option value="">Tất cả trạng thái</option>
-                        <option value="pending">Chờ xử lý</option>
-                        <option value="in_progress">Đang tiến hành</option>
-                        <option value="completed">Đã hoàn thành</option>
-                        <option value="cancelled">Đã hủy</option>
-                    </select>
+                <button className="btn-primary" onClick={() => navigate('/admin/tasks/add')}>
+                    + Thêm công việc
+                </button>
+            </div>
 
-                    <button className="btn-primary" style={{ height: '40px' }} onClick={() => navigate('/admin/tasks/add')}>
-                        + Thêm công việc
-                    </button>
+            {/* --- GIAO DIỆN BỘ LỌC CỦA ADMIN --- */}
+            <div className="form-card" style={{ maxWidth: '100%', padding: '20px', marginBottom: '32px' }}>
+                <div style={{ display: 'flex', gap: '16px', alignItems: 'flex-end', flexWrap: 'wrap' }}>
+                    <div style={{ flex: '1 1 150px' }}>
+                        <label className="form-label" style={{ marginBottom: '6px' }}>Trạng thái</label>
+                        <select className="form-input" value={filterStatus} onChange={(e) => setFilterStatus(e.target.value)}>
+                            <option value="">Tất cả</option>
+                            <option value="pending">Chờ xử lý</option>
+                            <option value="in_progress">Đang tiến hành</option>
+                            <option value="submitted">Chờ phê duyệt</option>
+                            <option value="completed">Đã hoàn thành</option>
+                            <option value="cancelled">Đã hủy</option>
+                        </select>
+                    </div>
+                    <div style={{ flex: '1 1 120px' }}>
+                        <label className="form-label" style={{ marginBottom: '6px' }}>Độ ưu tiên</label>
+                        <select className="form-input" value={filterPriority} onChange={(e) => setFilterPriority(e.target.value)}>
+                            <option value="">Tất cả</option>
+                            <option value="high">Cao</option>
+                            <option value="medium">Trung bình</option>
+                            <option value="low">Thấp</option>
+                        </select>
+                    </div>
+                    <div style={{ flex: '1 1 140px' }}>
+                        <label className="form-label" style={{ marginBottom: '6px' }}>Hạn từ ngày</label>
+                        <input type="date" className="form-input" value={fromDate} onChange={(e) => setFromDate(e.target.value)} />
+                    </div>
+                    <div style={{ flex: '1 1 140px' }}>
+                        <label className="form-label" style={{ marginBottom: '6px' }}>Hạn đến ngày</label>
+                        <input type="date" className="form-input" value={toDate} onChange={(e) => setToDate(e.target.value)} />
+                    </div>
+                    <div style={{ display: 'flex', gap: '8px', flex: '0 0 auto' }}>
+                        <button type="button" className="btn-secondary" onClick={handleReset}>Xóa lọc</button>
+                    </div>
                 </div>
             </div>
 
             {loading ? (
                 <div className="text-center text-secondary mb-6 form-card">Đang tải dữ liệu...</div>
-            ) : filteredTasks.length === 0 ? (
-                <div className="text-center text-secondary mb-6 form-card">Không có công việc nào phù hợp.</div>
+            ) : tasks.length === 0 ? (
+                <div className="text-center text-secondary mb-6 form-card">Không có công việc nào khớp với bộ lọc.</div>
             ) : (
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '32px' }}>
-                    
                     {groupedTasks.map(group => {
                         const isExpanded = expandedEvents[group.eventId];
                         const displayTasks = isExpanded ? group.tasks : group.tasks.slice(0, 5);
@@ -121,7 +150,6 @@ function TaskList() {
 
                         return (
                             <div key={group.eventId} className="mb-6">
-                                
                                 <h3 className="section-title">
                                     {group.eventTitle} <span style={{ color: 'var(--text-secondary)', fontSize: '14px', fontWeight: 'normal' }}>({group.tasks.length})</span>
                                 </h3>
@@ -131,24 +159,16 @@ function TaskList() {
                                         const statusData = getStatusStyle(task.status);
                                         return (
                                             <div key={task.id} className="event-card" onClick={() => navigate(`/admin/tasks/view/${task.id}`)} style={{ cursor: 'pointer' }}>
-                                                
                                                 <div className="event-card-header" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                                                    <span className={statusData.class}>
-                                                        {statusData.label}
-                                                    </span>
-                                                    <span style={{ fontSize: '12px', fontWeight: 'bold' }}>
-                                                        {getPriorityIcon(task.priority)}
-                                                    </span>
+                                                    <span className={statusData.class}>{statusData.label}</span>
+                                                    <span style={{ fontSize: '12px', fontWeight: 'bold' }}>{getPriorityIcon(task.priority)}</span>
                                                 </div>
-
                                                 <h4 className="event-title">{task.title}</h4>
-
                                                 <p className="event-detail-row">
-                                                    {task.due_date ? new Date(task.due_date).toLocaleDateString('vi-VN') : 'Không có hạn'}
+                                                    Hạn: {task.due_date ? new Date(task.due_date).toLocaleDateString('vi-VN') : 'Không có hạn'}
                                                 </p>
-                                                
                                                 <p className="event-detail-row">
-                                                    {task.assigned_name ? task.assigned_name : 'Chưa phân công'}
+                                                    Giao cho: <span style={{ fontWeight: '500', color: 'var(--primary-color)' }}>{task.assigned_name ? task.assigned_name : 'Chưa phân công'}</span>
                                                 </p>
                                             </div>
                                         );

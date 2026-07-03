@@ -12,7 +12,12 @@ function ViewEvent() {
     const [loading, setLoading] = useState(true);
     const [currentUser, setCurrentUser] = useState(null); 
 
-    // Giải mã token lấy thông tin User đang đăng nhập
+    // --- CÁC BỘ LỌC CÔNG VIỆC TRONG SỰ KIỆN TỐI ĐA ---
+    const [filterTaskStatus, setFilterTaskStatus] = useState('');
+    const [filterTaskPriority, setFilterTaskPriority] = useState('');
+    const [filterTaskFromDate, setFilterTaskFromDate] = useState('');
+    const [filterTaskToDate, setFilterTaskToDate] = useState('');
+
     useEffect(() => {
         try {
             const token = localStorage.getItem('my_token');
@@ -45,7 +50,6 @@ function ViewEvent() {
                 
                 setEvent(eventData.event || eventData);
                 
-                // Chỉ hiển thị các công việc CHƯA BỊ XÓA (is_deleted = 0)
                 const filteredTasks = (tasksData.tasks || []).filter(t => t.event_id.toString() === id && !t.is_deleted);
                 setTasks(filteredTasks);
 
@@ -69,9 +73,8 @@ function ViewEvent() {
         fetchViewEvent();
     }, [fetchViewEvent]);
 
-    // --- CHỨC NĂNG XÓA MỀM CÔNG VIỆC ---
     const handleDeleteTask = async (e, taskId) => {
-        e.stopPropagation(); // Ngăn hành vi nhảy vào trang chi tiết công việc khi bấm nút xóa
+        e.stopPropagation(); 
         
         const result = await Swal.fire({
             title: 'Xóa công việc này?',
@@ -104,7 +107,6 @@ function ViewEvent() {
         }
     };
 
-    // --- CHỨC NĂNG XÓA THÀNH VIÊN SỰ KIỆN ---
     const handleRemoveMember = async (userId) => {
         const result = await Swal.fire({
             title: 'Loại bỏ thành viên?',
@@ -137,25 +139,40 @@ function ViewEvent() {
         }
     };
 
-    // Thay thế 2 hàm bổ trợ trạng thái bằng đoạn mã dưới đây:
-const getSelectStyle = (status) => {
-    const styles = {
-        'pending': { color: '#64748b', backgroundColor: '#f1f5f9', borderColor: '#cbd5e1' },
-        'in_progress': { color: '#2563eb', backgroundColor: '#eff6ff', borderColor: '#bfdbfe' },
-        'submitted': { color: '#ea580c', backgroundColor: '#fff7ed', borderColor: '#ffedd5' }, // Màu cam chờ duyệt[cite: 7]
-        'completed': { color: '#166534', backgroundColor: '#f0fdf4', borderColor: '#bbf7d0' },
-        'cancelled': { color: '#dc2626', backgroundColor: '#fef2f2', borderColor: '#fecaca' }
+    const handleResetFilter = () => {
+        setFilterTaskStatus('');
+        setFilterTaskPriority('');
+        setFilterTaskFromDate('');
+        setFilterTaskToDate('');
     };
-    return styles[status] || {};
-};
 
-const renderTaskStatusText = (status) => {
-    if (status === 'pending') return 'Chờ xử lý';
-    if (status === 'in_progress') return 'Đang tiến hành';
-    if (status === 'submitted') return 'Chờ phê duyệt'; // Dịch chuẩn từ hình ảnh[cite: 7]
-    if (status === 'completed') return 'Đã hoàn thành';
-    return 'Đã hủy';
-};
+    const getSelectStyle = (status) => {
+        const styles = {
+            'pending': { color: '#64748b', backgroundColor: '#f1f5f9', borderColor: '#cbd5e1' },
+            'in_progress': { color: '#2563eb', backgroundColor: '#eff6ff', borderColor: '#bfdbfe' },
+            'submitted': { color: '#ea580c', backgroundColor: '#fff7ed', borderColor: '#ffedd5' }, 
+            'completed': { color: '#166534', backgroundColor: '#f0fdf4', borderColor: '#bbf7d0' },
+            'cancelled': { color: '#dc2626', backgroundColor: '#fef2f2', borderColor: '#fecaca' }
+        };
+        return styles[status] || {};
+    };
+
+    const renderTaskStatusText = (status) => {
+        if (status === 'pending') return 'Chờ xử lý';
+        if (status === 'in_progress') return 'Đang tiến hành';
+        if (status === 'submitted') return 'Chờ phê duyệt'; 
+        if (status === 'completed') return 'Đã hoàn thành';
+        return 'Đã hủy';
+    };
+
+    const getPriorityIcon = (priority) => {
+        switch(priority) {
+            case 'high': return <span style={{ color: '#ef4444' }}>Cao</span>;
+            case 'medium': return <span style={{ color: '#f59e0b' }}>Trung Bình</span>;
+            case 'low': return <span style={{ color: '#10b981' }}>Thấp</span>;
+            default: return '';
+        }
+    };
 
     if (loading) return <div className="page-container event-page"><div className="form-card text-center text-secondary">Đang tải chi tiết sự kiện...</div></div>;
     if (!event) return null;
@@ -169,13 +186,28 @@ const renderTaskStatusText = (status) => {
     const formatDateTime = (value) => {
         if (!value) return 'Không xác định';
         return new Date(value).toLocaleString('vi-VN', {
-            day: '2-digit',
-            month: '2-digit',
-            year: 'numeric',
-            hour: '2-digit',
-            minute: '2-digit'
+            day: '2-digit', month: '2-digit', year: 'numeric',
+            hour: '2-digit', minute: '2-digit'
         });
     };
+
+    // --- LỌC CÔNG VIỆC NHIỀU ĐIỀU KIỆN TẠI FRONTEND ---
+    const displayTasks = tasks.filter(t => {
+        const matchStatus = filterTaskStatus ? t.status === filterTaskStatus : true;
+        const matchPriority = filterTaskPriority ? t.priority === filterTaskPriority : true;
+        
+        let matchFromDate = true;
+        let matchToDate = true;
+
+        if (filterTaskFromDate) {
+            matchFromDate = t.due_date ? new Date(t.due_date) >= new Date(filterTaskFromDate) : false;
+        }
+        if (filterTaskToDate) {
+            matchToDate = t.due_date ? new Date(t.due_date) <= new Date(filterTaskToDate) : false;
+        }
+
+        return matchStatus && matchPriority && matchFromDate && matchToDate;
+    });
 
     return (
         <div className="page-container event-page">
@@ -210,26 +242,60 @@ const renderTaskStatusText = (status) => {
                     </div>
 
                     <div className="form-card large" style={{ maxWidth: '100%', margin: 0 }}>
-                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px' }}>
-                            <h3 className="section-title" style={{ margin: 0 }}>Công việc trong sự kiện ({tasks.length})</h3>
+                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px', flexWrap: 'wrap', gap: '12px' }}>
+                            <h3 className="section-title" style={{ margin: 0 }}>Công việc trong sự kiện ({displayTasks.length}/{tasks.length})</h3>
+                            
                             {hasManagerRights && (
-                                <button className="btn-primary" style={{ padding: '6px 12px', fontSize: '14px' }} onClick={() => navigate(`/staff/events/${id}/tasks/add`)}>
+                                <button className="btn-primary" style={{ padding: '6px 12px', fontSize: '14px', height: '36px', whiteSpace: 'nowrap' }} onClick={() => navigate(`/staff/events/${id}/tasks/add`)}>
                                     + Thêm công việc
                                 </button>
                             )}
                         </div>
+
+                        {/* --- BỘ LỌC CÔNG VIỆC TRONG SỰ KIỆN --- */}
+                        <div style={{ display: 'flex', gap: '12px', alignItems: 'flex-end', flexWrap: 'wrap', marginBottom: '24px', paddingBottom: '16px', borderBottom: '1px solid var(--border-neutral)' }}>
+                            <div style={{ flex: '1 1 120px' }}>
+                                <label className="form-label" style={{ marginBottom: '6px', fontSize: '12px' }}>Trạng thái</label>
+                                <select className="form-input" value={filterTaskStatus} onChange={(e) => setFilterTaskStatus(e.target.value)} style={{ padding: '6px 12px', height: '36px' }}>
+                                    <option value="">Tất cả</option>
+                                    <option value="pending">Chờ xử lý</option>
+                                    <option value="in_progress">Đang tiến hành</option>
+                                    <option value="submitted">Chờ phê duyệt</option>
+                                    <option value="completed">Đã hoàn thành</option>
+                                    <option value="cancelled">Đã hủy</option>
+                                </select>
+                            </div>
+                            <div style={{ flex: '1 1 120px' }}>
+                                <label className="form-label" style={{ marginBottom: '6px', fontSize: '12px' }}>Ưu tiên</label>
+                                <select className="form-input" value={filterTaskPriority} onChange={(e) => setFilterTaskPriority(e.target.value)} style={{ padding: '6px 12px', height: '36px' }}>
+                                    <option value="">Tất cả</option>
+                                    <option value="high">Cao</option>
+                                    <option value="medium">Trung bình</option>
+                                    <option value="low">Thấp</option>
+                                </select>
+                            </div>
+                            <div style={{ flex: '1 1 120px' }}>
+                                <label className="form-label" style={{ marginBottom: '6px', fontSize: '12px' }}>Hạn từ ngày</label>
+                                <input type="date" className="form-input" value={filterTaskFromDate} onChange={(e) => setFilterTaskFromDate(e.target.value)} style={{ padding: '6px 12px', height: '36px' }} />
+                            </div>
+                            <div style={{ flex: '1 1 120px' }}>
+                                <label className="form-label" style={{ marginBottom: '6px', fontSize: '12px' }}>Hạn đến ngày</label>
+                                <input type="date" className="form-input" value={filterTaskToDate} onChange={(e) => setFilterTaskToDate(e.target.value)} style={{ padding: '6px 12px', height: '36px' }} />
+                            </div>
+                            <button type="button" className="btn-secondary" onClick={handleResetFilter} style={{ height: '36px', padding: '0 12px', fontSize: '13px' }}>Khôi phục</button>
+                        </div>
                         
-                        {tasks.length === 0 ? (
-                            <p className="text-center text-secondary" style={{ padding: '16px 0', margin: 0, fontSize: '14px' }}>Chưa có công việc nào.</p>
+                        {displayTasks.length === 0 ? (
+                            <p className="text-center text-secondary" style={{ padding: '16px 0', margin: 0, fontSize: '14px' }}>Không có công việc nào khớp với bộ lọc.</p>
                         ) : (
                             <div style={{ display: 'flex', flexDirection: 'column' }}>
-                                {tasks.map((task, index) => (
+                                {displayTasks.map((task, index) => (
                                     <div 
                                         key={task.id} 
                                         onClick={() => navigate(`/staff/tasks/view/${task.id}`)} 
                                         style={{ 
                                             display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '14px 16px', 
-                                            borderBottom: index === tasks.length - 1 ? 'none' : '1px solid var(--border-neutral)',
+                                            borderBottom: index === displayTasks.length - 1 ? 'none' : '1px solid var(--border-neutral)',
                                             cursor: 'pointer', transition: 'background-color 0.2s', borderRadius: '8px',
                                             flexWrap: 'wrap', gap: '12px'
                                         }}
@@ -237,9 +303,11 @@ const renderTaskStatusText = (status) => {
                                         onMouseLeave={(e) => e.currentTarget.style.backgroundColor = 'transparent'}
                                     >
                                         <div style={{ flex: '1 1 200px' }}>
-                                            <h4 style={{ margin: '0 0 6px 0', fontSize: '15px', color: 'var(--text-primary)', fontWeight: 'bold' }}>{task.title}</h4>
+                                            <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '6px' }}>
+                                                <h4 style={{ margin: 0, fontSize: '15px', color: 'var(--text-primary)', fontWeight: 'bold' }}>{task.title}</h4>
+                                                <span style={{ fontSize: '11px', fontWeight: 'bold' }}>{getPriorityIcon(task.priority)}</span>
+                                            </div>
                                             
-                                            {/* ĐÃ BỔ SUNG TÊN NGƯỜI LÀM Ở ĐÂY VỚI THIẾT KẾ NẰM NGANG */}
                                             <div style={{ display: 'flex', gap: '16px', alignItems: 'center', flexWrap: 'wrap' }}>
                                                 <p style={{ margin: 0, fontSize: '13px', color: 'var(--text-secondary)' }}>
                                                     Hạn: {task.due_date ? new Date(task.due_date).toLocaleDateString('vi-VN') : 'Không có hạn'}
