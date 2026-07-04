@@ -1,6 +1,6 @@
 const cron = require("node-cron");
 const db = require("../config/db");
-const createNotification = require("../utils/createNotification");
+const createNotificationWithEmail = require("../utils/createNotificationWithEmail");
 
 const toDateOnly = (dateValue) => {
     const date = new Date(dateValue);
@@ -57,12 +57,13 @@ const sendDeadlineNotificationOnce = async ({
         return;
     }
 
-    await createNotification({
+    await createNotificationWithEmail({
         user_id: userId,
         title,
         content,
         type: "task",
-        related_id: task.id
+        related_id: task.id,
+        send_email: true
     });
 
 };
