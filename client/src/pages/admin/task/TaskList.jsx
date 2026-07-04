@@ -123,13 +123,13 @@ function TaskList() {
                     </div>
                     <div style={{ flex: '1 1 140px' }}>
                         <input 
-                                    type={toDate ? 'date' : 'text'} 
-                                    placeholder="Đến ngày..." 
+                                    type={fromDate ? 'date' : 'text'} 
+                                    placeholder="Từ ngày..." 
                                     className="form-input" 
-                                    value={toDate} 
+                                    value={fromDate} 
                                     onFocus={(e) => e.target.type = 'date'} 
                                     onBlur={(e) => { if (!e.target.value) e.target.type = 'text'; }}
-                                    onChange={(e) => setToDate(e.target.value)} 
+                                    onChange={(e) => setFromDate(e.target.value)} 
                                     style={{ padding: '6px 30px 6px 12px', height: '36px', width: '100%' }} 
                                 />
                     </div>

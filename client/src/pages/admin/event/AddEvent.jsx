@@ -27,10 +27,15 @@ function AddEvent() {
                 });
                 const data = await response.json();
                 
-                if (response.ok && Array.isArray(data)) {
-                    setUsers(data);
-                } else if (data.data && Array.isArray(data.data)) {
-                    setUsers(data.data);
+                if (response.ok) {
+                    // Ưu tiên kiểm tra key .users theo chuẩn cấu hình của Backend
+                    if (data.users && Array.isArray(data.users)) {
+                        setUsers(data.users);
+                    } else if (Array.isArray(data)) {
+                        setUsers(data);
+                    } else if (data.data && Array.isArray(data.data)) {
+                        setUsers(data.data);
+                    }
                 }
             } catch (error) {
                 console.error('Lỗi khi tải danh sách nhân viên:', error);
