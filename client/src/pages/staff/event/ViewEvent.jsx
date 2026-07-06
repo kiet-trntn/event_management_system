@@ -330,7 +330,7 @@ function ViewEvent() {
                                 {displayTasks.map((task, index) => (
                                     <div 
                                         key={task.id} 
-                                        onClick={() => navigate(`/admin/tasks/view/${task.id}`)} 
+                                        onClick={() => navigate(`/staff/tasks/view/${task.id}`)} 
                                         style={{ 
                                             display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '14px 16px', 
                                             borderBottom: index === displayTasks.length - 1 ? 'none' : '1px solid var(--border-neutral)',
