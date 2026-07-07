@@ -2,6 +2,7 @@ const db = require("../config/db");
 const addTaskHistory = require("../utils/taskHistory");
 const createNotification = require("../utils/createNotification");
 const fs = require("fs");
+const handleServerError = require("../utils/handleServerError");
 
 const getAllTasks = async (req, res) => {
 
@@ -216,11 +217,7 @@ const getAllTasks = async (req, res) => {
 
     } catch (error) {
 
-        console.log(error);
-
-        res.status(500).json({
-            message: error.message
-        });
+        return handleServerError(res, error);
 
     }
 
@@ -329,10 +326,7 @@ const getTaskById = async (req, res) => {
         res.json(task);
 
     } catch (error) {
-        console.log(error);
-        res.status(500).json({
-            message: error.message
-        });
+        return handleServerError(res, error);
     }
 };
 
@@ -408,11 +402,7 @@ const getMyTasks = async (req, res) => {
 
     } catch (error) {
 
-        console.log(error);
-
-        res.status(500).json({
-            message: error.message
-        });
+        return handleServerError(res, error);
 
     }
 
@@ -551,11 +541,7 @@ const createTask = async (req, res) => {
 
     } catch (error) {
 
-        console.log(error);
-
-        res.status(500).json({
-            message: error.message
-        });
+        return handleServerError(res, error);
 
     }
 
@@ -808,11 +794,7 @@ const updateTask = async (req, res) => {
 
     } catch (error) {
 
-        console.log(error);
-
-        res.status(500).json({
-            message: error.message
-        });
+        return handleServerError(res, error);
 
     }
 
@@ -961,11 +943,7 @@ const updateTaskStatus = async (req, res) => {
 
     } catch (error) {
 
-        console.log(error);
-
-        res.status(500).json({
-            message: error.message
-        });
+        return handleServerError(res, error);
 
     }
 
@@ -1065,11 +1043,7 @@ const deleteTask = async (req, res) => {
 
     } catch (error) {
 
-        console.log(error);
-
-        res.status(500).json({
-            message: error.message
-        });
+        return handleServerError(res, error);
 
     }
 
@@ -1175,11 +1149,7 @@ const restoreTask = async (req, res) => {
 
     } catch (error) {
 
-        console.log(error);
-
-        res.status(500).json({
-            message: error.message
-        });
+        return handleServerError(res, error);
 
     }
 
@@ -1252,11 +1222,7 @@ const getDeletedTasks = async (req, res) => {
 
     } catch (error) {
 
-        console.log(error);
-
-        res.status(500).json({
-            message: error.message
-        });
+        return handleServerError(res, error);
 
     }
 
@@ -1298,11 +1264,7 @@ const getTaskHistory = async (req, res) => {
 
     } catch (error) {
 
-        console.log(error);
-
-        res.status(500).json({
-            message: error.message
-        });
+        return handleServerError(res, error);
 
     }
 
@@ -1437,11 +1399,7 @@ const permanentDeleteTask = async (req, res) => {
 
     } catch (error) {
 
-        console.log(error);
-
-        res.status(500).json({
-            message: error.message
-        });
+        return handleServerError(res, error);
 
     }
 

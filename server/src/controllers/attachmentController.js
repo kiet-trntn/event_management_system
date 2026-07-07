@@ -3,6 +3,7 @@ const path = require("path");
 const fs = require("fs");
 const addTaskHistory = require("../utils/taskHistory");
 const createNotification = require("../utils/createNotification");
+const handleServerError = require("../utils/handleServerError");
 
 const uploadAttachment = async (req, res) => {
 
@@ -143,11 +144,7 @@ const uploadAttachment = async (req, res) => {
 
     } catch (error) {
 
-        console.log(error);
-
-        res.status(500).json({
-            message: error.message
-        });
+        return handleServerError(res, error);
 
     }
 
@@ -209,11 +206,7 @@ const getAttachmentsByTask = async (req, res) => {
 
     } catch (error) {
 
-        console.log(error);
-
-        res.status(500).json({
-            message: error.message
-        });
+        return handleServerError(res, error);
 
     }
 

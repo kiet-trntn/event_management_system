@@ -3,6 +3,7 @@ const path = require("path");
 const fs = require("fs");
 const addTaskHistory = require("../utils/taskHistory");
 const createNotification = require("../utils/createNotification");
+const handleServerError = require("../utils/handleServerError");
 
 // Nhân viên nộp minh chứng hoàn thành task
 const submitTask = async (req, res) => {
@@ -146,11 +147,7 @@ const submitTask = async (req, res) => {
 
     } catch (error) {
 
-        console.log(error);
-
-        res.status(500).json({
-            message: error.message
-        });
+        return handleServerError(res, error);
 
     }
 
@@ -347,11 +344,7 @@ const reviewSubmission = async (req, res) => {
 
     } catch (error) {
 
-        console.log(error);
-
-        res.status(500).json({
-            message: error.message
-        });
+        return handleServerError(res, error);
 
     }
 
@@ -428,11 +421,7 @@ const getPendingSubmissions = async (req, res) => {
 
     } catch (error) {
 
-        console.log(error);
-
-        res.status(500).json({
-            message: error.message
-        });
+        return handleServerError(res, error); 
 
     }
 
@@ -541,11 +530,7 @@ const getSubmissionsByTask = async (req, res) => {
 
     } catch (error) {
 
-        console.log(error);
-
-        res.status(500).json({
-            message: error.message
-        });
+        return handleServerError(res, error);
 
     }
 
@@ -621,11 +606,7 @@ const downloadSubmissionFile = async (req, res) => {
 
     } catch (error) {
 
-        console.log(error);
-
-        res.status(500).json({
-            message: error.message
-        });
+        return handleServerError(res, error);
 
     }
 
