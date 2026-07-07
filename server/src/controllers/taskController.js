@@ -340,8 +340,11 @@ const getMyTasks = async (req, res) => {
 
     try {
 
-        const [tasks] = await db.query(
-            `
+        // 1. Nhận tham số search từ URL
+        const { search } = req.query;
+
+        // 2. Câu lệnh SQL nền tảng của getMyTasks
+        let sql = `
             SELECT
                 t.id,
                 t.title,
@@ -370,11 +373,33 @@ const getMyTasks = async (req, res) => {
                 AND t.assigned_to = ?
                 AND e.deleted_at IS NULL
                 AND e.status <> 'Nháp'
+        `;
 
+        // ID của người dùng đang đăng nhập luôn là tham số đầu tiên
+        let params = [req.user.id];
+
+        // 3. Logic tìm kiếm (Giống hệt getAllTasks)
+        if (search) {
+
+            sql += `
+                AND (
+                    t.title LIKE ?
+                    OR t.description LIKE ?
+                )
+            `;
+
+            params.push(
+                `%${search}%`,
+                `%${search}%`
+            );
+
+        }
+
+        sql += `
             ORDER BY t.id DESC
-            `,
-            [req.user.id]
-        );
+        `;
+
+        const [tasks] = await db.query(sql, params);
 
         res.json({
             total: tasks.length,

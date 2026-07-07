@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 
 function MembersList() {
@@ -9,28 +9,15 @@ function MembersList() {
     const [currentPage, setCurrentPage] = useState(1);
     const usersPerPage = 4;
 
-    // --- 1. STATE CHO BỘ LỌC TÌM KIẾM ---
-    const [search, setSearch] = useState('');
-    const [debouncedSearch, setDebouncedSearch] = useState('');
+    // --- STATE CHO BỘ LỌC ---
     const [role, setRole] = useState('');
     const [status, setStatus] = useState('');
 
-    // --- 2. KỸ THUẬT DEBOUNCE CHỐNG LAG SERVER ---
-    useEffect(() => {
-        const timerId = setTimeout(() => {
-            setDebouncedSearch(search);
-        }, 500); 
-        return () => clearTimeout(timerId);
-    }, [search]);
-
-    // --- 3. HÀM GỌI API KÈM THEO BỘ LỌC ---
-    const fetchMembers = async () => {
+    // --- GỌI API ---
+    const fetchMembers = useCallback(async () => {
         setLoading(true);
         try {
             const queryParams = new URLSearchParams();
-            
-            // Lấy các giá trị hiện tại để gửi xuống Backend[cite: 9]
-            if (debouncedSearch) queryParams.append('search', debouncedSearch);
             if (role) queryParams.append('role', role);
             if (status) queryParams.append('status', status);
 
@@ -38,29 +25,21 @@ function MembersList() {
                 headers: { 'Authorization': `Bearer ${localStorage.getItem('my_token')}` }
             });
             const data = await response.json();
-            
-            // Backend trả về { total, users } nên cần lấy data.users[cite: 9]
             setMembers(data.users || data); 
         } catch (err) { 
             console.error(err); 
         } finally { 
             setLoading(false); 
         }
-    };
+    }, [role, status]);
 
-    // --- 4. TỰ ĐỘNG LỌC KHI CÓ THAY ĐỔI & FIX WARNING ---
     useEffect(() => {
         document.title = "Danh sách thành viên | TaskFlow";
-        setCurrentPage(1); // Trở về trang 1 khi bộ lọc thay đổi
+        setCurrentPage(1); 
         fetchMembers();
-        // Dòng bên dưới giúp tắt cảnh báo của React
-        // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, [debouncedSearch, role, status]);
+    }, [fetchMembers]);
 
-    // --- 5. HÀM KHÔI PHỤC BỘ LỌC ---
     const handleReset = () => {
-        setSearch('');
-        setDebouncedSearch('');
         setRole('');
         setStatus('');
     };
@@ -76,11 +55,8 @@ function MembersList() {
                     },
                     body: JSON.stringify({ status: 'inactive' }) 
                 });
-                
                 if (response.ok) {
-                    setMembers(prevMembers => prevMembers.map(m => 
-                        m.id === id ? { ...m, status: 'inactive' } : m
-                    ));
+                    fetchMembers(); // Tải lại danh sách sau khi khóa
                 } else {
                     const data = await response.json();
                     alert(data.message || 'Không thể khóa thành viên này.');
@@ -101,13 +77,10 @@ function MembersList() {
                         'Content-Type': 'application/json',
                         'Authorization': `Bearer ${localStorage.getItem('my_token')}` 
                     },
-                    body: JSON.stringify({ status: 'active' }) // Ép trạng thái thành 'active'[cite: 8]
+                    body: JSON.stringify({ status: 'active' }) 
                 });
-                
                 if (response.ok) {
-                    setMembers(prevMembers => prevMembers.map(m => 
-                        m.id === id ? { ...m, status: 'active' } : m
-                    ));
+                    fetchMembers(); // Tải lại danh sách sau khi mở khóa
                 } else {
                     const data = await response.json();
                     alert(data.message || 'Không thể mở khóa thành viên này.');
@@ -119,7 +92,6 @@ function MembersList() {
         }
     };
 
-    // Logic Phân trang
     const indexOfLastUser = currentPage * usersPerPage;
     const indexOfFirstUser = indexOfLastUser - usersPerPage;
     const currentUsers = members.slice(indexOfFirstUser, indexOfLastUser); 
@@ -137,18 +109,7 @@ function MembersList() {
             {/* --- GIAO DIỆN BỘ LỌC TÌM KIẾM --- */}
             <div className="form-card mb-6" style={{ maxWidth: '100%', padding: '20px' }}>
                 <div style={{ display: 'flex', gap: '16px', alignItems: 'flex-end', flexWrap: 'wrap' }}>
-                    <div style={{ flex: '1 1 250px' }}>
-                        <label className="form-label" style={{ marginBottom: '6px' }}>Tìm kiếm</label>
-                        <input 
-                            type="text" 
-                            className="form-input" 
-                            placeholder="Họ tên, địa chỉ email..." 
-                            value={search} 
-                            onChange={(e) => setSearch(e.target.value)} 
-                        />
-                    </div>
                     <div style={{ flex: '1 1 200px' }}>
-                        <label className="form-label" style={{ marginBottom: '6px' }}>Vai trò hệ thống</label>
                         <select className="form-input" value={role} onChange={(e) => setRole(e.target.value)}>
                             <option value="">Tất cả vai trò</option>
                             <option value="admin">Quản trị viên (Admin)</option>
@@ -156,7 +117,6 @@ function MembersList() {
                         </select>
                     </div>
                     <div style={{ flex: '1 1 200px' }}>
-                        <label className="form-label" style={{ marginBottom: '6px' }}>Trạng thái hoạt động</label>
                         <select className="form-input" value={status} onChange={(e) => setStatus(e.target.value)}>
                             <option value="">Tất cả trạng thái</option>
                             <option value="active">Đang hoạt động</option>
@@ -164,12 +124,11 @@ function MembersList() {
                         </select>
                     </div>
                     <div style={{ display: 'flex', gap: '8px', flex: '0 0 auto' }}>
-                        <button type="button" className="btn-secondary" onClick={handleReset}>Khôi phục</button>
+                        <button type="button" className="btn-secondary" onClick={handleReset}>Xóa lọc</button>
                     </div>
                 </div>
             </div>
             
-            {/* --- BẢNG DỮ LIỆU --- */}
             <div className="data-table-container" style={{ marginTop: '32px' }}>
                 <table className="data-table">
                     <thead>
@@ -199,33 +158,21 @@ function MembersList() {
                                         </span>
                                     </td>
                                     <td>
-                                        {/* Nút Xem (Icon Con Mắt) */}
                                         <button className="btn-view" title="Xem chi tiết" onClick={() => navigate(`/admin/members/view/${m.id}`)}>
-                                            <svg width="16" height="16" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
-                                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
-                                            </svg>
+                                            <svg width="16" height="16" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" /><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" /></svg>
                                         </button>
                                         
-                                        {/* Nút Sửa (Icon Cây Bút) */}
                                         <button className="btn-edit" title="Sửa thông tin" onClick={() => navigate(`/admin/members/edit/${m.id}`)}>
-                                            <svg width="16" height="16" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z" />
-                                            </svg>
+                                            <svg width="16" height="16" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z" /></svg>
                                         </button>
                                         
-                                        {/* Nút Khóa / Mở Khóa */}
                                         {m.status === 'active' ? (
                                             <button className="btn-delete" title="Khóa tài khoản" onClick={() => handleDelete(m.id)}>
-                                                <svg width="16" height="16" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
-                                                </svg>
+                                                <svg width="16" height="16" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" /></svg>
                                             </button>
                                         ) : (
                                             <button className="btn-restore" title="Mở khóa tài khoản" onClick={() => handleRestore(m.id)}>
-                                                <svg width="16" height="16" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
-                                                </svg>
+                                                <svg width="16" height="16" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" /></svg>
                                             </button>
                                         )}
                                     </td>
@@ -236,32 +183,13 @@ function MembersList() {
                 </table>
             </div>
 
-            {/* Thanh phân trang */}
             {!loading && members.length > usersPerPage && (
                 <div className="pagination-container">
-                    <button 
-                        className="btn-page" 
-                        disabled={currentPage === 1} 
-                        onClick={() => setCurrentPage(currentPage - 1)}
-                    >
-                        Trước
-                    </button>
+                    <button className="btn-page" disabled={currentPage === 1} onClick={() => setCurrentPage(currentPage - 1)}>Trước</button>
                     {Array.from({ length: totalPages }, (_, i) => i + 1).map(page => (
-                        <button 
-                            key={page} 
-                            className={`btn-page ${currentPage === page ? 'active' : ''}`}
-                            onClick={() => setCurrentPage(page)}
-                        >
-                            {page}
-                        </button>
+                        <button key={page} className={`btn-page ${currentPage === page ? 'active' : ''}`} onClick={() => setCurrentPage(page)}>{page}</button>
                     ))}
-                    <button 
-                        className="btn-page" 
-                        disabled={currentPage === totalPages} 
-                        onClick={() => setCurrentPage(currentPage + 1)}
-                    >
-                        Sau
-                    </button>
+                    <button className="btn-page" disabled={currentPage === totalPages} onClick={() => setCurrentPage(currentPage + 1)}>Sau</button>
                 </div>
             )}
         </div>

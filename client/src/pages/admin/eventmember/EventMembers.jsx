@@ -6,27 +6,45 @@ function EventMembers() {
     const { eventId } = useParams();
     const navigate = useNavigate();
 
+    // --- TÌM KIẾM VÀ BỘ LỌC CỤC BỘ ---
+    const [search, setSearch] = useState('');
+    const [debouncedSearch, setDebouncedSearch] = useState('');
+    const [filterRole, setFilterRole] = useState('');
+    const [filterStatus, setFilterStatus] = useState('');
+
     const [members, setMembers] = useState([]);
     const [totalMembers, setTotalMembers] = useState(0);
     const [eventStatus, setEventStatus] = useState(''); 
     const [loading, setLoading] = useState(true);
 
+    // Chống lag khi gõ tìm kiếm
+    useEffect(() => {
+        const timerId = setTimeout(() => { setDebouncedSearch(search); }, 500); 
+        return () => clearTimeout(timerId);
+    }, [search]);
+
     const fetchEventData = useCallback(async () => {
         try {
-            // 1. Gọi API lấy chính xác trạng thái sự kiện
-            const eventRes = await fetch(`http://localhost:5000/api/events/${eventId}`, {
-                headers: { 'Authorization': `Bearer ${localStorage.getItem('my_token')}` }
-            });
-            const eventData = await eventRes.json();
+            setLoading(true);
+            const token = localStorage.getItem('my_token');
+            const headers = { 'Authorization': `Bearer ${token}` };
+
+            // 1. Lấy trạng thái sự kiện
+            const eventRes = await fetch(`http://localhost:5000/api/events/${eventId}`, { headers });
             if (eventRes.ok) {
-                setEventStatus(eventData.status); // Lưu chữ "Nháp" hoặc "Sắp diễn ra"
+                const eventData = await eventRes.json();
+                setEventStatus(eventData.status);
             }
 
-            // 2. Gọi API lấy danh sách thành viên
-            const membersRes = await fetch(`http://localhost:5000/api/events/${eventId}/members`, {
-                headers: { 'Authorization': `Bearer ${localStorage.getItem('my_token')}` }
-            });
+            // 2. Lấy danh sách thành viên (Kèm theo Bộ lọc và Tìm kiếm)
+            const queryParams = new URLSearchParams();
+            if (debouncedSearch) queryParams.append('search', debouncedSearch);
+            if (filterRole) queryParams.append('role_in_event', filterRole);
+            if (filterStatus) queryParams.append('status', filterStatus);
+
+            const membersRes = await fetch(`http://localhost:5000/api/events/${eventId}/members?${queryParams.toString()}`, { headers });
             const membersData = await membersRes.json();
+            
             if (membersRes.ok) {
                 setMembers(membersData.members || []);
                 setTotalMembers(membersData.total_members || (membersData.members ? membersData.members.length : 0));
@@ -38,7 +56,7 @@ function EventMembers() {
         } finally {
             setLoading(false);
         }
-    }, [eventId]); 
+    }, [eventId, debouncedSearch, filterRole, filterStatus]); 
 
     useEffect(() => {
         document.title = "Thành viên sự kiện | TaskFlow";
@@ -50,8 +68,13 @@ function EventMembers() {
         return 'Thành viên';
     };
     
-    // 🌟 QUYẾT ĐỊNH QUYỀN TRUY CẬP: Nháp và Sắp diễn ra được phép Thêm/Xóa/Sửa
     const isEditable = (eventStatus === 'Nháp' || eventStatus === 'Sắp diễn ra');
+
+    const handleResetFilter = () => {
+        setSearch('');
+        setFilterRole('');
+        setFilterStatus('');
+    };
 
     const handleDeleteMember = (memberId) => {
         Swal.fire({
@@ -74,7 +97,7 @@ function EventMembers() {
                     
                     if (response.ok) {
                         Swal.fire('Đã xóa!', 'Thành viên đã được xóa khỏi sự kiện.', 'success');
-                        fetchEventData(); // Tải lại danh sách
+                        fetchEventData(); 
                     } else {
                         Swal.fire('Lỗi!', data.message, 'error');
                     }
@@ -87,7 +110,6 @@ function EventMembers() {
 
     return (
         <div className="page-container">
-            
             <div className="page-header-form" style={{ maxWidth: '100%' }}>
                 <button type="button" className="btn-back" onClick={() => navigate(`/admin/events/view/${eventId}`)}>
                     <svg width="18" height="18" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth="2">
@@ -98,8 +120,6 @@ function EventMembers() {
                 
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: '16px' }}>
                     <h3 style={{ margin: 0 }}>Thành viên tham gia ({totalMembers})</h3>
-                    
-                    {/* 🌟 NÚT THÊM CHỈ HIỆN KHI LÀ NHÁP HOẶC SẮP DIỄN RA */}
                     {isEditable && (
                         <button className="btn-primary" onClick={() => navigate(`/admin/events/${eventId}/members/add`)}>
                             + Thêm thành viên
@@ -108,11 +128,49 @@ function EventMembers() {
                 </div>
             </div>
 
+            {/* --- BỘ LỌC THÀNH VIÊN TRONG SỰ KIỆN TỐI GIẢN --- */}
+            <div className="form-card mb-6" style={{ maxWidth: '100%', padding: '20px', marginTop: '24px' }}>
+                <div style={{ display: 'flex', gap: '12px', alignItems: 'center', flexWrap: 'wrap' }}>
+                    
+                    {/* Ô Tìm kiếm được đưa trở lại */}
+                    <div style={{ flex: '2 1 250px' }}>
+                        <input 
+                            type="text" 
+                            className="form-input" 
+                            placeholder="Tìm kiếm họ tên, email..." 
+                            value={search} 
+                            onChange={(e) => setSearch(e.target.value)} 
+                            style={{ padding: '6px 12px', height: '36px' }}
+                        />
+                    </div>
+
+                    <div style={{ flex: '1 1 180px' }}>
+                        <select className="form-input" value={filterRole} onChange={(e) => setFilterRole(e.target.value)} style={{ padding: '6px 12px', height: '36px' }}>
+                            <option value="">Tất cả vai trò</option>
+                            <option value="coordinator">Điều phối viên</option>
+                            <option value="member">Thành viên</option>
+                        </select>
+                    </div>
+
+                    <div style={{ flex: '1 1 180px' }}>
+                        <select className="form-input" value={filterStatus} onChange={(e) => setFilterStatus(e.target.value)} style={{ padding: '6px 12px', height: '36px' }}>
+                            <option value="">Tất cả trạng thái</option>
+                            <option value="active">Đang hoạt động</option>
+                            <option value="inactive">Đã bị khóa</option>
+                        </select>
+                    </div>
+
+                    <div style={{ display: 'flex', gap: '8px', flex: '0 0 auto' }}>
+                        <button type="button" className="btn-secondary" onClick={handleResetFilter} style={{ height: '36px', padding: '0 12px', fontSize: '13px' }}>Khôi phục</button>
+                    </div>
+                </div>
+            </div>
+
             {loading ? (
                 <div className="text-center text-secondary mb-6 mt-6">Đang tải danh sách...</div>
             ) : members.length === 0 ? (
                 <div className="form-card text-center text-secondary mt-6" style={{ maxWidth: '100%' }}>
-                    Sự kiện này chưa có thành viên nào tham gia.
+                    Không tìm thấy thành viên nào khớp với bộ lọc.
                 </div>
             ) : (
                 <div style={{ marginTop: '24px', borderRadius: '8px', overflow: 'hidden', border: '1px solid var(--border-neutral)' }}>
@@ -123,7 +181,6 @@ function EventMembers() {
                                 <th>Họ và tên</th>
                                 <th style={{ textAlign: 'center' }}>Vai trò</th>
                                 <th style={{ textAlign: 'center' }}>Ngày tham gia</th>
-                                {/* 🌟 CỘT HÀNH ĐỘNG ẨN THEO ĐIỀU KIỆN */}
                                 {isEditable && <th style={{ textAlign: 'center' }}>Hành động</th>}
                             </tr>
                         </thead>
@@ -146,7 +203,6 @@ function EventMembers() {
                                         {new Date(member.joined_at).toLocaleDateString('vi-VN')}
                                     </td>
                                     
-                                    {/* 🌟 NÚT SỬA XÓA ẨN THEO ĐIỀU KIỆN */}
                                     {isEditable && (
                                         <td style={{ textAlign: 'center' }}>
                                             <div style={{ display: 'flex', gap: '8px', justifyContent: 'center' }}>

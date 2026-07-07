@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 
 function EventList() {
@@ -6,38 +6,26 @@ function EventList() {
     const [events, setEvents] = useState([]);
     const [loading, setLoading] = useState(true);
     
-    // --- 1. STATE CHO BỘ LỌC TÌM KIẾM ---
-    const [search, setSearch] = useState('');
-    const [debouncedSearch, setDebouncedSearch] = useState(''); // State phụ để trì hoãn gõ phím
+    // --- STATE CHO BỘ LỌC ---
     const [status, setStatus] = useState('');
     const [fromDate, setFromDate] = useState('');
     const [toDate, setToDate] = useState('');
+    const [leaderId, setLeaderId] = useState('');
 
     const [currentOfficialPage, setCurrentOfficialPage] = useState(1);
     const [currentDraftPage, setCurrentDraftPage] = useState(1);
     const eventsPerPage = 10; 
 
-    // --- 2. KỸ THUẬT DEBOUNCE CHỐNG LAG SERVER ---
-    // Cứ mỗi khi bạn gõ chữ vào ô 'search', đợi 0.5s sau nó mới cập nhật vào 'debouncedSearch'
-    useEffect(() => {
-        const timerId = setTimeout(() => {
-            setDebouncedSearch(search);
-        }, 500); 
-
-        return () => clearTimeout(timerId); // Dọn dẹp timer nếu người dùng gõ tiếp
-    }, [search]);
-
-    // --- 3. HÀM GỌI API KÈM THEO QUERY TÌM KIẾM ---
-    const fetchEvents = async () => {
+    // --- HÀM GỌI API LỌC TỪ BACKEND ---
+    const fetchEvents = useCallback(async () => {
         setLoading(true);
         try {
             const queryParams = new URLSearchParams();
             
-            // Lấy các giá trị hiện tại để gửi xuống Backend[cite: 4]
-            if (debouncedSearch) queryParams.append('search', debouncedSearch);
             if (status) queryParams.append('status', status);
             if (fromDate) queryParams.append('from_date', fromDate);
             if (toDate) queryParams.append('to_date', toDate);
+            if (leaderId) queryParams.append('leader_id', leaderId);
 
             const response = await fetch(`http://localhost:5000/api/events?${queryParams.toString()}`, {
                 headers: { 'Authorization': `Bearer ${localStorage.getItem('my_token')}` }
@@ -49,30 +37,27 @@ function EventList() {
         } finally { 
             setLoading(false); 
         }
-    };
+    }, [status, fromDate, toDate, leaderId]);
 
-    // --- 4. TỰ ĐỘNG LỌC KHI CÓ THAY ĐỔI ---
-    // Bất cứ khi nào 4 biến này thay đổi, tự động bẻ trang về 1 và gọi API tìm kiếm
     useEffect(() => {
         document.title = "Quản lý Sự kiện | TaskFlow";
         setCurrentOfficialPage(1);
         setCurrentDraftPage(1);
         fetchEvents();
         // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, [debouncedSearch, status, fromDate, toDate]); 
+    }, [fetchEvents]); 
 
-    // --- 5. NÚT KHÔI PHỤC (RESET) ---
+    // Khôi phục bộ lọc
     const handleReset = () => {
-        setSearch(''); // Xóa nội dung tìm kiếm hiển thị
-        setDebouncedSearch(''); // Xóa nội dung tìm kiếm ngầm
         setStatus('');
         setFromDate('');
         setToDate('');
+        setLeaderId('');
     };
 
     const handleCardClick = (id) => navigate(`/admin/events/view/${id}`);
 
-    // Phân loại sự kiện
+    // Tách mảng để hiển thị giao diện
     const officialEvents = events
         .filter(event => event.status !== 'Nháp')
         .sort((a, b) => {
@@ -85,7 +70,7 @@ function EventList() {
         .filter(event => event.status === 'Nháp')
         .sort((a, b) => new Date(a.start_date) - new Date(b.start_date));
 
-    // Tính toán phân trang
+    // Phân trang
     const indexOfLastOfficial = currentOfficialPage * eventsPerPage;
     const currentOfficialEvents = officialEvents.slice(indexOfLastOfficial - eventsPerPage, indexOfLastOfficial);
     const totalOfficialPages = Math.ceil(officialEvents.length / eventsPerPage);
@@ -105,21 +90,10 @@ function EventList() {
                 </div>
             </div>
 
-            {/* --- 6. GIAO DIỆN BỘ LỌC TÌM KIẾM (Đã bỏ form và nút submit) --- */}
+            {/* --- GIAO DIỆN BỘ LỌC TÌM KIẾM --- */}
             <div className="form-card mb-6" style={{ maxWidth: '100%', padding: '20px' }}>
                 <div style={{ display: 'flex', gap: '16px', alignItems: 'flex-end', flexWrap: 'wrap' }}>
-                    <div style={{ flex: '1 1 200px' }}>
-                        <label className="form-label" style={{ marginBottom: '6px' }}>Tìm kiếm</label>
-                        <input 
-                            type="text" 
-                            className="form-input" 
-                            placeholder="Tên sự kiện, địa điểm..." 
-                            value={search} 
-                            onChange={(e) => setSearch(e.target.value)} 
-                        />
-                    </div>
                     <div style={{ flex: '1 1 150px' }}>
-                        <label className="form-label" style={{ marginBottom: '6px' }}>Trạng thái</label>
                         <select className="form-input" value={status} onChange={(e) => setStatus(e.target.value)}>
                             <option value="">Tất cả trạng thái</option>
                             <option value="Sắp diễn ra">Sắp diễn ra</option>
@@ -130,50 +104,55 @@ function EventList() {
                         </select>
                     </div>
                     <div style={{ flex: '1 1 140px' }}>
-                        <label className="form-label" style={{ marginBottom: '6px' }}>Từ ngày</label>
-                        <input 
-                            type="date" 
-                            className="form-input" 
-                            value={fromDate} 
-                            onChange={(e) => setFromDate(e.target.value)} 
-                        />
-                    </div>
+                                 <input 
+                                    type={fromDate ? 'date' : 'text'} 
+                                    placeholder="Từ ngày..." 
+                                    className="form-input" 
+                                    value={fromDate} 
+                                    onFocus={(e) => e.target.type = 'date'} 
+                                    onBlur={(e) => { if (!e.target.value) e.target.type = 'text'; }}
+                                    onChange={(e) => setFromDate(e.target.value)} 
+                                    style={{ padding: '6px 30px 6px 12px', height: '36px', width: '100%' }} 
+                                />                  
+                     </div>
                     <div style={{ flex: '1 1 140px' }}>
-                        <label className="form-label" style={{ marginBottom: '6px' }}>Đến ngày</label>
-                        <input 
-                            type="date" 
-                            className="form-input" 
-                            value={toDate} 
-                            onChange={(e) => setToDate(e.target.value)} 
-                        />
+                                <input 
+                                    type={toDate ? 'date' : 'text'} 
+                                    placeholder="Đến ngày..." 
+                                    className="form-input" 
+                                    value={toDate} 
+                                    onFocus={(e) => e.target.type = 'date'} 
+                                    onBlur={(e) => { if (!e.target.value) e.target.type = 'text'; }}
+                                    onChange={(e) => setToDate(e.target.value)} 
+                                    style={{ padding: '6px 30px 6px 12px', height: '36px', width: '100%' }} 
+                                />
+                    </div>
+                    <div style={{ flex: '1 1 120px' }}>
+                        <input type="text" className="form-input" placeholder="ID người phụ trách" value={leaderId} onChange={(e) => setLeaderId(e.target.value)} />
                     </div>
                     <div style={{ display: 'flex', gap: '8px', flex: '0 0 auto' }}>
-                        {/* Đã bỏ nút Lọc, chỉ giữ lại nút Khôi phục */}
-                        <button type="button" className="btn-secondary" onClick={handleReset}>Khôi phục</button>
+                        <button type="button" className="btn-secondary" onClick={handleReset}>Xóa lọc</button>
                     </div>
                 </div>
             </div>
-            {/* --- KẾT THÚC BỘ LỌC --- */}
             
             {loading ? (
                 <div className="text-center text-secondary mb-6">Đang tải dữ liệu...</div>
+            ) : events.length === 0 ? (
+                <div className="text-center text-secondary mb-6 form-card">Không tìm thấy sự kiện nào khớp với bộ lọc.</div>
             ) : (
                 <>
-                    {/* Hiển thị Sự Kiện Chính Thức */}
                     <div className="mb-6" style={{ marginTop: '32px' }}>
                         <h3 className="section-title">Sự kiện chính thức</h3>
-                        
                         {currentOfficialEvents.length === 0 ? (
-                            <div className="text-center text-secondary form-card" style={{ maxWidth: '100%' }}>Không tìm thấy sự kiện chính thức nào.</div>
+                            <div className="text-center text-secondary form-card" style={{ maxWidth: '100%' }}>Không có dữ liệu.</div>
                         ) : (
                             <>
                                 <div className="event-grid">
                                     {currentOfficialEvents.map(event => (
                                         <div key={event.id} className="event-card" onClick={() => handleCardClick(event.id)} style={{ cursor: 'pointer' }}>
                                             <div className="event-card-header">
-                                                <span className={`status-badge ${event.status === 'Đã hủy' ? 'status-inactive' : 'status-active'}`}>
-                                                    {event.status}
-                                                </span>
+                                                <span className={`status-badge ${event.status === 'Đã hủy' ? 'status-inactive' : 'status-active'}`}>{event.status}</span>
                                             </div>
                                             <h2 className="event-title">{event.title}</h2>
                                             <p className="event-detail-row">📍 {event.location}</p>
@@ -181,7 +160,6 @@ function EventList() {
                                         </div>
                                     ))}
                                 </div>
-
                                 {officialEvents.length > eventsPerPage && (
                                     <div className="pagination-container">
                                         <button className="btn-page" disabled={currentOfficialPage === 1} onClick={() => setCurrentOfficialPage(currentOfficialPage - 1)}>Trước</button>
@@ -195,12 +173,10 @@ function EventList() {
                         )}
                     </div>
 
-                    {/* Hiển thị Bản Nháp */}
                     <div>
                         <h3 className="section-title warning">Bản nháp</h3>
-                        
                         {currentDraftEvents.length === 0 ? (
-                            <div className="text-center text-secondary form-card" style={{ maxWidth: '100%' }}>Không tìm thấy bản nháp nào.</div>
+                            <div className="text-center text-secondary form-card" style={{ maxWidth: '100%' }}>Không có dữ liệu.</div>
                         ) : (
                             <>
                                 <div className="event-grid">
@@ -212,7 +188,6 @@ function EventList() {
                                         </div>
                                     ))}
                                 </div>
-
                                 {draftEvents.length > eventsPerPage && (
                                     <div className="pagination-container">
                                         <button className="btn-page" disabled={currentDraftPage === 1} onClick={() => setCurrentDraftPage(currentDraftPage - 1)}>Trước</button>
