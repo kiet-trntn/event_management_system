@@ -11,78 +11,55 @@ const getAllUsers = async (req, res) => {
             status
         } = req.query;
 
-        // Kiểm tra role hợp lệ nếu có truyền lên
-        if (
-            role &&
-            role !== "admin" &&
-            role !== "employee"
-        ) {
-            return res.status(400).json({
-                message: "Role không hợp lệ"
-            });
-        }
-
-        // Kiểm tra status hợp lệ nếu có truyền lên
-        if (
-            status &&
-            status !== "active" &&
-            status !== "inactive"
-        ) {
-            return res.status(400).json({
-                message: "Status không hợp lệ"
-            });
-        }
-
         let sql = `
-            SELECT 
-                id, 
-                full_name, 
-                email, 
-                role, 
-                status, 
-                created_at
+            SELECT
+                id,
+                full_name,
+                email,
+                phone,
+                gender,
+                date_of_birth,
+                address,
+                bio,
+                role,
+                status,
+                created_at,
+                updated_at
             FROM users
             WHERE 1 = 1
         `;
 
-        let params = [];
+        const params = [];
 
-        // Tìm kiếm theo họ tên hoặc email
         if (search) {
             sql += `
                 AND (
                     full_name LIKE ?
                     OR email LIKE ?
+                    OR phone LIKE ?
+                    OR address LIKE ?
                 )
             `;
 
             params.push(
                 `%${search}%`,
+                `%${search}%`,
+                `%${search}%`,
                 `%${search}%`
             );
         }
 
-        // Lọc theo role
         if (role) {
-            sql += `
-                AND role = ?
-            `;
-
+            sql += ` AND role = ?`;
             params.push(role);
         }
 
-        // Lọc theo trạng thái
         if (status) {
-            sql += `
-                AND status = ?
-            `;
-
+            sql += ` AND status = ?`;
             params.push(status);
         }
 
-        sql += `
-            ORDER BY id DESC
-        `;
+        sql += ` ORDER BY created_at DESC`;
 
         const [users] = await db.query(sql, params);
 
@@ -96,7 +73,7 @@ const getAllUsers = async (req, res) => {
         console.log(error);
 
         res.status(500).json({
-            message: error.message || "Đã xảy ra lỗi khi lấy danh sách người dùng"
+            message: error.message
         });
 
     }
@@ -104,48 +81,102 @@ const getAllUsers = async (req, res) => {
 };
 
 const getUserById = async (req, res) => {
+
     try {
-        const { id } = req.params; // Lấy id người dùng từ tham số đường dẫn
-        const [users] = await db.query('SELECT id, full_name, email, role, status, created_at FROM users WHERE id = ?', [id]); // Truy vấn người dùng theo id
+
+        const { id } = req.params;
+
+        const [users] = await db.query(
+            `
+            SELECT
+                id,
+                full_name,
+                email,
+                phone,
+                gender,
+                date_of_birth,
+                address,
+                bio,
+                role,
+                status,
+                created_at,
+                updated_at
+            FROM users
+            WHERE id = ?
+            `,
+            [id]
+        );
 
         if (users.length === 0) {
             return res.status(404).json({
-                message: "Không tìm thấy thành viên"
+                message: "Không tìm thấy người dùng"
             });
         }
 
-        res.json(users[0]);
-    } catch (error) {
-        console.log(error);
-        res.status(500).json({
-            message: error.message || "Đã xảy ra lỗi khi lấy thông tin người dùng"
+        res.json({
+            user: users[0]
         });
+
+    } catch (error) {
+
+        console.log(error);
+
+        res.status(500).json({
+            message: error.message
+        });
+
     }
-}
+
+};
 
 const createUser = async (req, res) => {
+
     try {
 
-        // Lấy thông tin thành viên mới từ nội dung (body) mà Client gửi lên
-        const {
-            full_name, email, password, role
+        let {
+            full_name,
+            email,
+            password,
+            role,
+            phone,
+            gender,
+            date_of_birth,
+            address,
+            bio
         } = req.body;
 
-        // Kiểm tra dữ liệu: Bắt buộc nhập đầy đủ tên, email, password
+        full_name = full_name?.trim();
+        email = email?.trim().toLowerCase();
+        phone = phone?.trim() || null;
+        address = address?.trim() || null;
+        bio = bio?.trim() || null;
+
         if (!full_name || !email || !password) {
             return res.status(400).json({
                 message: "Vui lòng nhập đầy đủ thông tin"
             });
         }
 
-        // Kiểm tra độ dài tên: Yêu cầu tên phải từ 3 ký tự trở lên
         if (full_name.length < 3) {
             return res.status(400).json({
                 message: "Họ tên phải từ 3 ký tự trở lên"
             });
         }
 
-        // Chỉ cho phép role hợp lệ (admin hoặc employee), nếu role được cung cấp và không hợp lệ thì trả về lỗi
+        const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+
+        if (!emailRegex.test(email)) {
+            return res.status(400).json({
+                message: "Email không hợp lệ"
+            });
+        }
+
+        if (password.length < 6) {
+            return res.status(400).json({
+                message: "Mật khẩu phải từ 6 ký tự trở lên"
+            });
+        }
+
         if (
             role &&
             role !== "admin" &&
@@ -156,91 +187,124 @@ const createUser = async (req, res) => {
             });
         }
 
-
-        const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-        // Kiểm tra định dạng email: Sử dụng biểu thức chính quy (Regex) để kiểm tra xem email có hợp lệ hay không
-        if (!emailRegex.test(email)) {
+        if (
+            gender &&
+            gender !== "male" &&
+            gender !== "female" &&
+            gender !== "other"
+        ) {
             return res.status(400).json({
-                message: "Email không hợp lệ"
+                message: "Giới tính không hợp lệ"
             });
         }
 
-        // Kiểm tra email: Tìm xem email đã tồn tại trong database chưa
-        const [user] = await db.query("SELECT * FROM users WHERE email = ?", [email]);
+        const [users] = await db.query(
+            `
+            SELECT id
+            FROM users
+            WHERE email = ?
+            `,
+            [email]
+        );
 
-        // Nếu tìm thấy kết quả (độ dài mảng > 0), nghĩa là email đã tồn tại
-        if (user.length > 0) {
+        if (users.length > 0) {
             return res.status(400).json({
                 message: "Email đã tồn tại"
             });
         }
 
-        // Mã hóa mật khẩu: Sử dụng bcrypt để mã hóa mật khẩu trước khi lưu vào database
-        const hashedPassword = await bcrypt.hash(password, 10); // 10 là số lần băm (salt rounds)
+        const hashedPassword = await bcrypt.hash(password, 10);
 
-        // Lưu thông tin thành viên mới vào database
-        await db.query(`
-            INSERT INTO users (
-        full_name, email, password, role, status) 
-            VALUES (?, ?, ?, ?, ?)`, 
+        await db.query(
+            `
+            INSERT INTO users
+            (
+                full_name,
+                email,
+                password,
+                phone,
+                gender,
+                date_of_birth,
+                address,
+                bio,
+                role,
+                status
+            )
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+            `,
             [
-                full_name, 
-                email, 
+                full_name,
+                email,
                 hashedPassword,
+                phone,
+                gender || null,
+                date_of_birth || null,
+                address,
+                bio,
                 role || "employee",
                 "active"
-            ]); // role mặc định sẽ là employee nếu không được cung cấp
+            ]
+        );
 
-        // Trả về thông báo thành công (Status 201 - Đã tạo mới thành công)
         res.status(201).json({
             message: "Thành viên mới đã được tạo thành công"
         });
-    } catch (error) {
-        console.log(error); // In lỗi ra màn hình Terminal của Server
 
-        // Trả về mã lỗi 500 (Lỗi máy chủ) và thông báo lỗi
+    } catch (error) {
+
+        console.log(error);
+
         res.status(500).json({
-            message: error.message || "Đã xảy ra lỗi khi tạo thành viên mới"
+            message: "Đã xảy ra lỗi khi tạo thành viên mới"
         });
+
     }
-}
+
+};
 
 const updateUser = async (req, res) => {
-    try {
-        const { id } = req.params; // Lấy id người dùng từ tham số đường dẫn
 
-        const {
+    try {
+
+        const { id } = req.params;
+
+        let {
             full_name,
             email,
             role,
+            phone,
+            gender,
+            date_of_birth,
+            address,
+            bio
         } = req.body;
 
-        // Kiểm tra user có tồn tại
-        const [users] = await db.query('SELECT * FROM users WHERE id = ?', [id]);
+        full_name = full_name?.trim();
+        email = email?.trim().toLowerCase();
+        phone = phone?.trim() || null;
+        address = address?.trim() || null;
+        bio = bio?.trim() || null;
 
-        // Nếu không tìm thấy user nào có id tương ứng thì trả về lỗi 404
-        if (users.length === 0) {
-            return res.status(404).json({
-                message: "Không tìm thấy thành viên"
-            });
-        }
-
-        // Kiểm tra rỗng
         if (!full_name || !email) {
             return res.status(400).json({
-                message: "Vui lòng nhập đầy đủ thông tin"
+                message: "Vui lòng nhập đầy đủ họ tên và email"
             });
         }
 
-        // Kiểm tra email hợp lệ
+        if (full_name.length < 3) {
+            return res.status(400).json({
+                message: "Họ tên phải từ 3 ký tự trở lên"
+            });
+        }
+
         const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+
         if (!emailRegex.test(email)) {
             return res.status(400).json({
                 message: "Email không hợp lệ"
             });
         }
 
-        // Kiểm tra role hợp lệ
         if (
             role &&
             role !== "admin" &&
@@ -251,26 +315,90 @@ const updateUser = async (req, res) => {
             });
         }
 
-        // Kiểm tra email trùng
-        const [existingUser] = await db.query("SELECT * FROM users WHERE email = ? AND id != ?", [email, id]);
-        if (existingUser.length > 0) {
+        if (
+            gender &&
+            gender !== "male" &&
+            gender !== "female" &&
+            gender !== "other"
+        ) {
+            return res.status(400).json({
+                message: "Giới tính không hợp lệ"
+            });
+        }
+
+        const [users] = await db.query(
+            `
+            SELECT id
+            FROM users
+            WHERE id = ?
+            `,
+            [id]
+        );
+
+        if (users.length === 0) {
+            return res.status(404).json({
+                message: "Không tìm thấy người dùng"
+            });
+        }
+
+        const [existingEmail] = await db.query(
+            `
+            SELECT id
+            FROM users
+            WHERE email = ?
+            AND id <> ?
+            `,
+            [email, id]
+        );
+
+        if (existingEmail.length > 0) {
             return res.status(400).json({
                 message: "Email đã tồn tại"
             });
         }
 
-        // Cập nhật thông tin người dùng trong database
-        await db.query("UPDATE users SET full_name = ?, email = ?, role = ? WHERE id = ?", [full_name, email, role, id]);
+        await db.query(
+            `
+            UPDATE users
+            SET
+                full_name = ?,
+                email = ?,
+                phone = ?,
+                gender = ?,
+                date_of_birth = ?,
+                address = ?,
+                bio = ?,
+                role = ?
+            WHERE id = ?
+            `,
+            [
+                full_name,
+                email,
+                phone,
+                gender || null,
+                date_of_birth || null,
+                address,
+                bio,
+                role || "employee",
+                id
+            ]
+        );
+
         res.json({
-            message: "Thông tin thành viên đã được cập nhật thành công"
+            message: "Cập nhật thông tin người dùng thành công"
         });
+
     } catch (error) {
+
         console.log(error);
+
         res.status(500).json({
-            message: error.message || "Đã xảy ra lỗi khi cập nhật thông tin thành viên"
+            message: error.message
         });
+
     }
-}
+
+};
 
 const updateStatus = async (req, res) => {
     try {
@@ -445,9 +573,15 @@ const getMe = async (req, res) => {
                 id,
                 full_name,
                 email,
+                phone,
+                gender,
+                date_of_birth,
+                address,
+                bio,
                 role,
                 status,
-                created_at
+                created_at,
+                updated_at
             FROM users
             WHERE id = ?
             `,
