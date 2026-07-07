@@ -316,6 +316,8 @@ const addMemberToEvent = async (req, res) => {
 
 const removeMemberFromEvent = async (req, res) => {
 
+    let connection;
+
     try {
 
         const {
@@ -323,8 +325,15 @@ const removeMemberFromEvent = async (req, res) => {
             userId
         } = req.params;
 
+        const {
+            confirm
+        } = req.query;
+
+        // Lấy connection để dùng transaction
+        connection = await db.getConnection();
+
         // Kiểm tra event tồn tại
-        const [events] = await db.query(
+        const [events] = await connection.query(
             `
             SELECT *
             FROM events
@@ -335,6 +344,8 @@ const removeMemberFromEvent = async (req, res) => {
         );
 
         if (events.length === 0) {
+            connection.release();
+
             return res.status(404).json({
                 message: "Không tìm thấy sự kiện"
             });
@@ -342,27 +353,12 @@ const removeMemberFromEvent = async (req, res) => {
 
         const event = events[0];
 
-        // Không cho xóa Leader khỏi sự kiện bằng chức năng xóa thành viên
+        // Không cho xóa Leader
         if (Number(userId) === Number(event.leader_id)) {
+            connection.release();
+
             return res.status(400).json({
                 message: "Không thể xóa Leader của sự kiện. Vui lòng đổi Leader trước"
-            });
-        }
-
-        // Kiểm tra thành viên trong event
-        const [members] = await db.query(
-            `
-            SELECT *
-            FROM event_members
-            WHERE event_id = ?
-            AND user_id = ?
-            `,
-            [eventId, userId]
-        );
-
-        if (members.length === 0) {
-            return res.status(404).json({
-                message: "Thành viên không thuộc sự kiện này"
             });
         }
 
@@ -371,52 +367,142 @@ const removeMemberFromEvent = async (req, res) => {
             req.user.role !== "admin" &&
             Number(req.user.id) !== Number(event.leader_id)
         ) {
+            connection.release();
+
             return res.status(403).json({
                 message: "Bạn không có quyền thực hiện hành động này trong sự kiện"
             });
         }
 
+        // Không cho thay đổi thành viên khi event đã khóa
         if (
             event.status === "Đang diễn ra" ||
             event.status === "Đã kết thúc" ||
             event.status === "Đã hủy"
         ) {
+            connection.release();
+
             return res.status(400).json({
                 message: "Không thể thay đổi thành viên của sự kiện này"
             });
         }
 
-        // Lấy danh sách công việc đang giao cho thành viên bị xóa
-        // Phải lấy trước khi SET assigned_to = NULL
-        const [assignedTasks] = await db.query(
+        // Kiểm tra thành viên có thuộc event không
+        const [members] = await connection.query(
+            `
+            SELECT
+                em.*,
+                u.full_name,
+                u.email
+            FROM event_members em
+            INNER JOIN users u
+                ON em.user_id = u.id
+            WHERE em.event_id = ?
+            AND em.user_id = ?
+            `,
+            [eventId, userId]
+        );
+
+        if (members.length === 0) {
+            connection.release();
+
+            return res.status(404).json({
+                message: "Thành viên không thuộc sự kiện này"
+            });
+        }
+
+        const removedMember = members[0];
+
+        // Lấy danh sách công việc đang bị ảnh hưởng
+        // Chỉ lấy task chưa hoàn tất / chưa hủy
+        const [affectedTasks] = await connection.query(
             `
             SELECT
                 id,
                 title,
+                status,
                 created_by
             FROM tasks
             WHERE event_id = ?
             AND assigned_to = ?
             AND is_deleted = FALSE
+            AND status NOT IN ('completed', 'cancelled')
             `,
             [eventId, userId]
         );
 
-        // Bỏ giao các công việc của thành viên bị xóa
-        await db.query(
-            `
-            UPDATE tasks
-            SET
-                assigned_to = NULL,
-                updated_at = NOW()
-            WHERE event_id = ?
-            AND assigned_to = ?
-            `,
-            [eventId, userId]
-        );
+        // Nếu có task bị ảnh hưởng mà chưa confirm thì trả cảnh báo
+        if (
+            affectedTasks.length > 0 &&
+            confirm !== "true"
+        ) {
+            connection.release();
+
+            return res.status(409).json({
+                message: "Thành viên này đang phụ trách công việc. Cần xác nhận trước khi xóa",
+                need_confirm: true,
+                affected_task_count: affectedTasks.length,
+                affected_tasks: affectedTasks.map(task => ({
+                    id: task.id,
+                    title: task.title,
+                    status: task.status
+                }))
+            });
+        }
+
+        await connection.beginTransaction();
+
+        // Nếu có task bị ảnh hưởng thì bỏ người được giao
+        if (affectedTasks.length > 0) {
+
+            const taskIds = affectedTasks.map(task => task.id);
+            const placeholders = taskIds.map(() => "?").join(",");
+
+            await connection.query(
+                `
+                UPDATE tasks
+                SET
+                    assigned_to = NULL,
+                    updated_at = NOW()
+                WHERE id IN (${placeholders})
+                `,
+                taskIds
+            );
+
+            // Lưu lịch sử từng task
+            for (const task of affectedTasks) {
+                await connection.query(
+                    `
+                    INSERT INTO task_history
+                    (
+                        task_id,
+                        user_id,
+                        action,
+                        old_value,
+                        new_value
+                    )
+                    VALUES (?, ?, ?, ?, ?)
+                    `,
+                    [
+                        task.id,
+                        req.user.id,
+                        "assigned_changed",
+                        JSON.stringify({
+                            assigned_to: Number(userId),
+                            assigned_name: removedMember.full_name
+                        }),
+                        JSON.stringify({
+                            assigned_to: null,
+                            reason: "Thành viên bị xóa khỏi sự kiện"
+                        })
+                    ]
+                );
+            }
+
+        }
 
         // Xóa thành viên khỏi sự kiện
-        await db.query(
+        await connection.query(
             `
             DELETE FROM event_members
             WHERE event_id = ?
@@ -425,26 +511,29 @@ const removeMemberFromEvent = async (req, res) => {
             [eventId, userId]
         );
 
+        await connection.commit();
+        connection.release();
+
         // Thông báo cho thành viên bị xóa
         await createNotification({
             user_id: userId,
             title: "Bạn đã bị xóa khỏi sự kiện",
-            content: `Bạn đã bị xóa khỏi sự kiện "${event.title}"`,
+            content: `Bạn đã bị xóa khỏi sự kiện "${event.title}". Các công việc đang phụ trách trong sự kiện sẽ được Leader/Admin phân công lại.`,
             type: "event",
             related_id: eventId
         });
 
         // Nếu thành viên đó đang có công việc thì thông báo cho Leader/người tạo task
-        if (assignedTasks.length > 0) {
+        if (affectedTasks.length > 0) {
 
-            const taskNames = assignedTasks
+            const taskNames = affectedTasks
                 .slice(0, 5)
                 .map(task => `"${task.title}"`)
                 .join(", ");
 
             const moreText =
-                assignedTasks.length > 5
-                    ? ` và ${assignedTasks.length - 5} công việc khác`
+                affectedTasks.length > 5
+                    ? ` và ${affectedTasks.length - 5} công việc khác`
                     : "";
 
             const receivers = new Set();
@@ -455,20 +544,20 @@ const removeMemberFromEvent = async (req, res) => {
             }
 
             // Người tạo task cũng nên biết
-            for (const task of assignedTasks) {
+            for (const task of affectedTasks) {
                 if (task.created_by) {
                     receivers.add(Number(task.created_by));
                 }
             }
 
-            // Không gửi cho người bị xóa
+            // Không gửi lại cho người bị xóa
             receivers.delete(Number(userId));
 
             for (const receiverId of receivers) {
                 await createNotification({
                     user_id: receiverId,
                     title: "Cần phân công lại công việc",
-                    content: `Thành viên bị xóa khỏi sự kiện "${event.title}" đang phụ trách ${assignedTasks.length} công việc: ${taskNames}${moreText}. Vui lòng phân công lại.`,
+                    content: `Thành viên "${removedMember.full_name}" đã bị xóa khỏi sự kiện "${event.title}" và đang phụ trách ${affectedTasks.length} công việc: ${taskNames}${moreText}. Vui lòng phân công lại.`,
                     type: "task",
                     related_id: eventId
                 });
@@ -478,11 +567,26 @@ const removeMemberFromEvent = async (req, res) => {
 
         res.json({
             message: "Xóa thành viên khỏi sự kiện thành công",
-            unassigned_task_count: assignedTasks.length,
-            need_reassign: assignedTasks.length > 0
+            removed_user: {
+                id: Number(userId),
+                full_name: removedMember.full_name,
+                email: removedMember.email
+            },
+            affected_task_count: affectedTasks.length,
+            need_reassign: affectedTasks.length > 0,
+            affected_tasks: affectedTasks.map(task => ({
+                id: task.id,
+                title: task.title,
+                status: task.status
+            }))
         });
 
     } catch (error) {
+
+        if (connection) {
+            await connection.rollback();
+            connection.release();
+        }
 
         console.log(error);
 
