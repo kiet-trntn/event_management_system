@@ -90,10 +90,42 @@ function EventList() {
         }
     };
 
+    // --- LOGIC SẮP XẾP SỰ KIỆN THÔNG MINH ---
+    const getStatusWeight = (statusStr) => {
+        if (statusStr === 'Đang diễn ra') return 1; // Ưu tiên cao nhất
+        if (statusStr === 'Sắp diễn ra') return 2;  // Tiếp theo
+        if (statusStr === 'Đã kết thúc') return 3;
+        if (statusStr === 'Đã hủy') return 4;       // Đẩy xuống cuối cùng
+        return 5;
+    };
+
+    const sortedEvents = [...events].sort((a, b) => {
+        const weightA = getStatusWeight(a.status);
+        const weightB = getStatusWeight(b.status);
+
+        // 1. So sánh theo trạng thái trước
+        if (weightA !== weightB) {
+            return weightA - weightB;
+        }
+
+        // 2. Nếu cùng trạng thái, so sánh theo thời gian bắt đầu
+        const dateA = new Date(a.start_date).getTime();
+        const dateB = new Date(b.start_date).getTime();
+
+        if (weightA === 1 || weightA === 2) {
+            // "Đang diễn ra" hoặc "Sắp diễn ra": Sự kiện nào sắp tới gần nhất (sớm nhất) sẽ xếp trước
+            return dateA - dateB; 
+        }
+        
+        // "Đã kết thúc" hoặc "Đã hủy": Sự kiện nào vừa kết thúc/hủy gần đây nhất sẽ xếp trên
+        return dateB - dateA; 
+    });
+
+    // --- PHÂN TRANG DỰA TRÊN DANH SÁCH ĐÃ SẮP XẾP ---
     const indexOfLastEvent = currentPage * eventsPerPage;
     const indexOfFirstEvent = indexOfLastEvent - eventsPerPage;
-    const currentEvents = events.slice(indexOfFirstEvent, indexOfLastEvent);
-    const totalPages = Math.ceil(events.length / eventsPerPage);
+    const currentEvents = sortedEvents.slice(indexOfFirstEvent, indexOfLastEvent);
+    const totalPages = Math.ceil(sortedEvents.length / eventsPerPage);
 
     const handlePageChange = (pageNumber) => {
         setCurrentPage(pageNumber);

@@ -18,8 +18,6 @@ import ViewEvent from './pages/admin/event/ViewEvent';
 import EditEvent from './pages/admin/event/EditEvent';
 
 import EventMembers from './pages/admin/eventmember/EventMembers';
-import AddEventMember from './pages/admin/eventmember/AddEventMember';
-import EditEventMember from './pages/admin/eventmember/EditEventMember';
 
 import TaskList from './pages/admin/task/TaskList';
 import AddTask from './pages/admin/task/AddTask';
@@ -70,8 +68,6 @@ function App() {
           <Route path="events/view/:id" element={<ViewEvent />} />
           <Route path="events/edit/:id" element={<EditEvent />} />
           <Route path="events/:eventId/members" element={<EventMembers />} />
-          <Route path="events/:eventId/members/add" element={<AddEventMember />} />
-          <Route path="events/:eventId/members/edit/:userId" element={<EditEventMember />} />
           <Route path="tasks" element={<TaskList />} />
           <Route path="tasks/add" element={<AddTask />} />
           <Route path="tasks/view/:id" element={<ViewTask />} />
@@ -97,10 +93,8 @@ function App() {
           <Route path="tasks" element={<TaskListStaff />} />
           <Route path="tasks/view/:id" element={<ViewTaskStaff />} />
           <Route path="calendar" element={<WorkCalendar />} />
-          <Route path="events/:eventId/tasks/add" element={<AddTask />} />
+          <Route path="tasks/add" element={<AddTask />} />
           <Route path="tasks/edit/:id" element={<EditTask />} />
-          <Route path="events/:eventId/members/add" element={<AddEventMember />} />
-          <Route path="events/:eventId/members/edit/:userId" element={<EditEventMember />} />
           <Route path="members/view/:id" element={<ViewMember />} />
           <Route path="trash" element={<Trash />} />
           <Route path="messages" element={<Messages />} />

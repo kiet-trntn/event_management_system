@@ -24,7 +24,6 @@ function ViewEvent() {
     const [filterTaskToDate, setFilterTaskToDate] = useState('');
 
     // --- BỘ LỌC THÀNH VIÊN (MINI FILTER) ---
-    const [filterMemberRole, setFilterMemberRole] = useState('');
     const [filterMemberStatus, setFilterMemberStatus] = useState('');
 
     // Giải mã token
@@ -127,10 +126,70 @@ function ViewEvent() {
         }
     };
 
+    // --- LOGIC THÊM THÀNH VIÊN TRỰC TIẾP TỪ VIEW EVENT ---
+    const handleAddMemberPopup = async () => {
+        try {
+            const res = await fetch(`http://localhost:5000/api/users/available/${id}`, {
+                headers: { 'Authorization': `Bearer ${localStorage.getItem('my_token')}` }
+            });
+            const data = await res.json();
+            const availableUsers = data.users || [];
+
+            if (availableUsers.length === 0) {
+                return Swal.fire('Thông báo', 'Tất cả nhân viên hợp lệ đều đã tham gia sự kiện này.', 'info');
+            }
+
+            const inputOptions = {};
+            availableUsers.forEach(u => {
+                inputOptions[u.id] = `#${u.id} - ${u.full_name}`;
+            });
+
+            const { value: selectedUserId } = await Swal.fire({
+                title: 'Thêm thành viên mới',
+                input: 'select',
+                inputOptions: inputOptions,
+                inputPlaceholder: '--- Chọn nhân viên ---',
+                showCancelButton: true,
+                confirmButtonColor: '#3b82f6',
+                cancelButtonColor: '#9ca3af',
+                confirmButtonText: 'Thêm vào sự kiện',
+                cancelButtonText: 'Hủy bỏ',
+                inputValidator: (value) => {
+                    if (!value) return 'Vui lòng chọn một nhân viên!';
+                }
+            });
+
+            if (selectedUserId) {
+                Swal.fire({ title: 'Đang xử lý...', allowOutsideClick: false, didOpen: () => Swal.showLoading() });
+                
+                const addRes = await fetch(`http://localhost:5000/api/events/${id}/members`, {
+                    method: 'POST',
+                    headers: { 
+                        'Content-Type': 'application/json',
+                        'Authorization': `Bearer ${localStorage.getItem('my_token')}` 
+                    },
+                    body: JSON.stringify({ user_id: selectedUserId })
+                });
+
+                if (addRes.ok) {
+                    Swal.fire('Thành công!', 'Đã thêm thành viên vào sự kiện.', 'success');
+                    fetchViewEvent(); // Cập nhật lại danh sách ngay lập tức
+                } else {
+                    const errorData = await addRes.json();
+                    Swal.fire('Lỗi', errorData.message || 'Không thể thêm thành viên', 'error');
+                }
+            }
+        } catch (error) {
+            console.error(error);
+            Swal.fire('Lỗi', 'Không thể kết nối đến máy chủ', 'error');
+        }
+    };
+
+    // --- LOGIC XÓA CÓ XÁC NHẬN NẾU VƯỚNG TASK ---
     const handleRemoveMember = async (userId) => {
         const result = await Swal.fire({
             title: 'Loại bỏ thành viên?',
-            text: "Nhân viên này sẽ bị loại hoàn toàn khỏi danh sách sự kiện.",
+            text: "Nhân viên này sẽ bị loại hoàn toàn khỏi sự kiện.",
             icon: 'warning',
             showCancelButton: true,
             confirmButtonColor: '#ef4444',
@@ -141,16 +200,43 @@ function ViewEvent() {
 
         if (result.isConfirmed) {
             try {
+                // Gọi API lần 1
                 const response = await fetch(`http://localhost:5000/api/events/${id}/members/${userId}`, {
                     method: 'DELETE',
                     headers: { 'Authorization': `Bearer ${localStorage.getItem('my_token')}` }
                 });
+                const data = await response.json();
 
                 if (response.ok) {
                     Swal.fire('Thành công!', 'Đã xóa thành viên khỏi sự kiện.', 'success');
                     fetchViewEvent();
+                } else if (response.status === 409 && data.need_confirm) {
+                    // Hỏi lại nếu đang vướng task
+                    const confirmResult = await Swal.fire({
+                        title: 'Thành viên đang có công việc!',
+                        html: `Người này đang phụ trách <b>${data.affected_task_count}</b> công việc chưa hoàn thành.<br/><br/>Nếu tiếp tục xóa, các công việc này sẽ bị gỡ người phụ trách. Bạn có chắc chắn không?`,
+                        icon: 'warning',
+                        showCancelButton: true,
+                        confirmButtonColor: '#ef4444',
+                        cancelButtonColor: '#9ca3af',
+                        confirmButtonText: 'Đồng ý xóa & Gỡ việc',
+                        cancelButtonText: 'Hủy bỏ'
+                    });
+
+                    if (confirmResult.isConfirmed) {
+                        const confirmRes = await fetch(`http://localhost:5000/api/events/${id}/members/${userId}?confirm=true`, {
+                            method: 'DELETE',
+                            headers: { 'Authorization': `Bearer ${localStorage.getItem('my_token')}` }
+                        });
+                        if (confirmRes.ok) {
+                            Swal.fire('Đã xóa!', 'Thành viên đã bị xóa và gỡ công việc thành công.', 'success');
+                            fetchViewEvent();
+                        } else {
+                            const errData = await confirmRes.json();
+                            Swal.fire('Lỗi!', errData.message, 'error');
+                        }
+                    }
                 } else {
-                    const data = await response.json();
                     Swal.fire('Thất bại!', data.message || 'Không thể xóa thành viên', 'error');
                 }
             } catch (err) {
@@ -199,7 +285,13 @@ function ViewEvent() {
 
     const isAdmin = currentUser?.role === 'admin';
     const isLeader = currentUser && event && (Number(event.leader_id) === Number(currentUser.id));
+    
+    // Biến này quyết định xem user hiện tại có quyền Quản lý hay không
     const hasManagerRights = isAdmin || isLeader; 
+    
+    // Biến này kiểm tra xem sự kiện có ĐANG CHO PHÉP CHỈNH SỬA hay không (Khóa nếu Đã kết thúc / Đã hủy / Đang diễn ra)
+    const isEditable = event.status === 'Nháp' || event.status === 'Sắp diễn ra';
+    
     const leaderName = event.leader_name || 'Chưa cập nhật';
 
     const formatDateTime = (value) => {
@@ -210,7 +302,6 @@ function ViewEvent() {
         });
     };
 
-    // --- LỌC CÔNG VIỆC Ở FRONTEND ---
     const displayTasks = tasks.filter(t => {
         const matchStatus = filterTaskStatus ? t.status === filterTaskStatus : true;
         const matchPriority = filterTaskPriority ? t.priority === filterTaskPriority : true;
@@ -225,16 +316,14 @@ function ViewEvent() {
         return matchStatus && matchPriority && matchFromDate && matchToDate;
     });
 
-    // --- LỌC THÀNH VIÊN Ở FRONTEND ---
     const displayMembers = members.filter(m => {
-        const matchRole = filterMemberRole ? m.role_in_event === filterMemberRole : true;
         const matchStatus = filterMemberStatus ? m.status === filterMemberStatus : true;
-        return matchRole && matchStatus;
+        return matchStatus;
     });
 
     return (
         <div className="page-container event-page">
-            <button className="btn-back" onClick={() => navigate('/admin/events')}>
+            <button className="btn-back" onClick={() => navigate('/staff/events')}>
                 <svg width="18" height="18" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
                     <path strokeLinecap="round" strokeLinejoin="round" d="M10 19l-7-7m0 0l7-7m-7 7h18" />
                 </svg>
@@ -268,8 +357,8 @@ function ViewEvent() {
                         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px', flexWrap: 'wrap', gap: '12px' }}>
                             <h3 className="section-title" style={{ margin: 0 }}>Công việc trong sự kiện ({displayTasks.length}/{tasks.length})</h3>
                             
-                            {hasManagerRights && (
-                                <button className="btn-primary" style={{ padding: '6px 12px', fontSize: '14px', height: '36px', whiteSpace: 'nowrap' }} onClick={() => navigate(`/admin/tasks/add?event_id=${id}`)}>
+                            {hasManagerRights && isEditable && (
+                                <button className="btn-primary" style={{ padding: '6px 12px', fontSize: '14px', height: '36px', whiteSpace: 'nowrap' }} onClick={() => navigate(`/staff/tasks/add?event_id=${id}`)}>
                                     + Thêm công việc
                                 </button>
                             )}
@@ -361,7 +450,7 @@ function ViewEvent() {
                                                 {renderTaskStatusText(task.status)}
                                             </span>
                                             
-                                            {hasManagerRights && (
+                                            {hasManagerRights && isEditable && (
                                                 <button 
                                                     onClick={(e) => handleDeleteTask(e, task.id)}
                                                     style={{ background: 'none', border: 'none', color: '#ef4444', cursor: 'pointer', fontSize: '14px', fontWeight: '500', padding: 0 }}
@@ -382,32 +471,23 @@ function ViewEvent() {
                         
                       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px' }}>
                             <h3 className="section-title" style={{ margin: 0 }}>Thành viên ({displayMembers.length}/{members.length})</h3>
-                            {hasManagerRights && (
-                                <button className="btn-secondary" style={{ padding: '4px 8px', fontSize: '12px' }} onClick={() => navigate(`/admin/events/${id}/members/add`)}>
+                            {/* Nút + Thêm chỉ hiện khi có quyền quản lý VÀ sự kiện đang ở trạng thái cho phép sửa */}
+                            {hasManagerRights && isEditable && (
+                                <button className="btn-secondary" style={{ padding: '4px 12px', fontSize: '12px' }} onClick={handleAddMemberPopup}>
                                     + Thêm
                                 </button>
                             )}
                         </div>
 
                         <div style={{ display: 'flex', gap: '8px', marginBottom: '20px', paddingBottom: '16px', borderBottom: '1px solid var(--border-neutral)' }}>
-                            <select
-                                className="form-input" 
-                                style={{ padding: '4px 8px', fontSize: '12px', height: '30px', flex: 1 }} 
-                                value={filterMemberRole} 
-                                onChange={(e) => setFilterMemberRole(e.target.value)}
-                            >
-                                <option value="">Tất cả vai trò</option>
-                                <option value="coordinator">Điều phối viên</option>
-                                <option value="member">Thành viên</option>
-                            </select>
                             <select 
                                 className="form-input" 
                                 style={{ padding: '4px 8px', fontSize: '12px', height: '30px', flex: 1 }} 
                                 value={filterMemberStatus} 
                                 onChange={(e) => setFilterMemberStatus(e.target.value)}
                             >
-                                <option value="">Tất cả trạng thái</option>
-                                <option value="active">Hoạt động</option>
+                                <option value="">Tất cả trạng thái TK</option>
+                                <option value="active">Đang hoạt động</option>
                                 <option value="inactive">Đã khóa</option>
                             </select>
                         </div>
@@ -427,15 +507,13 @@ function ViewEvent() {
                                                     {member.full_name} 
                                                     {member.status === 'inactive' && <span style={{color: '#ef4444', fontSize: '11px', marginLeft: '4px'}}>(Đã khóa)</span>}
                                                 </p>
-                                                <p className="user-role" style={{ margin: '2px 0 0 0', color: 'var(--text-secondary)', fontSize: '12px' }}>
-                                                    {member.role_in_event === 'coordinator' ? 'Điều phối viên' : 'Thành viên'}
-                                                </p>
                                             </div>
                                         </div>
                                         
-                                        {hasManagerRights && (
+                                        {/* Nút Xóa thành viên cũng chỉ hiện khi có quyền VÀ sự kiện cho phép sửa */}
+                                        {hasManagerRights && isEditable && (
                                             <button 
-                                                onClick={() => handleRemoveMember(member.id)}
+                                                onClick={() => handleRemoveMember(member.user_id)}
                                                 style={{ background: 'none', border: 'none', color: '#ef4444', cursor: 'pointer', fontSize: '13px', fontWeight: '500', padding: 0 }}
                                             >
                                                 Xóa

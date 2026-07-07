@@ -4,39 +4,51 @@ import { useNavigate } from 'react-router-dom';
 function ChangePassword() {
     const navigate = useNavigate(); 
     
-    // State lưu thông tin cá nhân (lấy từ getMe)
     const [profile, setProfile] = useState(null);
     const [loadingProfile, setLoadingProfile] = useState(true);
 
-    // State cho form đổi mật khẩu
     const [oldPassword, setOldPassword] = useState('');
     const [newPassword, setNewPassword] = useState('');
     const [confirmPassword, setConfirmPassword] = useState('');
     const [message, setMessage] = useState({ type: '', text: '' });
+    
+    // State chặn spam click
+    const [isSubmitting, setIsSubmitting] = useState(false);
 
-    const user = JSON.parse(localStorage.getItem('user'));
+    // Lấy thông tin user an toàn, chống lỗi Crash App
+    let user = null;
+    try {
+        const storedUser = localStorage.getItem('user');
+        if (storedUser) user = JSON.parse(storedUser);
+    } catch (error) {
+        console.error('Lỗi khi đọc dữ liệu user từ local storage');
+    }
 
     // Hàm định dạng ngày tháng hiển thị
     const formatDate = (dateString) => {
         if (!dateString) return 'Chưa cập nhật';
         const date = new Date(dateString);
         return date.toLocaleDateString('vi-VN', {
-            day: '2-digit', 
-            month: '2-digit', 
-            year: 'numeric'
+            day: '2-digit', month: '2-digit', year: 'numeric'
         });
+    };
+
+    // Hàm dịch giới tính
+    const getGenderText = (gender) => {
+        if (gender === 'male') return 'Nam';
+        if (gender === 'female') return 'Nữ';
+        if (gender === 'other') return 'Khác';
+        return 'Chưa cập nhật';
     };
 
     useEffect(() => {
         document.title = "Quản lý Tài khoản | TASKFLOW";
         
-        // GỌI API getMe
         const fetchMyProfile = async () => {
             try {
                 const token = localStorage.getItem('my_token'); 
                 
                 if (!token) {
-                    console.error("Không tìm thấy token đăng nhập!");
                     setLoadingProfile(false);
                     return;
                 }
@@ -51,8 +63,8 @@ function ChangePassword() {
                 
                 const data = await response.json();
                 
-                if (response.ok && data.user) {
-                    setProfile(data.user); 
+                if (response.ok) {
+                    setProfile(data.user || data); 
                 } else {
                     console.error('Không thể lấy thông tin:', data.message);
                 }
@@ -66,15 +78,22 @@ function ChangePassword() {
         fetchMyProfile();
     }, []);
 
-    // Hàm xử lý đổi mật khẩu
     const handleSubmit = async (e) => {
         e.preventDefault();
         setMessage({ type: '', text: '' });
+
+        // Validate độ dài mật khẩu 
+        if (newPassword.length < 8) {
+            setMessage({ type: 'error', text: 'Mật khẩu mới phải có ít nhất 8 ký tự!' });
+            return;
+        }
 
         if (newPassword !== confirmPassword) {
             setMessage({ type: 'error', text: 'Mật khẩu mới và xác nhận mật khẩu không khớp!' });
             return;
         }
+
+        setIsSubmitting(true);
 
         try {
             const token = localStorage.getItem('my_token');
@@ -97,6 +116,7 @@ function ChangePassword() {
                 setMessage({ type: 'error', text: data.message || 'Cập nhật mật khẩu thất bại!' });
                 return;
             }
+            
             setMessage({ type: 'success', text: 'Mật khẩu đã được cập nhật thành công!' });
             setOldPassword('');
             setNewPassword('');
@@ -105,6 +125,8 @@ function ChangePassword() {
         } catch (error) {
             console.error('Lỗi:', error);
             setMessage({ type: 'error', text: 'Lỗi kết nối đến Server.' });
+        } finally {
+            setIsSubmitting(false);
         }
     };
 
@@ -119,10 +141,14 @@ function ChangePassword() {
     return (
         <div className="page-container profile-page">
             <div className="page-header-form">
-            <h3>Quản lý Tài khoản</h3>
+                <h3>Quản lý Tài khoản</h3>
             </div>
-            <div className="password-settings-layout" style={{ display: 'flex', gap: '24px', alignItems: 'flex-start' }}>
-                <div className="form-card profile-info-section" style={{ flex: '1', padding: '24px', backgroundColor: '#fff', borderRadius: '12px', boxShadow: '0 2px 10px rgba(0,0,0,0.05)' }}>
+            
+            {/* Flex-wrap giúp tự động gập thành 1 cột trên Mobile */}
+            <div className="password-settings-layout" style={{ display: 'flex', gap: '24px', alignItems: 'flex-start', flexWrap: 'wrap' }}>
+                
+                {/* --- CỘT TRÁI: THÔNG TIN CÁ NHÂN --- */}
+                <div className="form-card profile-info-section" style={{ flex: '1', minWidth: '300px', padding: '24px', backgroundColor: '#fff', borderRadius: '12px', boxShadow: '0 2px 10px rgba(0,0,0,0.05)' }}>
                     <div style={{ display: 'flex', alignItems: 'center', gap: '16px', marginBottom: '24px', paddingBottom: '24px', borderBottom: '1px solid #e5e7eb' }}>
                         <div style={{ width: '60px', height: '60px', borderRadius: '50%', backgroundColor: '#2563EB', color: '#fff', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '24px', fontWeight: 'bold', flexShrink: 0 }}>
                             {loadingProfile 
@@ -141,8 +167,8 @@ function ChangePassword() {
                         </div>
                     </div>
                     
-                    {/* Khu vực Chi tiết đã được bổ sung thêm thông tin */}
-                    <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
+                    {/* Bắt đầu khu vực Grid 2 cột */}
+                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px 20px' }}>
                         <div>
                             <label style={{ fontSize: '13px', color: '#6B7280', fontWeight: '500' }}>Mã nhân viên (ID)</label>
                             <div style={{ fontSize: '14px', color: '#111827', fontWeight: '600', marginTop: '4px' }}>
@@ -158,13 +184,51 @@ function ChangePassword() {
                         </div>
 
                         <div>
+                            <label style={{ fontSize: '13px', color: '#6B7280', fontWeight: '500' }}>Số điện thoại</label>
+                            <div style={{ fontSize: '14px', color: '#111827', fontWeight: '500', marginTop: '4px' }}>
+                                {loadingProfile ? 'Đang tải...' : (profile?.phone || 'Chưa cập nhật')}
+                            </div>
+                        </div>
+
+                        <div>
+                            <label style={{ fontSize: '13px', color: '#6B7280', fontWeight: '500' }}>Giới tính</label>
+                            <div style={{ fontSize: '14px', color: '#111827', fontWeight: '500', marginTop: '4px' }}>
+                                {loadingProfile ? 'Đang tải...' : getGenderText(profile?.gender)}
+                            </div>
+                        </div>
+
+                        <div>
+                            <label style={{ fontSize: '13px', color: '#6B7280', fontWeight: '500' }}>Ngày sinh</label>
+                            <div style={{ fontSize: '14px', color: '#111827', fontWeight: '500', marginTop: '4px' }}>
+                                {loadingProfile ? 'Đang tải...' : formatDate(profile?.date_of_birth)}
+                            </div>
+                        </div>
+
+                        <div>
                             <label style={{ fontSize: '13px', color: '#6B7280', fontWeight: '500' }}>Ngày tham gia</label>
                             <div style={{ fontSize: '14px', color: '#111827', fontWeight: '500', marginTop: '4px' }}>
                                 {loadingProfile ? 'Đang tải...' : formatDate(profile?.created_at)}
                             </div>
                         </div>
 
-                        <div>
+                        {/* Địa chỉ cho chiếm full 2 cột vì thường văn bản sẽ dài */}
+                        <div style={{ gridColumn: '1 / -1' }}>
+                            <label style={{ fontSize: '13px', color: '#6B7280', fontWeight: '500' }}>Địa chỉ</label>
+                            <div style={{ fontSize: '14px', color: '#111827', fontWeight: '500', marginTop: '4px' }}>
+                                {loadingProfile ? 'Đang tải...' : (profile?.address || 'Chưa cập nhật')}
+                            </div>
+                        </div>
+
+                        {/* Tiểu sử (Bio) cũng cho full 2 cột */}
+                        <div style={{ gridColumn: '1 / -1' }}>
+                            <label style={{ fontSize: '13px', color: '#6B7280', fontWeight: '500' }}>Tiểu sử</label>
+                            <div style={{ fontSize: '14px', color: '#111827', fontWeight: '500', marginTop: '4px', lineHeight: '1.5' }}>
+                                {loadingProfile ? 'Đang tải...' : (profile?.bio || 'Chưa có tiểu sử')}
+                            </div>
+                        </div>
+
+                        {/* Trạng thái tài khoản */}
+                        <div style={{ gridColumn: '1 / -1' }}>
                             <label style={{ fontSize: '13px', color: '#6B7280', fontWeight: '500' }}>Trạng thái tài khoản</label>
                             <div style={{ 
                                 fontSize: '14px', 
@@ -176,10 +240,11 @@ function ChangePassword() {
                             </div>
                         </div>
                     </div>
+                    {/* Kết thúc khu vực Grid 2 cột */}
                 </div>
 
                 {/* --- CỘT PHẢI: FORM ĐỔI MẬT KHẨU --- */}
-                <div className="form-card" style={{ flex: '1.5' }}>
+                <div className="form-card" style={{ flex: '1.5', minWidth: '300px' }}>
                     <div className="password-card-header" style={{ marginBottom: '20px' }}>
                         <h4 style={{ margin: '0 0 8px 0', fontSize: '18px' }}>Đổi Mật Khẩu</h4>
                         <p style={{ margin: 0, color: '#6B7280', fontSize: '14px' }}>Sử dụng tối thiểu 8 ký tự bao gồm chữ cái, số và ký tự đặc biệt để đảm bảo an toàn tối ưu.</p>
@@ -212,6 +277,7 @@ function ChangePassword() {
                                 id="new-password" 
                                 className="form-input" 
                                 required 
+                                minLength="8" 
                                 placeholder="Nhập mật khẩu mới"
                                 value={newPassword}
                                 onChange={(e) => setNewPassword(e.target.value)}
@@ -225,6 +291,7 @@ function ChangePassword() {
                                 id="confirm-password" 
                                 className="form-input" 
                                 required 
+                                minLength="8"
                                 placeholder="Xác nhận mật khẩu mới"
                                 value={confirmPassword}
                                 onChange={(e) => setConfirmPassword(e.target.value)}
@@ -233,7 +300,9 @@ function ChangePassword() {
                         
                         <div className="form-actions" style={{ display: 'flex', gap: '12px', justifyContent: 'flex-end', marginTop: '24px' }}>
                             <button type="button" className="btn-secondary" onClick={handleCancel}>Hủy</button>
-                            <button type="submit" className="btn-primary">Lưu Thay Đổi</button>
+                            <button type="submit" className="btn-primary" disabled={isSubmitting}>
+                                {isSubmitting ? 'Đang cập nhật...' : 'Lưu Thay Đổi'}
+                            </button>
                         </div>
                     </form>
                 </div>

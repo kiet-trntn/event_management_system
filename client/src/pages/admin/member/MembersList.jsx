@@ -9,11 +9,9 @@ function MembersList() {
     const [currentPage, setCurrentPage] = useState(1);
     const usersPerPage = 4;
 
-    // --- STATE CHO BỘ LỌC ---
     const [role, setRole] = useState('');
     const [status, setStatus] = useState('');
 
-    // --- GỌI API ---
     const fetchMembers = useCallback(async () => {
         setLoading(true);
         try {
@@ -25,7 +23,7 @@ function MembersList() {
                 headers: { 'Authorization': `Bearer ${localStorage.getItem('my_token')}` }
             });
             const data = await response.json();
-            setMembers(data.users || data); 
+            setMembers(data.users || data || []); 
         } catch (err) { 
             console.error(err); 
         } finally { 
@@ -56,7 +54,7 @@ function MembersList() {
                     body: JSON.stringify({ status: 'inactive' }) 
                 });
                 if (response.ok) {
-                    fetchMembers(); // Tải lại danh sách sau khi khóa
+                    fetchMembers();
                 } else {
                     const data = await response.json();
                     alert(data.message || 'Không thể khóa thành viên này.');
@@ -80,7 +78,7 @@ function MembersList() {
                     body: JSON.stringify({ status: 'active' }) 
                 });
                 if (response.ok) {
-                    fetchMembers(); // Tải lại danh sách sau khi mở khóa
+                    fetchMembers(); 
                 } else {
                     const data = await response.json();
                     alert(data.message || 'Không thể mở khóa thành viên này.');
@@ -106,7 +104,6 @@ function MembersList() {
                 </button>
             </div>
 
-            {/* --- GIAO DIỆN BỘ LỌC TÌM KIẾM --- */}
             <div className="form-card mb-6" style={{ maxWidth: '100%', padding: '20px' }}>
                 <div style={{ display: 'flex', gap: '16px', alignItems: 'flex-end', flexWrap: 'wrap' }}>
                     <div style={{ flex: '1 1 200px' }}>

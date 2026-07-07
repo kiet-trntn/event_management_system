@@ -1,18 +1,24 @@
 import React, { useState, useEffect } from 'react';
-import { useNavigate, useParams } from 'react-router-dom';
+import { useNavigate, useParams, useSearchParams } from 'react-router-dom'; // Thêm useSearchParams
 import Swal from 'sweetalert2';
 
 function AddTask() {
     const { eventId: urlEventId } = useParams(); 
+    const [searchParams] = useSearchParams(); // Hook để đọc ?event_id=...
+    const eventIdFromQuery = searchParams.get('event_id');
     const navigate = useNavigate();
 
-    const [eventId, setEventId] = useState(urlEventId || '');
+    // Ưu tiên lấy eventId từ URL parameter, nếu không có thì lấy từ query string
+    const selectedEventId = urlEventId || eventIdFromQuery || '';
+    const isEventLocked = Boolean(selectedEventId);
+    const [eventId, setEventId] = useState(selectedEventId);
+    
+    // ... phần còn lại của state giữ nguyên
     const [title, setTitle] = useState('');
     const [description, setDescription] = useState('');
     const [assignedTo, setAssignedTo] = useState('');
     const [priority, setPriority] = useState('medium');
     const [dueDate, setDueDate] = useState('');
-
     const [eventsList, setEventsList] = useState([]);
     const [membersList, setMembersList] = useState([]);
     const [loading, setLoading] = useState(false);
@@ -33,19 +39,28 @@ function AddTask() {
         fetchEvents();
     }, []);
 
+    // Fetch members for an event (callable so we can refresh on demand)
+    const fetchEventMembers = async (id = selectedEventId) => {
+        if (!id) {
+            setMembersList([]);
+            setAssignedTo('');
+            return;
+        }
+        try {
+            const response = await fetch(`http://localhost:5000/api/events/${id}/members`, {
+                headers: { 'Authorization': `Bearer ${localStorage.getItem('my_token')}` }
+            });
+            const data = await response.json();
+            if (response.ok) {
+                setMembersList(data.members || []);
+            }
+        } catch (error) { console.error(error); }
+    };
+
     useEffect(() => {
-        if (!eventId) { setMembersList([]); setAssignedTo(''); return; }
-        const fetchEventMembers = async () => {
-            try {
-                const response = await fetch(`http://localhost:5000/api/events/${eventId}/members`, {
-                    headers: { 'Authorization': `Bearer ${localStorage.getItem('my_token')}` }
-                });
-                const data = await response.json();
-                if (response.ok) setMembersList(data.members || []);
-            } catch (error) { console.error(error); }
-        };
-        fetchEventMembers();
-    }, [eventId]);
+        setEventId(selectedEventId);
+        fetchEventMembers(selectedEventId);
+    }, [selectedEventId]);
 
     const handleSubmit = async (e) => {
         e.preventDefault();
@@ -92,10 +107,26 @@ function AddTask() {
                         <div>
                             <div className="form-group">
                                 <label className="form-label">Sự kiện <span className="text-error">*</span></label>
-                                <select className="form-input" value={eventId} onChange={(e) => setEventId(e.target.value)} disabled={!!urlEventId}>
-                                    <option value="">Chọn sự kiện</option>
-                                    {eventsList.map(ev => <option key={ev.id} value={ev.id}>{ev.title}</option>)}
-                                </select>
+                                {isEventLocked ? (
+                                    <div
+                                        className="form-input"
+                                        style={{
+                                            display: 'flex',
+                                            alignItems: 'center',
+                                            minHeight: '44px',
+                                            backgroundColor: '#e5e7eb',
+                                            color: '#6b7280',
+                                            cursor: 'not-allowed'
+                                        }}
+                                    >
+                                        {eventsList.find(ev => String(ev.id) === String(eventId))?.title || 'Đang tải...'}
+                                    </div>
+                                ) : (
+                                    <select className="form-input" value={eventId} onChange={(e) => setEventId(e.target.value)}>
+                                        <option value="">Chọn sự kiện</option>
+                                        {eventsList.map(ev => <option key={ev.id} value={ev.id}>{ev.title}</option>)}
+                                    </select>
+                                )}
                             </div>
                             <div className="form-group">
                                 <label className="form-label">Tên công việc <span className="text-error">*</span></label>
@@ -111,7 +142,7 @@ function AddTask() {
                                 <label className="form-label">Phân công cho</label>
                                 <select className="form-input" value={assignedTo} onChange={(e) => setAssignedTo(e.target.value)}>
                                     <option value="">Chọn nhân viên sự kiện</option>
-                                    {membersList.map(m => <option key={m.id} value={m.id}>{m.full_name} ({m.role_in_event})</option>)}
+                                    {membersList.map(m => <option key={m.user_id} value={m.user_id}>{m.user_id}.{m.full_name}</option>)}
                                 </select>
                             </div>
                             <div className="form-group">
