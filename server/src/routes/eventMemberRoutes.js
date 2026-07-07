@@ -8,7 +8,6 @@ const {
     getEventMembers,
     addMemberToEvent,
     removeMemberFromEvent,
-    updateMemberRole
 } = require("../controllers/eventMemberController");
 
 router.get(
@@ -29,10 +28,6 @@ router.delete(
     removeMemberFromEvent
 );
 
-router.patch(
-    "/:eventId/members/:userId",
-    authMiddleware,
-    updateMemberRole
-);
+
 
 module.exports = router;
