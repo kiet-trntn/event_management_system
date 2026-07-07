@@ -9,20 +9,8 @@ const getEventMembers = async (req, res) => {
 
         const {
             search,
-            role_in_event,
             status
         } = req.query;
-
-        // Kiểm tra role_in_event hợp lệ
-        if (
-            role_in_event &&
-            role_in_event !== "member" &&
-            role_in_event !== "coordinator"
-        ) {
-            return res.status(400).json({
-                message: "Vai trò trong sự kiện không hợp lệ"
-            });
-        }
 
         // Kiểm tra status hợp lệ
         if (
@@ -55,7 +43,6 @@ const getEventMembers = async (req, res) => {
         const event = events[0];
 
         // Phân quyền xem danh sách thành viên
-        // Admin xem được tất cả
         if (req.user.role !== "admin") {
 
             const isLeader =
@@ -79,9 +66,8 @@ const getEventMembers = async (req, res) => {
                 });
             }
 
-            // Employee không được xem member của event Nháp
-            // Trừ khi người đó là Leader
-            if (event.status === "Nháp" && !isLeader) {
+            // Không cho user thường xem thành viên của event Nháp
+            if (event.status === "Nháp") {
                 return res.status(403).json({
                     message: "Bạn không có quyền xem danh sách thành viên sự kiện này"
                 });
@@ -91,45 +77,37 @@ const getEventMembers = async (req, res) => {
 
         let sql = `
             SELECT
-                u.id,
+                em.id,
+                em.event_id,
+                em.user_id,
                 u.full_name,
                 u.email,
+                u.phone,
                 u.status,
-                em.role_in_event,
-                em.joined_at
-
+                em.joined_at AS created_at
             FROM event_members em
-
             INNER JOIN users u
                 ON em.user_id = u.id
-
             WHERE em.event_id = ?
         `;
 
         let params = [eventId];
 
-        // Tìm kiếm theo tên hoặc email
+        // Tìm kiếm theo tên, email hoặc số điện thoại
         if (search) {
             sql += `
                 AND (
                     u.full_name LIKE ?
                     OR u.email LIKE ?
+                    OR u.phone LIKE ?
                 )
             `;
 
             params.push(
                 `%${search}%`,
+                `%${search}%`,
                 `%${search}%`
             );
-        }
-
-        // Lọc theo vai trò trong sự kiện
-        if (role_in_event) {
-            sql += `
-                AND em.role_in_event = ?
-            `;
-
-            params.push(role_in_event);
         }
 
         // Lọc theo trạng thái tài khoản
@@ -171,26 +149,12 @@ const addMemberToEvent = async (req, res) => {
 
         const { eventId } = req.params;
 
-        const {
-            user_id,
-            role_in_event
-        } = req.body;
+        const { user_id } = req.body;
 
         // Kiểm tra rỗng
         if (!user_id) {
             return res.status(400).json({
                 message: "Vui lòng chọn thành viên"
-            });
-        }
-
-        // Kiểm tra role
-        if (
-            role_in_event &&
-            role_in_event !== "member" &&
-            role_in_event !== "coordinator"
-        ) {
-            return res.status(400).json({
-                message: "Vai trò không hợp lệ"
             });
         }
 
@@ -200,6 +164,7 @@ const addMemberToEvent = async (req, res) => {
             SELECT *
             FROM events
             WHERE id = ?
+            AND deleted_at IS NULL
             `,
             [eventId]
         );
@@ -212,12 +177,26 @@ const addMemberToEvent = async (req, res) => {
 
         const event = events[0];
 
-         if (req.user.role !== "admin" && req.user.id !== event.leader_id) {
+        // Chỉ Admin hoặc Leader được thêm thành viên
+        if (
+            req.user.role !== "admin" &&
+            Number(req.user.id) !== Number(event.leader_id)
+        ) {
             return res.status(403).json({
                 message: "Bạn không có quyền thực hiện hành động này trong sự kiện"
             });
         }
-        
+
+        // Không cho thay đổi thành viên khi event đã khóa
+        if (
+            event.status === "Đang diễn ra" ||
+            event.status === "Đã kết thúc" ||
+            event.status === "Đã hủy"
+        ) {
+            return res.status(400).json({
+                message: "Không thể thay đổi thành viên của sự kiện này"
+            });
+        }
 
         // Kiểm tra user tồn tại
         const [users] = await db.query(
@@ -237,6 +216,13 @@ const addMemberToEvent = async (req, res) => {
 
         const user = users[0];
 
+        // Chỉ cho thêm employee
+        if (user.role !== "employee") {
+            return res.status(400).json({
+                message: "Chỉ có thể thêm nhân viên vào sự kiện"
+            });
+        }
+
         // Tài khoản bị khóa
         if (user.status === "inactive") {
             return res.status(400).json({
@@ -244,17 +230,17 @@ const addMemberToEvent = async (req, res) => {
             });
         }
 
-        // Không thêm leader
-        if (event.leader_id === user.id) {
+        // Không thêm leader vào danh sách thành viên
+        if (Number(event.leader_id) === Number(user.id)) {
             return res.status(400).json({
-                message: "Người này đang là leader của sự kiện"
+                message: "Người này đang là Leader của sự kiện"
             });
         }
 
         // Kiểm tra trùng
         const [exists] = await db.query(
             `
-            SELECT *
+            SELECT id
             FROM event_members
             WHERE event_id = ?
             AND user_id = ?
@@ -268,38 +254,39 @@ const addMemberToEvent = async (req, res) => {
             });
         }
 
-        // Đếm số thành viên hiện tại
-        const [memberCount] = await db.query(
-            `
-            SELECT COUNT(*) AS total
-            FROM event_members
-            WHERE event_id = ?
-            `,
-            [eventId]
-        );
+        // Kiểm tra giới hạn số lượng thành viên nếu có max_members
+        if (event.max_members) {
 
-        if (
-            memberCount[0].total >= event.max_members
-        ) {
-            return res.status(400).json({
-                message: "Sự kiện đã đủ số lượng thành viên"
-            });
+            const [memberCount] = await db.query(
+                `
+                SELECT COUNT(*) AS total
+                FROM event_members
+                WHERE event_id = ?
+                `,
+                [eventId]
+            );
+
+            if (memberCount[0].total >= event.max_members) {
+                return res.status(400).json({
+                    message: "Sự kiện đã đủ số lượng thành viên"
+                });
+            }
+
         }
 
         // Thêm thành viên
         await db.query(
             `
-            INSERT INTO event_members (
+            INSERT INTO event_members
+            (
                 event_id,
-                user_id,
-                role_in_event
+                user_id
             )
-            VALUES (?, ?, ?)
+            VALUES (?, ?)
             `,
             [
                 eventId,
-                user_id,
-                role_in_event || "member"
+                user_id
             ]
         );
 
@@ -329,6 +316,8 @@ const addMemberToEvent = async (req, res) => {
 
 const removeMemberFromEvent = async (req, res) => {
 
+    let connection;
+
     try {
 
         const {
@@ -336,8 +325,15 @@ const removeMemberFromEvent = async (req, res) => {
             userId
         } = req.params;
 
+        const {
+            confirm
+        } = req.query;
+
+        // Lấy connection để dùng transaction
+        connection = await db.getConnection();
+
         // Kiểm tra event tồn tại
-        const [events] = await db.query(
+        const [events] = await connection.query(
             `
             SELECT *
             FROM events
@@ -348,6 +344,8 @@ const removeMemberFromEvent = async (req, res) => {
         );
 
         if (events.length === 0) {
+            connection.release();
+
             return res.status(404).json({
                 message: "Không tìm thấy sự kiện"
             });
@@ -355,27 +353,12 @@ const removeMemberFromEvent = async (req, res) => {
 
         const event = events[0];
 
-        // Không cho xóa Leader khỏi sự kiện bằng chức năng xóa thành viên
+        // Không cho xóa Leader
         if (Number(userId) === Number(event.leader_id)) {
+            connection.release();
+
             return res.status(400).json({
                 message: "Không thể xóa Leader của sự kiện. Vui lòng đổi Leader trước"
-            });
-        }
-
-        // Kiểm tra thành viên trong event
-        const [members] = await db.query(
-            `
-            SELECT *
-            FROM event_members
-            WHERE event_id = ?
-            AND user_id = ?
-            `,
-            [eventId, userId]
-        );
-
-        if (members.length === 0) {
-            return res.status(404).json({
-                message: "Thành viên không thuộc sự kiện này"
             });
         }
 
@@ -384,52 +367,142 @@ const removeMemberFromEvent = async (req, res) => {
             req.user.role !== "admin" &&
             Number(req.user.id) !== Number(event.leader_id)
         ) {
+            connection.release();
+
             return res.status(403).json({
                 message: "Bạn không có quyền thực hiện hành động này trong sự kiện"
             });
         }
 
+        // Không cho thay đổi thành viên khi event đã khóa
         if (
             event.status === "Đang diễn ra" ||
             event.status === "Đã kết thúc" ||
             event.status === "Đã hủy"
         ) {
+            connection.release();
+
             return res.status(400).json({
                 message: "Không thể thay đổi thành viên của sự kiện này"
             });
         }
 
-        // Lấy danh sách công việc đang giao cho thành viên bị xóa
-        // Phải lấy trước khi SET assigned_to = NULL
-        const [assignedTasks] = await db.query(
+        // Kiểm tra thành viên có thuộc event không
+        const [members] = await connection.query(
+            `
+            SELECT
+                em.*,
+                u.full_name,
+                u.email
+            FROM event_members em
+            INNER JOIN users u
+                ON em.user_id = u.id
+            WHERE em.event_id = ?
+            AND em.user_id = ?
+            `,
+            [eventId, userId]
+        );
+
+        if (members.length === 0) {
+            connection.release();
+
+            return res.status(404).json({
+                message: "Thành viên không thuộc sự kiện này"
+            });
+        }
+
+        const removedMember = members[0];
+
+        // Lấy danh sách công việc đang bị ảnh hưởng
+        // Chỉ lấy task chưa hoàn tất / chưa hủy
+        const [affectedTasks] = await connection.query(
             `
             SELECT
                 id,
                 title,
+                status,
                 created_by
             FROM tasks
             WHERE event_id = ?
             AND assigned_to = ?
             AND is_deleted = FALSE
+            AND status NOT IN ('completed', 'cancelled')
             `,
             [eventId, userId]
         );
 
-        // Bỏ giao các công việc của thành viên bị xóa
-        await db.query(
-            `
-            UPDATE tasks
-            SET
-                assigned_to = NULL,
-                updated_at = NOW()
-            WHERE event_id = ?
-            AND assigned_to = ?
-            `,
-            [eventId, userId]
-        );
+        // Nếu có task bị ảnh hưởng mà chưa confirm thì trả cảnh báo
+        if (
+            affectedTasks.length > 0 &&
+            confirm !== "true"
+        ) {
+            connection.release();
+
+            return res.status(409).json({
+                message: "Thành viên này đang phụ trách công việc. Cần xác nhận trước khi xóa",
+                need_confirm: true,
+                affected_task_count: affectedTasks.length,
+                affected_tasks: affectedTasks.map(task => ({
+                    id: task.id,
+                    title: task.title,
+                    status: task.status
+                }))
+            });
+        }
+
+        await connection.beginTransaction();
+
+        // Nếu có task bị ảnh hưởng thì bỏ người được giao
+        if (affectedTasks.length > 0) {
+
+            const taskIds = affectedTasks.map(task => task.id);
+            const placeholders = taskIds.map(() => "?").join(",");
+
+            await connection.query(
+                `
+                UPDATE tasks
+                SET
+                    assigned_to = NULL,
+                    updated_at = NOW()
+                WHERE id IN (${placeholders})
+                `,
+                taskIds
+            );
+
+            // Lưu lịch sử từng task
+            for (const task of affectedTasks) {
+                await connection.query(
+                    `
+                    INSERT INTO task_history
+                    (
+                        task_id,
+                        user_id,
+                        action,
+                        old_value,
+                        new_value
+                    )
+                    VALUES (?, ?, ?, ?, ?)
+                    `,
+                    [
+                        task.id,
+                        req.user.id,
+                        "assigned_changed",
+                        JSON.stringify({
+                            assigned_to: Number(userId),
+                            assigned_name: removedMember.full_name
+                        }),
+                        JSON.stringify({
+                            assigned_to: null,
+                            reason: "Thành viên bị xóa khỏi sự kiện"
+                        })
+                    ]
+                );
+            }
+
+        }
 
         // Xóa thành viên khỏi sự kiện
-        await db.query(
+        await connection.query(
             `
             DELETE FROM event_members
             WHERE event_id = ?
@@ -438,26 +511,29 @@ const removeMemberFromEvent = async (req, res) => {
             [eventId, userId]
         );
 
+        await connection.commit();
+        connection.release();
+
         // Thông báo cho thành viên bị xóa
         await createNotification({
             user_id: userId,
             title: "Bạn đã bị xóa khỏi sự kiện",
-            content: `Bạn đã bị xóa khỏi sự kiện "${event.title}"`,
+            content: `Bạn đã bị xóa khỏi sự kiện "${event.title}". Các công việc đang phụ trách trong sự kiện sẽ được Leader/Admin phân công lại.`,
             type: "event",
             related_id: eventId
         });
 
         // Nếu thành viên đó đang có công việc thì thông báo cho Leader/người tạo task
-        if (assignedTasks.length > 0) {
+        if (affectedTasks.length > 0) {
 
-            const taskNames = assignedTasks
+            const taskNames = affectedTasks
                 .slice(0, 5)
                 .map(task => `"${task.title}"`)
                 .join(", ");
 
             const moreText =
-                assignedTasks.length > 5
-                    ? ` và ${assignedTasks.length - 5} công việc khác`
+                affectedTasks.length > 5
+                    ? ` và ${affectedTasks.length - 5} công việc khác`
                     : "";
 
             const receivers = new Set();
@@ -468,20 +544,20 @@ const removeMemberFromEvent = async (req, res) => {
             }
 
             // Người tạo task cũng nên biết
-            for (const task of assignedTasks) {
+            for (const task of affectedTasks) {
                 if (task.created_by) {
                     receivers.add(Number(task.created_by));
                 }
             }
 
-            // Không gửi cho người bị xóa
+            // Không gửi lại cho người bị xóa
             receivers.delete(Number(userId));
 
             for (const receiverId of receivers) {
                 await createNotification({
                     user_id: receiverId,
                     title: "Cần phân công lại công việc",
-                    content: `Thành viên bị xóa khỏi sự kiện "${event.title}" đang phụ trách ${assignedTasks.length} công việc: ${taskNames}${moreText}. Vui lòng phân công lại.`,
+                    content: `Thành viên "${removedMember.full_name}" đã bị xóa khỏi sự kiện "${event.title}" và đang phụ trách ${affectedTasks.length} công việc: ${taskNames}${moreText}. Vui lòng phân công lại.`,
                     type: "task",
                     related_id: eventId
                 });
@@ -491,11 +567,26 @@ const removeMemberFromEvent = async (req, res) => {
 
         res.json({
             message: "Xóa thành viên khỏi sự kiện thành công",
-            unassigned_task_count: assignedTasks.length,
-            need_reassign: assignedTasks.length > 0
+            removed_user: {
+                id: Number(userId),
+                full_name: removedMember.full_name,
+                email: removedMember.email
+            },
+            affected_task_count: affectedTasks.length,
+            need_reassign: affectedTasks.length > 0,
+            affected_tasks: affectedTasks.map(task => ({
+                id: task.id,
+                title: task.title,
+                status: task.status
+            }))
         });
 
     } catch (error) {
+
+        if (connection) {
+            await connection.rollback();
+            connection.release();
+        }
 
         console.log(error);
 
@@ -507,115 +598,11 @@ const removeMemberFromEvent = async (req, res) => {
 
 };
 
-const updateMemberRole = async (req, res) => {
 
-    try {
-
-        const {
-            eventId,
-            userId
-        } = req.params;
-
-        const {
-            role_in_event
-        } = req.body;
-
-        // Kiểm tra role
-        if (
-            role_in_event !== "member" &&
-            role_in_event !== "coordinator"
-        ) {
-            return res.status(400).json({
-                message: "Vai trò không hợp lệ"
-            });
-        }
-
-        // Kiểm tra event tồn tại
-        const [events] = await db.query(
-            `
-            SELECT *
-            FROM events
-            WHERE id = ?
-            `,
-            [eventId]
-        );
-
-        if (events.length === 0) {
-            return res.status(404).json({
-                message: "Không tìm thấy sự kiện"
-            });
-        }
-
-        const event = events[0];
-
-        if (req.user.role !== "admin" && req.user.id !== event.leader_id) {
-            return res.status(403).json({
-                message: "Bạn không có quyền thực hiện hành động này trong sự kiện"
-            });
-        }
-
-        // Không cho sửa khi event đã khóa
-        if (
-            event.status === "Đang diễn ra" ||
-            event.status === "Đã kết thúc" ||
-            event.status === "Đã hủy"
-        ) {
-            return res.status(400).json({
-                message: "Không thể cập nhật vai trò"
-            });
-        }
-
-        // Kiểm tra thành viên thuộc event
-        const [members] = await db.query(
-            `
-            SELECT *
-            FROM event_members
-            WHERE event_id = ?
-            AND user_id = ?
-            `,
-            [eventId, userId]
-        );
-
-        if (members.length === 0) {
-            return res.status(404).json({
-                message: "Thành viên không thuộc sự kiện"
-            });
-        }
-
-        // Cập nhật role
-        await db.query(
-            `
-            UPDATE event_members
-            SET role_in_event = ?
-            WHERE event_id = ?
-            AND user_id = ?
-            `,
-            [
-                role_in_event,
-                eventId,
-                userId
-            ]
-        );
-
-        res.json({
-            message: "Cập nhật vai trò thành công"
-        });
-
-    } catch (error) {
-
-        console.log(error);
-
-        res.status(500).json({
-            message: error.message
-        });
-
-    }
-
-};
 
 module.exports = {
     getEventMembers,
     addMemberToEvent,
     removeMemberFromEvent,
-    updateMemberRole
+
 };
