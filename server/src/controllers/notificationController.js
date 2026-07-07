@@ -1,4 +1,5 @@
 const db = require("../config/db");
+const handleServerError = require("../utils/handleServerError");
 
 // Lấy danh sách thông báo của user đang đăng nhập
 const getMyNotifications = async (req, res) => {
@@ -29,11 +30,7 @@ const getMyNotifications = async (req, res) => {
 
     } catch (error) {
 
-        console.log(error);
-
-        res.status(500).json({
-            message: error.message
-        });
+        return handleServerError(res, error);
 
     }
 
@@ -60,11 +57,7 @@ const getUnreadNotificationCount = async (req, res) => {
 
     } catch (error) {
 
-        console.log(error);
-
-        res.status(500).json({
-            message: error.message
-        });
+        return handleServerError(res, error);
 
     }
 
@@ -109,11 +102,7 @@ const markNotificationAsRead = async (req, res) => {
 
     } catch (error) {
 
-        console.log(error);
-
-        res.status(500).json({
-            message: error.message
-        });
+        return handleServerError(res, error);
 
     }
 
@@ -139,11 +128,7 @@ const markAllNotificationsAsRead = async (req, res) => {
 
     } catch (error) {
 
-        console.log(error);
-
-        res.status(500).json({
-            message: error.message
-        });
+        return handleServerError(res, error);
 
     }
 
@@ -187,11 +172,7 @@ const deleteNotification = async (req, res) => {
 
     } catch (error) {
 
-        console.log(error);
-
-        res.status(500).json({
-            message: error.message
-        });
+        return handleServerError(res, error);
 
     }
 

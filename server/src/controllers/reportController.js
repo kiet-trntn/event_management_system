@@ -1,4 +1,5 @@
 const db = require("../config/db");
+const handleServerError = require("../utils/handleServerError");
 
 // Thống kê tổng quan
 const getOverviewReport = async (req, res) => {
@@ -75,11 +76,7 @@ const getOverviewReport = async (req, res) => {
 
     } catch (error) {
 
-        console.log(error);
-
-        res.status(500).json({
-            message: error.message
-        });
+        return handleServerError(res, error);
 
     }
 
@@ -122,11 +119,7 @@ const getTaskReport = async (req, res) => {
 
     } catch (error) {
 
-        console.log(error);
-
-        res.status(500).json({
-            message: error.message
-        });
+        return handleServerError(res, error);
 
     }
 
@@ -166,11 +159,7 @@ const getEventReport = async (req, res) => {
 
     } catch (error) {
 
-        console.log(error);
-
-        res.status(500).json({
-            message: error.message
-        });
+        return handleServerError(res, error);
 
     }
 
@@ -215,11 +204,7 @@ const getSubmissionReport = async (req, res) => {
 
     } catch (error) {
 
-        console.log(error);
-
-        res.status(500).json({
-            message: error.message
-        });
+        return handleServerError(res, error);
 
     }
 

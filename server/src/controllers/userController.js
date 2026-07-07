@@ -1,5 +1,6 @@
 const db = require("../config/db"); // Gọi file kết nối db
 const bcrypt = require("bcrypt"); // Gọi thư viện mã hóa mật khẩu
+const handleServerError = require("../utils/handleServerError");
 
 const getAllUsers = async (req, res) => {
 
@@ -70,11 +71,7 @@ const getAllUsers = async (req, res) => {
 
     } catch (error) {
 
-        console.log(error);
-
-        res.status(500).json({
-            message: error.message
-        });
+        return handleServerError(res, error);
 
     }
 
@@ -119,11 +116,7 @@ const getUserById = async (req, res) => {
 
     } catch (error) {
 
-        console.log(error);
-
-        res.status(500).json({
-            message: error.message
-        });
+        return handleServerError(res, error);
 
     }
 
@@ -252,11 +245,7 @@ const createUser = async (req, res) => {
 
     } catch (error) {
 
-        console.log(error);
-
-        res.status(500).json({
-            message: "Đã xảy ra lỗi khi tạo thành viên mới"
-        });
+        return handleServerError(res, error);
 
     }
 
@@ -390,11 +379,7 @@ const updateUser = async (req, res) => {
 
     } catch (error) {
 
-        console.log(error);
-
-        res.status(500).json({
-            message: error.message
-        });
+        return handleServerError(res, error);
 
     }
 
@@ -438,11 +423,7 @@ const updateStatus = async (req, res) => {
         });
 
     } catch (error) {
-        console.log(error);
-
-        res.status(500).json({
-            message: error.message
-        });
+        return handleServerError(res, error);
     }
 };
 
@@ -471,10 +452,7 @@ const deleteUser = async (req, res) => {
             message: "Thành viên đã được xóa thành công"
         });
     } catch (error) {
-        console.log(error);
-        res.status(500).json({
-            message: error.message || "Đã xảy ra lỗi khi xóa thành viên"
-        });
+        return handleServerError(res, error);
     }
 }
 
@@ -553,11 +531,7 @@ const getAvailableUsersForEvent = async (req, res) => {
 
     } catch (error) {
 
-        console.log(error);
-
-        res.status(500).json({
-            message: error.message
-        });
+        return handleServerError(res, error);
 
     }
 
@@ -600,11 +574,7 @@ const getMe = async (req, res) => {
 
     } catch (error) {
 
-        console.log(error);
-
-        res.status(500).json({
-            message: error.message
-        });
+        return handleServerError(res, error);
 
     }
 

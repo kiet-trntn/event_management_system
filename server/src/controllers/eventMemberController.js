@@ -1,5 +1,6 @@
 const db = require("../config/db");
 const createNotification = require("../utils/createNotification");
+const handleServerError = require("../utils/handleServerError");
 
 const getEventMembers = async (req, res) => {
 
@@ -133,11 +134,7 @@ const getEventMembers = async (req, res) => {
 
     } catch (error) {
 
-        console.log(error);
-
-        res.status(500).json({
-            message: error.message
-        });
+        return handleServerError(res, error);
 
     }
 
@@ -304,11 +301,7 @@ const addMemberToEvent = async (req, res) => {
 
     } catch (error) {
 
-        console.log(error);
-
-        res.status(500).json({
-            message: error.message
-        });
+        return handleServerError(res, error);
 
     }
 
@@ -590,9 +583,7 @@ const removeMemberFromEvent = async (req, res) => {
 
         console.log(error);
 
-        res.status(500).json({
-            message: error.message
-        });
+        return handleServerError(res, error);
 
     }
 

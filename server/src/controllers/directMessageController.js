@@ -1,6 +1,7 @@
 const db = require("../config/db");
 const createNotification = require("../utils/createNotification");
 const { emitToUser } = require("../socket/socket");
+const handleServerError = require("../utils/handleServerError");
 
 // Gửi tin nhắn riêng
 const sendDirectMessage = async (req, res) => {
@@ -106,11 +107,7 @@ const sendDirectMessage = async (req, res) => {
 
     } catch (error) {
 
-        console.log(error);
-
-        res.status(500).json({
-            message: error.message
-        });
+        return handleServerError(res, error);
 
     }
 
@@ -212,11 +209,7 @@ const getConversationWithUser = async (req, res) => {
 
     } catch (error) {
 
-        console.log(error);
-
-        res.status(500).json({
-            message: error.message
-        });
+        return handleServerError(res, error);
 
     }
 
@@ -287,11 +280,7 @@ const getMyConversations = async (req, res) => {
 
     } catch (error) {
 
-        console.log(error);
-
-        res.status(500).json({
-            message: error.message
-        });
+        return handleServerError(res, error);
 
     }
 
@@ -358,11 +347,7 @@ const deleteDirectMessage = async (req, res) => {
 
     } catch (error) {
 
-        console.log(error);
-
-        res.status(500).json({
-            message: error.message
-        });
+        return handleServerError(res, error);
 
     }
 
@@ -416,11 +401,7 @@ const getChatUsers = async (req, res) => {
 
     } catch (error) {
 
-        console.log(error);
-
-        res.status(500).json({
-            message: error.message
-        });
+        return handleServerError(res, error);
 
     }
 
@@ -505,11 +486,7 @@ const recallDirectMessage = async (req, res) => {
 
     } catch (error) {
 
-        console.log(error);
-
-        res.status(500).json({
-            message: error.message
-        });
+        return handleServerError(res, error);
 
     }
 

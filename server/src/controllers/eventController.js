@@ -1,6 +1,7 @@
 const db = require("../config/db");
 const fs = require("fs");
 const createNotification = require("../utils/createNotification");
+const handleServerError = require("../utils/handleServerError");
 
 const publishEvent = async (req, res) => {
     try {
@@ -80,10 +81,7 @@ const publishEvent = async (req, res) => {
 
     } catch (error) {
 
-        // Trả về lỗi hệ thống nếu gặp lỗi bất ngờ (ví dụ: mất kết nối cơ sở dữ liệu)
-        res.status(500).json({
-            message: error.message
-        });
+        return handleServerError(res, error);
 
     } 
 }
@@ -242,11 +240,7 @@ const getAllEvents = async (req, res) => {
 
     } catch (error) {
 
-        console.log(error);
-
-        res.status(500).json({
-            message: error.message
-        });
+        return handleServerError(res, error);
 
     }
 
@@ -346,11 +340,7 @@ const getEventById = async (req, res) => {
 
     } catch (error) {
 
-        console.log(error);
-
-        res.status(500).json({
-            message: error.message
-        });
+        return handleServerError(res, error);
 
     }
 
@@ -435,10 +425,7 @@ const createEvent = async (req, res) => {
             message: "Tạo sự kiện thành công"
         });
     } catch (error) {
-        console.error("Lỗi khi tạo sự kiện:", error);
-        res.status(500).json({
-            message: "Đã xảy ra lỗi khi tạo sự kiện"
-        });
+        return handleServerError(res, error);
     }
 }
 
@@ -552,11 +539,7 @@ const updateEvent = async (req, res) => {
 
     } catch (error) {
 
-        console.log(error);
-
-        res.status(500).json({
-            message: error.message
-        });
+        return handleServerError(res, error);
 
     }
 
@@ -642,11 +625,7 @@ const cancelEvent = async (req, res) => {
 
     } catch (error) {
 
-        console.log(error);
-
-        res.status(500).json({
-            message: error.message
-        });
+        return handleServerError(res, error);
 
     }
 
@@ -690,11 +669,7 @@ const deleteEvent = async (req, res) => {
 
     } catch (error) {
 
-        console.log(error);
-
-        res.status(500).json({
-            message: error.message
-        });
+        return handleServerError(res, error);
 
     }
 
@@ -737,9 +712,7 @@ const restoreEvent = async (req, res) => {
 
     } catch (error) {
 
-        res.status(500).json({
-            message: error.message
-        });
+        return handleServerError(res, error);
 
     }
 
@@ -769,11 +742,7 @@ const getTrashEvents = async (req, res) => {
 
     } catch (error) {
 
-        console.log(error);
-
-        res.status(500).json({
-            message: error.message
-        });
+        return handleServerError(res, error);
 
     }
 
@@ -808,11 +777,7 @@ const getLeaderEventsForCalendar = async (req, res) => {
 
     } catch (error) {
 
-        console.log(error);
-
-        res.status(500).json({
-            message: error.message
-        });
+        return handleServerError(res, error);
 
     }
 
@@ -988,11 +953,7 @@ const permanentDeleteEvent = async (req, res) => {
 
     } catch (error) {
 
-        console.log(error);
-
-        res.status(500).json({
-            message: error.message
-        });
+        return handleServerError(res, error);
 
     }
 

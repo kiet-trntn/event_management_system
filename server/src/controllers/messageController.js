@@ -1,6 +1,7 @@
 const db = require("../config/db");
 const createNotification = require("../utils/createNotification");
 const { emitToEvent } = require("../socket/socket");
+const handleServerError = require("../utils/handleServerError");
 
 // Hàm kiểm tra quyền xem/gửi tin nhắn trong event
 const checkEventAccess = async (eventId, user) => {
@@ -192,11 +193,8 @@ const sendMessage = async (req, res) => {
 
     } catch (error) {
 
-        console.log(error);
+        return handleServerError(res, error);
 
-        res.status(500).json({
-            message: error.message
-        });
 
     }
 
@@ -249,11 +247,8 @@ const getMessagesByEvent = async (req, res) => {
 
     } catch (error) {
 
-        console.log(error);
+        return handleServerError(res, error);
 
-        res.status(500).json({
-            message: error.message
-        });
 
     }
 
@@ -318,11 +313,8 @@ const deleteMessage = async (req, res) => {
 
     } catch (error) {
 
-        console.log(error);
+        return handleServerError(res, error);
 
-        res.status(500).json({
-            message: error.message
-        });
 
     }
 

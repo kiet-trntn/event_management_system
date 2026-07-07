@@ -1,5 +1,6 @@
 const { createEvents } = require("ics");
 const db = require("../config/db");
+const handleServerError = require("../utils/handleServerError");
 
 const formatDateToICSArray = (dateValue) => {
     const date = new Date(dateValue);
@@ -115,11 +116,7 @@ const exportEventsCalendar = async (req, res) => {
 
     } catch (error) {
 
-        console.log(error);
-
-        res.status(500).json({
-            message: error.message
-        });
+        return handleServerError(res, error);
 
     }
 
@@ -199,11 +196,7 @@ const exportMyTasksCalendar = async (req, res) => {
 
     } catch (error) {
 
-        console.log(error);
-
-        res.status(500).json({
-            message: error.message
-        });
+        return handleServerError(res, error);
 
     }
 
