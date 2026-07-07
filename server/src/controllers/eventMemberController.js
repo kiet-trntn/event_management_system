@@ -9,20 +9,8 @@ const getEventMembers = async (req, res) => {
 
         const {
             search,
-            role_in_event,
             status
         } = req.query;
-
-        // Kiểm tra role_in_event hợp lệ
-        if (
-            role_in_event &&
-            role_in_event !== "member" &&
-            role_in_event !== "coordinator"
-        ) {
-            return res.status(400).json({
-                message: "Vai trò trong sự kiện không hợp lệ"
-            });
-        }
 
         // Kiểm tra status hợp lệ
         if (
@@ -55,7 +43,6 @@ const getEventMembers = async (req, res) => {
         const event = events[0];
 
         // Phân quyền xem danh sách thành viên
-        // Admin xem được tất cả
         if (req.user.role !== "admin") {
 
             const isLeader =
@@ -79,9 +66,8 @@ const getEventMembers = async (req, res) => {
                 });
             }
 
-            // Employee không được xem member của event Nháp
-            // Trừ khi người đó là Leader
-            if (event.status === "Nháp" && !isLeader) {
+            // Không cho user thường xem thành viên của event Nháp
+            if (event.status === "Nháp") {
                 return res.status(403).json({
                     message: "Bạn không có quyền xem danh sách thành viên sự kiện này"
                 });
@@ -91,45 +77,37 @@ const getEventMembers = async (req, res) => {
 
         let sql = `
             SELECT
-                u.id,
+                em.id,
+                em.event_id,
+                em.user_id,
                 u.full_name,
                 u.email,
+                u.phone,
                 u.status,
-                em.role_in_event,
-                em.joined_at
-
+                em.joined_at AS created_at
             FROM event_members em
-
             INNER JOIN users u
                 ON em.user_id = u.id
-
             WHERE em.event_id = ?
         `;
 
         let params = [eventId];
 
-        // Tìm kiếm theo tên hoặc email
+        // Tìm kiếm theo tên, email hoặc số điện thoại
         if (search) {
             sql += `
                 AND (
                     u.full_name LIKE ?
                     OR u.email LIKE ?
+                    OR u.phone LIKE ?
                 )
             `;
 
             params.push(
                 `%${search}%`,
+                `%${search}%`,
                 `%${search}%`
             );
-        }
-
-        // Lọc theo vai trò trong sự kiện
-        if (role_in_event) {
-            sql += `
-                AND em.role_in_event = ?
-            `;
-
-            params.push(role_in_event);
         }
 
         // Lọc theo trạng thái tài khoản
@@ -171,26 +149,12 @@ const addMemberToEvent = async (req, res) => {
 
         const { eventId } = req.params;
 
-        const {
-            user_id,
-            role_in_event
-        } = req.body;
+        const { user_id } = req.body;
 
         // Kiểm tra rỗng
         if (!user_id) {
             return res.status(400).json({
                 message: "Vui lòng chọn thành viên"
-            });
-        }
-
-        // Kiểm tra role
-        if (
-            role_in_event &&
-            role_in_event !== "member" &&
-            role_in_event !== "coordinator"
-        ) {
-            return res.status(400).json({
-                message: "Vai trò không hợp lệ"
             });
         }
 
@@ -200,6 +164,7 @@ const addMemberToEvent = async (req, res) => {
             SELECT *
             FROM events
             WHERE id = ?
+            AND deleted_at IS NULL
             `,
             [eventId]
         );
@@ -212,12 +177,26 @@ const addMemberToEvent = async (req, res) => {
 
         const event = events[0];
 
-         if (req.user.role !== "admin" && req.user.id !== event.leader_id) {
+        // Chỉ Admin hoặc Leader được thêm thành viên
+        if (
+            req.user.role !== "admin" &&
+            Number(req.user.id) !== Number(event.leader_id)
+        ) {
             return res.status(403).json({
                 message: "Bạn không có quyền thực hiện hành động này trong sự kiện"
             });
         }
-        
+
+        // Không cho thay đổi thành viên khi event đã khóa
+        if (
+            event.status === "Đang diễn ra" ||
+            event.status === "Đã kết thúc" ||
+            event.status === "Đã hủy"
+        ) {
+            return res.status(400).json({
+                message: "Không thể thay đổi thành viên của sự kiện này"
+            });
+        }
 
         // Kiểm tra user tồn tại
         const [users] = await db.query(
@@ -237,6 +216,13 @@ const addMemberToEvent = async (req, res) => {
 
         const user = users[0];
 
+        // Chỉ cho thêm employee
+        if (user.role !== "employee") {
+            return res.status(400).json({
+                message: "Chỉ có thể thêm nhân viên vào sự kiện"
+            });
+        }
+
         // Tài khoản bị khóa
         if (user.status === "inactive") {
             return res.status(400).json({
@@ -244,17 +230,17 @@ const addMemberToEvent = async (req, res) => {
             });
         }
 
-        // Không thêm leader
-        if (event.leader_id === user.id) {
+        // Không thêm leader vào danh sách thành viên
+        if (Number(event.leader_id) === Number(user.id)) {
             return res.status(400).json({
-                message: "Người này đang là leader của sự kiện"
+                message: "Người này đang là Leader của sự kiện"
             });
         }
 
         // Kiểm tra trùng
         const [exists] = await db.query(
             `
-            SELECT *
+            SELECT id
             FROM event_members
             WHERE event_id = ?
             AND user_id = ?
@@ -268,38 +254,39 @@ const addMemberToEvent = async (req, res) => {
             });
         }
 
-        // Đếm số thành viên hiện tại
-        const [memberCount] = await db.query(
-            `
-            SELECT COUNT(*) AS total
-            FROM event_members
-            WHERE event_id = ?
-            `,
-            [eventId]
-        );
+        // Kiểm tra giới hạn số lượng thành viên nếu có max_members
+        if (event.max_members) {
 
-        if (
-            memberCount[0].total >= event.max_members
-        ) {
-            return res.status(400).json({
-                message: "Sự kiện đã đủ số lượng thành viên"
-            });
+            const [memberCount] = await db.query(
+                `
+                SELECT COUNT(*) AS total
+                FROM event_members
+                WHERE event_id = ?
+                `,
+                [eventId]
+            );
+
+            if (memberCount[0].total >= event.max_members) {
+                return res.status(400).json({
+                    message: "Sự kiện đã đủ số lượng thành viên"
+                });
+            }
+
         }
 
         // Thêm thành viên
         await db.query(
             `
-            INSERT INTO event_members (
+            INSERT INTO event_members
+            (
                 event_id,
-                user_id,
-                role_in_event
+                user_id
             )
-            VALUES (?, ?, ?)
+            VALUES (?, ?)
             `,
             [
                 eventId,
-                user_id,
-                role_in_event || "member"
+                user_id
             ]
         );
 
@@ -507,115 +494,11 @@ const removeMemberFromEvent = async (req, res) => {
 
 };
 
-const updateMemberRole = async (req, res) => {
 
-    try {
-
-        const {
-            eventId,
-            userId
-        } = req.params;
-
-        const {
-            role_in_event
-        } = req.body;
-
-        // Kiểm tra role
-        if (
-            role_in_event !== "member" &&
-            role_in_event !== "coordinator"
-        ) {
-            return res.status(400).json({
-                message: "Vai trò không hợp lệ"
-            });
-        }
-
-        // Kiểm tra event tồn tại
-        const [events] = await db.query(
-            `
-            SELECT *
-            FROM events
-            WHERE id = ?
-            `,
-            [eventId]
-        );
-
-        if (events.length === 0) {
-            return res.status(404).json({
-                message: "Không tìm thấy sự kiện"
-            });
-        }
-
-        const event = events[0];
-
-        if (req.user.role !== "admin" && req.user.id !== event.leader_id) {
-            return res.status(403).json({
-                message: "Bạn không có quyền thực hiện hành động này trong sự kiện"
-            });
-        }
-
-        // Không cho sửa khi event đã khóa
-        if (
-            event.status === "Đang diễn ra" ||
-            event.status === "Đã kết thúc" ||
-            event.status === "Đã hủy"
-        ) {
-            return res.status(400).json({
-                message: "Không thể cập nhật vai trò"
-            });
-        }
-
-        // Kiểm tra thành viên thuộc event
-        const [members] = await db.query(
-            `
-            SELECT *
-            FROM event_members
-            WHERE event_id = ?
-            AND user_id = ?
-            `,
-            [eventId, userId]
-        );
-
-        if (members.length === 0) {
-            return res.status(404).json({
-                message: "Thành viên không thuộc sự kiện"
-            });
-        }
-
-        // Cập nhật role
-        await db.query(
-            `
-            UPDATE event_members
-            SET role_in_event = ?
-            WHERE event_id = ?
-            AND user_id = ?
-            `,
-            [
-                role_in_event,
-                eventId,
-                userId
-            ]
-        );
-
-        res.json({
-            message: "Cập nhật vai trò thành công"
-        });
-
-    } catch (error) {
-
-        console.log(error);
-
-        res.status(500).json({
-            message: error.message
-        });
-
-    }
-
-};
 
 module.exports = {
     getEventMembers,
     addMemberToEvent,
     removeMemberFromEvent,
-    updateMemberRole
+
 };
