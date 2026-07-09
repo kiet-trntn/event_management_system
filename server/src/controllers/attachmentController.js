@@ -314,11 +314,7 @@ const deleteAttachment = async (req, res) => {
 
     } catch (error) {
 
-        console.log(error);
-
-        res.status(500).json({
-            message: error.message
-        });
+return handleServerError(res, error);
 
     }
 

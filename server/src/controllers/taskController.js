@@ -3,16 +3,20 @@ const addTaskHistory = require("../utils/taskHistory");
 const createNotification = require("../utils/createNotification");
 const fs = require("fs");
 const handleServerError = require("../utils/handleServerError");
+const VALID_TASK_TYPES = [
+    "preparation",
+    "during_event",
+    "post_event"
+];
 
 const getAllTasks = async (req, res) => {
-
     try {
-
         const {
             search,
             event_id,
             status,
             priority,
+            task_type,
             assigned_to,
             from_date,
             to_date
@@ -32,21 +36,77 @@ const getAllTasks = async (req, res) => {
             "high"
         ];
 
-        // Kiểm tra status hợp lệ
+        // Kiểm tra trạng thái công việc
         if (status && !validStatuses.includes(status)) {
             return res.status(400).json({
                 message: "Trạng thái công việc không hợp lệ"
             });
         }
 
-        // Kiểm tra priority hợp lệ
+        // Kiểm tra độ ưu tiên
         if (priority && !validPriorities.includes(priority)) {
             return res.status(400).json({
                 message: "Độ ưu tiên không hợp lệ"
             });
         }
 
-        // Kiểm tra ngày lọc
+        // Kiểm tra loại công việc
+        if (
+            task_type &&
+            !VALID_TASK_TYPES.includes(task_type)
+        ) {
+            return res.status(400).json({
+                message: "Loại công việc không hợp lệ"
+            });
+        }
+
+        // Kiểm tra event_id
+        if (
+            event_id &&
+            (
+                !Number.isInteger(Number(event_id)) ||
+                Number(event_id) <= 0
+            )
+        ) {
+            return res.status(400).json({
+                message: "Mã sự kiện không hợp lệ"
+            });
+        }
+
+        // Kiểm tra assigned_to
+        if (
+            assigned_to &&
+            (
+                !Number.isInteger(Number(assigned_to)) ||
+                Number(assigned_to) <= 0
+            )
+        ) {
+            return res.status(400).json({
+                message: "Mã người được giao không hợp lệ"
+            });
+        }
+
+        // Kiểm tra định dạng ngày bắt đầu
+        if (
+            from_date &&
+            Number.isNaN(new Date(from_date).getTime())
+        ) {
+            return res.status(400).json({
+                message: "Ngày bắt đầu lọc không hợp lệ"
+            });
+        }
+
+        // Kiểm tra định dạng ngày kết thúc
+        if (
+            to_date &&
+            Number.isNaN(new Date(to_date).getTime())
+        ) {
+            return res.status(400).json({
+                message: "Ngày kết thúc lọc không hợp lệ"
+            });
+        }
+
+        // Kiểm tra khoảng ngày
         if (
             from_date &&
             to_date &&
@@ -64,6 +124,7 @@ const getAllTasks = async (req, res) => {
                 t.description,
                 t.status,
                 t.priority,
+                t.task_type,
                 t.due_date,
                 t.created_at,
                 t.updated_at,
@@ -88,16 +149,17 @@ const getAllTasks = async (req, res) => {
             AND e.deleted_at IS NULL
         `;
 
-        let params = [];
+        const params = [];
 
-        // Phân quyền xem task
+        /*
+         * Phân quyền xem công việc:
+         * - Admin được xem tất cả.
+         * - Leader/Employee không được xem sự kiện Nháp.
+         * - Người dùng phải là thành viên hoặc Leader của sự kiện.
+         */
         if (req.user.role !== "admin") {
-
             sql += `
-                AND (
-                    e.status <> 'Nháp'
-                    OR e.leader_id = ?
-                )
+                AND e.status <> 'Nháp'
 
                 AND (
                     EXISTS (
@@ -107,22 +169,19 @@ const getAllTasks = async (req, res) => {
                         AND em.user_id = ?
                     )
 
-                    OR
-
-                    e.leader_id = ?
+                    OR e.leader_id = ?
                 )
             `;
 
             params.push(
                 req.user.id,
-                req.user.id,
                 req.user.id
             );
-
         }
 
-        // Tìm kiếm theo tên công việc hoặc mô tả
-        if (search) {
+        // Tìm kiếm theo tiêu đề hoặc mô tả
+        if (search && search.trim()) {
+            const keyword = `%${search.trim()}%`;
 
             sql += `
                 AND (
@@ -131,77 +190,70 @@ const getAllTasks = async (req, res) => {
                 )
             `;
 
-            params.push(
-                `%${search}%`,
-                `%${search}%`
-            );
-
+            params.push(keyword, keyword);
         }
 
         // Lọc theo sự kiện
         if (event_id) {
-
             sql += `
                 AND t.event_id = ?
             `;
 
-            params.push(event_id);
-
+            params.push(Number(event_id));
         }
 
         // Lọc theo trạng thái
         if (status) {
-
             sql += `
                 AND t.status = ?
             `;
 
             params.push(status);
-
         }
 
         // Lọc theo độ ưu tiên
         if (priority) {
-
             sql += `
                 AND t.priority = ?
             `;
 
             params.push(priority);
+        }
 
+        // Lọc theo loại công việc
+        if (task_type) {
+            sql += `
+                AND t.task_type = ?
+            `;
+
+            params.push(task_type);
         }
 
         // Lọc theo người được giao
         if (assigned_to) {
-
             sql += `
                 AND t.assigned_to = ?
             `;
 
-            params.push(assigned_to);
-
+            params.push(Number(assigned_to));
         }
 
         // Lọc từ ngày hạn hoàn thành
         if (from_date) {
-
             sql += `
                 AND DATE(t.due_date) >= ?
             `;
 
             params.push(from_date);
-
         }
 
         // Lọc đến ngày hạn hoàn thành
         if (to_date) {
-
             sql += `
                 AND DATE(t.due_date) <= ?
             `;
 
             params.push(to_date);
-
         }
 
         sql += `
@@ -210,24 +262,31 @@ const getAllTasks = async (req, res) => {
 
         const [tasks] = await db.query(sql, params);
 
-        res.json({
+        return res.status(200).json({
             total: tasks.length,
             tasks
         });
 
     } catch (error) {
-
         return handleServerError(res, error);
-
     }
-
 };
 
 const getTaskById = async (req, res) => {
     try {
         const { id } = req.params;
 
-        // Câu lệnh SQL này đã thêm JOIN bảng task_submissions để lấy ID bài nộp
+        // Kiểm tra ID công việc
+        if (
+            !Number.isInteger(Number(id)) ||
+            Number(id) <= 0
+        ) {
+            return res.status(400).json({
+                message: "Mã công việc không hợp lệ"
+            });
+        }
+
+        // Lấy thông tin công việc và bài nộp mới nhất
         const [tasks] = await db.query(
             `
             SELECT
@@ -236,12 +295,14 @@ const getTaskById = async (req, res) => {
                 t.description,
                 t.status,
                 t.priority,
+                t.task_type,
                 t.due_date,
                 t.created_at,
                 t.updated_at,
 
                 e.id AS event_id,
                 e.title AS event_title,
+                e.status AS event_status,
                 e.leader_id AS event_leader_id,
 
                 u1.id AS assigned_to,
@@ -250,13 +311,14 @@ const getTaskById = async (req, res) => {
                 u2.id AS created_by,
                 u2.full_name AS created_by_name,
 
-                -- PHẦN DỮ LIỆU BÀI NỘP QUAN TRỌNG ĐỂ FRONTEND KHÔNG BỊ LỖI UNDEFINED
                 ts.id AS latest_submission_id,
                 ts.content AS submission_content,
                 ts.link_url AS submission_link_url,
                 ts.file_name AS submission_file_name,
                 ts.file_path AS submission_file_path,
-                ts.file_type AS submission_file_type
+                ts.file_type AS submission_file_type,
+                ts.status AS submission_status,
+                ts.created_at AS submission_created_at
 
             FROM tasks t
 
@@ -269,21 +331,26 @@ const getTaskById = async (req, res) => {
             LEFT JOIN users u2
                 ON t.created_by = u2.id
 
-            -- JOIN ĐỂ LẤY BÀI NỘP MỚI NHẤT
             LEFT JOIN (
                 SELECT ts1.*
                 FROM task_submissions ts1
+
                 INNER JOIN (
-                    SELECT task_id, MAX(id) as max_id
+                    SELECT
+                        task_id,
+                        MAX(id) AS max_id
                     FROM task_submissions
                     GROUP BY task_id
-                ) ts2 ON ts1.id = ts2.max_id
-            ) ts ON t.id = ts.task_id
+                ) ts2
+                    ON ts1.id = ts2.max_id
+            ) ts
+                ON t.id = ts.task_id
 
             WHERE t.id = ?
             AND t.is_deleted = FALSE
+            AND e.deleted_at IS NULL
             `,
-            [id]
+            [Number(id)]
         );
 
         if (tasks.length === 0) {
@@ -294,18 +361,36 @@ const getTaskById = async (req, res) => {
 
         const task = tasks[0];
 
-        // Admin xem tất cả
+        // Admin được xem tất cả công việc
         if (req.user.role === "admin") {
-            return res.json(task);
+            return res.status(200).json(task);
         }
 
-        // Kiểm tra user có thuộc Event không
+        const isLeader =
+            Number(task.event_leader_id) === Number(req.user.id);
+
+        /*
+         * Sự kiện Nháp:
+         * - Leader phụ trách được xem nếu nghiệp vụ của bạn cho phép.
+         * - Employee thông thường không được xem.
+         */
+        if (
+            task.event_status === "Nháp" &&
+            !isLeader
+        ) {
+            return res.status(403).json({
+                message: "Bạn không có quyền xem công việc của sự kiện Nháp"
+            });
+        }
+
+        // Kiểm tra người dùng có phải thành viên sự kiện không
         const [members] = await db.query(
             `
-            SELECT *
+            SELECT id
             FROM event_members
             WHERE event_id = ?
             AND user_id = ?
+            LIMIT 1
             `,
             [
                 task.event_id,
@@ -313,17 +398,16 @@ const getTaskById = async (req, res) => {
             ]
         );
 
-        // Leader Event
-        const isLeader = task.event_leader_id === req.user.id;
+        const isMember = members.length > 0;
 
-        // Không phải member và không phải leader
-        if (members.length === 0 && !isLeader) {
+        // Không phải thành viên và cũng không phải Leader
+        if (!isMember && !isLeader) {
             return res.status(403).json({
                 message: "Bạn không có quyền xem công việc này"
             });
         }
 
-        res.json(task);
+        return res.status(200).json(task);
 
     } catch (error) {
         return handleServerError(res, error);
@@ -331,13 +415,22 @@ const getTaskById = async (req, res) => {
 };
 
 const getMyTasks = async (req, res) => {
-
     try {
+        const {
+            search,
+            task_type
+        } = req.query;
 
-        // 1. Nhận tham số search từ URL
-        const { search } = req.query;
+        // Kiểm tra loại công việc
+        if (
+            task_type &&
+            !VALID_TASK_TYPES.includes(task_type)
+        ) {
+            return res.status(400).json({
+                message: "Loại công việc không hợp lệ"
+            });
+        }
 
-        // 2. Câu lệnh SQL nền tảng của getMyTasks
         let sql = `
             SELECT
                 t.id,
@@ -345,11 +438,14 @@ const getMyTasks = async (req, res) => {
                 t.description,
                 t.status,
                 t.priority,
+                t.task_type,
                 t.due_date,
                 t.created_at,
+                t.updated_at,
 
                 e.id AS event_id,
                 e.title AS event_title,
+                e.status AS event_status,
 
                 u.id AS assigned_to,
                 u.full_name AS assigned_name
@@ -362,18 +458,19 @@ const getMyTasks = async (req, res) => {
             LEFT JOIN users u
                 ON t.assigned_to = u.id
 
-            WHERE
-                t.is_deleted = FALSE
-                AND t.assigned_to = ?
-                AND e.deleted_at IS NULL
-                AND e.status <> 'Nháp'
+            WHERE t.is_deleted = FALSE
+            AND t.assigned_to = ?
+            AND e.deleted_at IS NULL
+            AND e.status <> 'Nháp'
         `;
 
-        // ID của người dùng đang đăng nhập luôn là tham số đầu tiên
-        let params = [req.user.id];
+        const params = [
+            req.user.id
+        ];
 
-        // 3. Logic tìm kiếm (Giống hệt getAllTasks)
-        if (search) {
+        // Tìm kiếm theo tiêu đề hoặc mô tả
+        if (search && search.trim()) {
+            const keyword = `%${search.trim()}%`;
 
             sql += `
                 AND (
@@ -383,63 +480,134 @@ const getMyTasks = async (req, res) => {
             `;
 
             params.push(
-                `%${search}%`,
-                `%${search}%`
+                keyword,
+                keyword
             );
+        }
 
+        // Lọc theo loại công việc
+        if (task_type) {
+            sql += `
+                AND t.task_type = ?
+            `;
+
+            params.push(task_type);
         }
 
         sql += `
             ORDER BY t.id DESC
         `;
 
-        const [tasks] = await db.query(sql, params);
+        const [tasks] = await db.query(
+            sql,
+            params
+        );
 
-        res.json({
+        return res.status(200).json({
             total: tasks.length,
             tasks
         });
 
     } catch (error) {
-
         return handleServerError(res, error);
-
     }
-
 };
 
 const createTask = async (req, res) => {
-
     try {
-
         const {
             event_id,
             title,
             description,
             assigned_to,
             priority,
+            task_type,
             due_date
         } = req.body;
 
-        // Kiểm tra rỗng
-        if (!event_id || !title) {
+        // Kiểm tra thông tin bắt buộc
+        if (
+            !event_id ||
+            !title ||
+            !title.trim() ||
+            !task_type
+        ) {
             return res.status(400).json({
                 message: "Vui lòng nhập đầy đủ thông tin"
             });
         }
 
-        // Kiểm tra event tồn tại
+        // Kiểm tra ID sự kiện
+        if (
+            !Number.isInteger(Number(event_id)) ||
+            Number(event_id) <= 0
+        ) {
+            return res.status(400).json({
+                message: "Mã sự kiện không hợp lệ"
+            });
+        }
+
+        // Kiểm tra ID người được giao
+        if (
+            assigned_to &&
+            (
+                !Number.isInteger(Number(assigned_to)) ||
+                Number(assigned_to) <= 0
+            )
+        ) {
+            return res.status(400).json({
+                message: "Mã người được giao không hợp lệ"
+            });
+        }
+
+        // Kiểm tra độ ưu tiên
+        const validPriorities = [
+            "low",
+            "medium",
+            "high"
+        ];
+
+        if (
+            priority &&
+            !validPriorities.includes(priority)
+        ) {
+            return res.status(400).json({
+                message: "Độ ưu tiên không hợp lệ"
+            });
+        }
+
+        // Kiểm tra loại công việc
+        if (!VALID_TASK_TYPES.includes(task_type)) {
+            return res.status(400).json({
+                message: "Loại công việc không hợp lệ"
+            });
+        }
+
+        // Kiểm tra hạn hoàn thành
+        if (
+            due_date &&
+            Number.isNaN(new Date(due_date).getTime())
+        ) {
+            return res.status(400).json({
+                message: "Hạn hoàn thành không hợp lệ"
+            });
+        }
+
+        // Kiểm tra sự kiện
         const [events] = await db.query(
             `
             SELECT
                 id,
+                title,
+                status,
                 leader_id,
                 deleted_at
             FROM events
             WHERE id = ?
             AND deleted_at IS NULL
+            LIMIT 1
             `,
-            [event_id]
+            [Number(event_id)]
         );
 
         if (events.length === 0) {
@@ -450,50 +618,68 @@ const createTask = async (req, res) => {
 
         const event = events[0];
 
-        // Chỉ Admin hoặc Leader của Event mới được tạo Task
+        // Không tạo công việc cho sự kiện đã kết thúc hoặc đã hủy
         if (
-            req.user.role !== "admin" &&
-            req.user.id !== event.leader_id
+            event.status === "Đã kết thúc" ||
+            event.status === "Đã hủy"
         ) {
+            return res.status(400).json({
+                message: "Không thể tạo công việc cho sự kiện đã kết thúc hoặc đã hủy"
+            });
+        }
+
+        const isAdmin = req.user.role === "admin";
+
+        const isLeader =
+            Number(req.user.id) === Number(event.leader_id);
+
+        // Chỉ Admin hoặc Leader của sự kiện được tạo công việc
+        if (!isAdmin && !isLeader) {
             return res.status(403).json({
                 message: "Bạn không có quyền tạo công việc cho sự kiện này"
             });
         }
 
-        // Kiểm tra priority
-        if (
-            priority &&
-            priority !== "low" &&
-            priority !== "medium" &&
-            priority !== "high"
-        ) {
-            return res.status(400).json({
-                message: "Độ ưu tiên không hợp lệ"
+        // Leader không được quản lý sự kiện Nháp
+        if (!isAdmin && event.status === "Nháp") {
+            return res.status(403).json({
+                message: "Leader không thể tạo công việc khi sự kiện đang ở trạng thái Nháp"
             });
         }
 
         // Kiểm tra người được giao
         if (assigned_to) {
-
             const [members] = await db.query(
                 `
-                SELECT *
-                FROM event_members
-                WHERE event_id = ?
-                AND user_id = ?
+                SELECT
+                    em.user_id,
+                    u.full_name,
+                    u.status
+                FROM event_members em
+
+                INNER JOIN users u
+                    ON em.user_id = u.id
+
+                WHERE em.event_id = ?
+                AND em.user_id = ?
+                AND u.role = 'employee'
+                AND u.status = 'active'
+                LIMIT 1
                 `,
-                [event_id, assigned_to]
+                [
+                    Number(event_id),
+                    Number(assigned_to)
+                ]
             );
 
             if (members.length === 0) {
                 return res.status(400).json({
-                    message: "Người được giao không thuộc sự kiện"
+                    message: "Người được giao không phải thành viên đang hoạt động của sự kiện"
                 });
             }
-
         }
 
-        // Tạo task
+        // Tạo công việc
         const [result] = await db.query(
             `
             INSERT INTO tasks (
@@ -502,55 +688,64 @@ const createTask = async (req, res) => {
                 description,
                 assigned_to,
                 priority,
+                task_type,
                 due_date,
                 created_by
             )
-            VALUES (?, ?, ?, ?, ?, ?, ?)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?)
             `,
             [
-                event_id,
-                title,
-                description || null,
-                assigned_to || null,
+                Number(event_id),
+                title.trim(),
+                description?.trim() || null,
+                assigned_to ? Number(assigned_to) : null,
                 priority || "medium",
+                task_type,
                 due_date || null,
                 req.user.id
             ]
         );
 
+        // Gửi thông báo cho người được giao
         if (assigned_to) {
             await createNotification({
-                user_id: assigned_to,
+                user_id: Number(assigned_to),
                 title: "Bạn có công việc mới",
-                content: `Bạn được giao công việc: "${title}"`,
+                content: `Bạn được giao công việc: "${title.trim()}"`,
                 type: "task",
                 related_id: result.insertId
             });
         }
 
-        // Ghi lịch sử
+        // Ghi lịch sử tạo công việc
         await addTaskHistory(
             result.insertId,
-            `${req.user.full_name} đã tạo công việc`,
+            `${req.user.full_name} đã tạo công việc "${title.trim()}"`,
             req.user.id
         );
 
-        res.status(201).json({
-            message: "Tạo công việc thành công"
+        return res.status(201).json({
+            message: "Tạo công việc thành công",
+            task: {
+                id: result.insertId,
+                event_id: Number(event_id),
+                title: title.trim(),
+                priority: priority || "medium",
+                task_type,
+                assigned_to: assigned_to
+                    ? Number(assigned_to)
+                    : null,
+                status: "pending"
+            }
         });
 
     } catch (error) {
-
         return handleServerError(res, error);
-
     }
-
 };
 
 const updateTask = async (req, res) => {
-
     try {
-
         const { id } = req.params;
 
         const {
@@ -558,15 +753,27 @@ const updateTask = async (req, res) => {
             description,
             assigned_to,
             priority,
+            task_type,
             due_date
         } = req.body;
+
+        // Kiểm tra ID công việc
+        if (
+            !Number.isInteger(Number(id)) ||
+            Number(id) <= 0
+        ) {
+            return res.status(400).json({
+                message: "Mã công việc không hợp lệ"
+            });
+        }
 
         // Kiểm tra task tồn tại
         const [tasks] = await db.query(
             `
             SELECT
                 t.*,
-                e.leader_id
+                e.leader_id,
+                e.status AS event_status
 
             FROM tasks t
 
@@ -575,8 +782,11 @@ const updateTask = async (req, res) => {
 
             WHERE t.id = ?
             AND t.is_deleted = FALSE
+            AND e.deleted_at IS NULL
+
+            LIMIT 1
             `,
-            [id]
+            [Number(id)]
         );
 
         if (tasks.length === 0) {
@@ -587,13 +797,22 @@ const updateTask = async (req, res) => {
 
         const task = tasks[0];
 
+        const isAdmin = req.user.role === "admin";
+
+        const isLeader =
+            Number(req.user.id) === Number(task.leader_id);
+
         // Chỉ Admin hoặc Leader của Event mới được sửa
-        if (
-            req.user.role !== "admin" &&
-            req.user.id !== task.leader_id
-        ) {
+        if (!isAdmin && !isLeader) {
             return res.status(403).json({
                 message: "Bạn không có quyền chỉnh sửa công việc này"
+            });
+        }
+
+        // Leader không được quản lý sự kiện Nháp
+        if (!isAdmin && task.event_status === "Nháp") {
+            return res.status(403).json({
+                message: "Leader không thể chỉnh sửa công việc khi sự kiện đang ở trạng thái Nháp"
             });
         }
 
@@ -603,53 +822,132 @@ const updateTask = async (req, res) => {
             task.status === "cancelled"
         ) {
             return res.status(403).json({
-                message: "Không thể chỉnh sửa công việc này"
+                message: "Không thể chỉnh sửa công việc đã hoàn thành hoặc đã hủy"
             });
         }
 
-        // Kiểm tra title
-        if (!title) {
+        // Kiểm tra tiêu đề
+        if (
+            !title ||
+            !title.trim()
+        ) {
             return res.status(400).json({
                 message: "Tiêu đề không được để trống"
             });
         }
 
+        const validPriorities = [
+            "low",
+            "medium",
+            "high"
+        ];
+
+        // Giữ priority cũ nếu frontend không gửi
+        const newPriority =
+            priority || task.priority || "medium";
+
         // Kiểm tra priority
-        if (
-            priority &&
-            priority !== "low" &&
-            priority !== "medium" &&
-            priority !== "high"
-        ) {
+        if (!validPriorities.includes(newPriority)) {
             return res.status(400).json({
                 message: "Độ ưu tiên không hợp lệ"
             });
         }
 
-        // Kiểm tra người được giao
-        if (assigned_to) {
+        /*
+         * Giữ task_type cũ nếu frontend chưa gửi trường này.
+         * Điều này tránh làm frontend cũ bị lỗi.
+         */
+        const newTaskType =
+            task_type || task.task_type;
 
+        // Kiểm tra loại công việc
+        if (!VALID_TASK_TYPES.includes(newTaskType)) {
+            return res.status(400).json({
+                message: "Loại công việc không hợp lệ"
+            });
+        }
+
+        // Kiểm tra hạn hoàn thành
+        if (
+            due_date &&
+            Number.isNaN(new Date(due_date).getTime())
+        ) {
+            return res.status(400).json({
+                message: "Hạn hoàn thành không hợp lệ"
+            });
+        }
+
+        /*
+         * Nếu không gửi assigned_to thì giữ người cũ.
+         * Nếu gửi null hoặc chuỗi rỗng thì gỡ người phụ trách.
+         */
+        let newAssignedTo;
+
+        if (assigned_to === undefined) {
+            newAssignedTo = task.assigned_to;
+        } else if (
+            assigned_to === null ||
+            assigned_to === ""
+        ) {
+            newAssignedTo = null;
+        } else {
+            if (
+                !Number.isInteger(Number(assigned_to)) ||
+                Number(assigned_to) <= 0
+            ) {
+                return res.status(400).json({
+                    message: "Mã người được giao không hợp lệ"
+                });
+            }
+
+            newAssignedTo = Number(assigned_to);
+        }
+
+        // Kiểm tra người được giao
+        if (newAssignedTo) {
             const [members] = await db.query(
                 `
-                SELECT *
-                FROM event_members
-                WHERE event_id = ?
-                AND user_id = ?
+                SELECT
+                    em.user_id,
+                    u.full_name,
+                    u.status
+
+                FROM event_members em
+
+                INNER JOIN users u
+                    ON em.user_id = u.id
+
+                WHERE em.event_id = ?
+                AND em.user_id = ?
+                AND u.role = 'employee'
+                AND u.status = 'active'
+
+                LIMIT 1
                 `,
                 [
                     task.event_id,
-                    assigned_to
+                    newAssignedTo
                 ]
             );
 
             if (members.length === 0) {
                 return res.status(400).json({
-                    message: "Người được giao không thuộc sự kiện"
+                    message: "Người được giao không phải thành viên đang hoạt động của sự kiện"
                 });
             }
-
         }
 
+        const newDescription =
+            description === undefined
+                ? task.description
+                : description?.trim() || null;
+
+        const newDueDate =
+            due_date === undefined
+                ? task.due_date
+                : due_date || null;
+
+        // Cập nhật công việc
         await db.query(
             `
             UPDATE tasks
@@ -658,17 +956,20 @@ const updateTask = async (req, res) => {
                 description = ?,
                 assigned_to = ?,
                 priority = ?,
+                task_type = ?,
                 due_date = ?,
                 updated_at = NOW()
+
             WHERE id = ?
             `,
             [
-                title,
-                description,
-                assigned_to || null,
-                priority || "medium",
-                due_date || null,
-                id
+                title.trim(),
+                newDescription,
+                newAssignedTo,
+                newPriority,
+                newTaskType,
+                newDueDate,
+                Number(id)
             ]
         );
 
@@ -676,31 +977,30 @@ const updateTask = async (req, res) => {
         let oldAssignedName = null;
 
         // Lấy tên người được giao mới
-        if (assigned_to) {
-
+        if (newAssignedTo) {
             const [users] = await db.query(
                 `
                 SELECT full_name
                 FROM users
                 WHERE id = ?
+                LIMIT 1
                 `,
-                [assigned_to]
+                [newAssignedTo]
             );
 
             if (users.length > 0) {
                 assignedName = users[0].full_name;
             }
-
         }
 
         // Lấy tên người được giao cũ
         if (task.assigned_to) {
-
             const [oldUsers] = await db.query(
                 `
                 SELECT full_name
                 FROM users
                 WHERE id = ?
+                LIMIT 1
                 `,
                 [task.assigned_to]
             );
@@ -708,61 +1008,71 @@ const updateTask = async (req, res) => {
             if (oldUsers.length > 0) {
                 oldAssignedName = oldUsers[0].full_name;
             }
-
         }
 
+        const assignedChanged =
+            Number(newAssignedTo || 0) !==
+            Number(task.assigned_to || 0);
+
         // Nếu có thay đổi người được giao
-        if (Number(assigned_to || 0) !== Number(task.assigned_to || 0)) {
-
-            // Trường hợp giao cho người mới
-            if (assigned_to) {
-
+        if (assignedChanged) {
+            // Giao cho người mới
+            if (newAssignedTo) {
                 await addTaskHistory(
-                    id,
+                    Number(id),
                     task.assigned_to
-                        ? `${req.user.full_name} đã phân công lại công việc từ ${oldAssignedName} sang ${assignedName}`
+                        ? `${req.user.full_name} đã phân công lại công việc từ ${oldAssignedName || "người phụ trách cũ"} sang ${assignedName}`
                         : `${req.user.full_name} đã phân công công việc cho ${assignedName}`,
                     req.user.id
                 );
 
-                // Thông báo cho người mới
                 await createNotification({
-                    user_id: assigned_to,
+                    user_id: newAssignedTo,
                     title: "Bạn được giao công việc",
-                    content: `Bạn được giao công việc: "${title}"`,
+                    content: `Bạn được giao công việc: "${title.trim()}"`,
                     type: "task",
-                    related_id: id
+                    related_id: Number(id)
                 });
-
+            } else {
+                // Gỡ người phụ trách
+                await addTaskHistory(
+                    Number(id),
+                    `${req.user.full_name} đã gỡ ${oldAssignedName || "người phụ trách"} khỏi công việc`,
+                    req.user.id
+                );
             }
 
-            // Trường hợp người cũ bị gỡ khỏi task
+            // Thông báo cho người cũ
             if (task.assigned_to) {
-
                 await createNotification({
-                    user_id: task.assigned_to,
+                    user_id: Number(task.assigned_to),
                     title: "Bạn không còn phụ trách công việc",
                     content: `Bạn không còn được phân công công việc: "${task.title}"`,
                     type: "task",
-                    related_id: id
+                    related_id: Number(id)
                 });
-
             }
 
-            // Thông báo cho Leader/người tạo task biết đã phân công lại
+            // Thông báo cho Leader và người tạo task
             const receivers = new Set();
 
-            if (task.leader_id && Number(task.leader_id) !== Number(req.user.id)) {
-                receivers.add(task.leader_id);
+            if (
+                task.leader_id &&
+                Number(task.leader_id) !== Number(req.user.id)
+            ) {
+                receivers.add(Number(task.leader_id));
             }
 
-            if (task.created_by && Number(task.created_by) !== Number(req.user.id)) {
-                receivers.add(task.created_by);
+            if (
+                task.created_by &&
+                Number(task.created_by) !== Number(req.user.id)
+            ) {
+                receivers.add(Number(task.created_by));
             }
 
             // Không gửi trùng cho người mới và người cũ
-            if (assigned_to) {
-                receivers.delete(Number(assigned_to));
+            if (newAssignedTo) {
+                receivers.delete(Number(newAssignedTo));
             }
 
             if (task.assigned_to) {
@@ -772,32 +1082,56 @@ const updateTask = async (req, res) => {
             for (const userId of receivers) {
                 await createNotification({
                     user_id: userId,
-                    title: "Công việc đã được phân công lại",
-                    content: `Công việc "${title}" đã được phân công lại cho ${assignedName || "chưa có người phụ trách"}`,
+                    title: newAssignedTo
+                        ? "Công việc đã được phân công lại"
+                        : "Công việc đã được gỡ người phụ trách",
+                    content: newAssignedTo
+                        ? `Công việc "${title.trim()}" đã được phân công cho ${assignedName}`
+                        : `Công việc "${title.trim()}" hiện chưa có người phụ trách`,
                     type: "task",
-                    related_id: id
+                    related_id: Number(id)
                 });
             }
+        }
 
+        // Ghi lịch sử khi thay đổi loại công việc
+        if (task.task_type !== newTaskType) {
+            const taskTypeLabels = {
+                preparation: "Chuẩn bị",
+                during_event: "Diễn ra",
+                post_event: "Kết thúc"
+            };
+
+            await addTaskHistory(
+                Number(id),
+                `${req.user.full_name} đã thay đổi loại công việc từ "${taskTypeLabels[task.task_type] || task.task_type}" sang "${taskTypeLabels[newTaskType]}"`,
+                req.user.id
+            );
         }
 
         // Ghi lịch sử cập nhật chung
         await addTaskHistory(
-            id,
-            `${req.user.full_name} đã cập nhật công việc`,
+            Number(id),
+            `${req.user.full_name} đã cập nhật công việc "${title.trim()}"`,
             req.user.id
         );
 
-        res.json({
-            message: "Cập nhật công việc thành công"
+        return res.status(200).json({
+            message: "Cập nhật công việc thành công",
+            task: {
+                id: Number(id),
+                title: title.trim(),
+                description: newDescription,
+                assigned_to: newAssignedTo,
+                priority: newPriority,
+                task_type: newTaskType,
+                due_date: newDueDate
+            }
         });
 
     } catch (error) {
-
         return handleServerError(res, error);
-
     }
-
 };
 
 const updateTaskStatus = async (req, res) => {
@@ -1156,10 +1490,21 @@ const restoreTask = async (req, res) => {
 };
 
 const getDeletedTasks = async (req, res) => {
-
     try {
+        const {
+            event_id,
+            task_type
+        } = req.query;
 
-        const { event_id } = req.query;
+        // Kiểm tra loại công việc nếu có truyền bộ lọc
+        if (
+            task_type &&
+            !VALID_TASK_TYPES.includes(task_type)
+        ) {
+            return res.status(400).json({
+                message: "Loại công việc không hợp lệ"
+            });
+        }
 
         let sql = `
             SELECT
@@ -1168,6 +1513,7 @@ const getDeletedTasks = async (req, res) => {
                 t.description,
                 t.status,
                 t.priority,
+                t.task_type,
                 t.due_date,
                 t.deleted_at,
 
@@ -1191,8 +1537,9 @@ const getDeletedTasks = async (req, res) => {
             AND e.deleted_at IS NULL
         `;
 
-        let params = [];
+        const params = [];
 
+        // Leader chỉ xem công việc đã xóa của sự kiện mình phụ trách
         if (req.user.role !== "admin") {
             sql += `
                 AND e.leader_id = ?
@@ -1201,6 +1548,7 @@ const getDeletedTasks = async (req, res) => {
             params.push(req.user.id);
         }
 
+        // Lọc theo sự kiện
         if (event_id) {
             sql += `
                 AND t.event_id = ?
@@ -1209,23 +1557,29 @@ const getDeletedTasks = async (req, res) => {
             params.push(event_id);
         }
 
+        // Lọc theo loại công việc
+        if (task_type) {
+            sql += `
+                AND t.task_type = ?
+            `;
+
+            params.push(task_type);
+        }
+
         sql += `
             ORDER BY t.deleted_at DESC
         `;
 
         const [tasks] = await db.query(sql, params);
 
-        res.json({
+        return res.status(200).json({
             total: tasks.length,
             tasks
         });
 
     } catch (error) {
-
         return handleServerError(res, error);
-
     }
-
 };
 
 const getTaskHistory = async (req, res) => {
