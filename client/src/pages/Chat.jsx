@@ -36,7 +36,7 @@ function Chat() {
     };
     const currentUser = getCurrentUser();
 
-    // HÀM FORMAT THỜI GIAN CHO KHUNG CHAT CHÍNH (VD: 14:30 • 5 phút trước)
+    // HÀM FORMAT THỜI GIAN CHO KHUNG CHAT CHÍNH
     const formatTime = (dateString) => {
         if (!dateString) return '';
         const date = new Date(dateString);
@@ -52,7 +52,7 @@ function Chat() {
         return `${timeStr} • ${date.toLocaleDateString('vi-VN')}`;
     };
 
-    // HÀM FORMAT THỜI GIAN CHO SIDEBAR (Rút gọn)
+    // HÀM FORMAT THỜI GIAN CHO SIDEBAR
     const formatSidebarTime = (dateString) => {
         if (!dateString) return '';
         const date = new Date(dateString);
@@ -140,6 +140,7 @@ function Chat() {
     const loadMessagesRef = useRef(loadMessages);
     useEffect(() => { loadMessagesRef.current = loadMessages; }, [loadMessages]);
 
+    // Gọi API lấy danh sách bạn bè có trạng thái 'accepted' dựa theo Controller Backend
     const fetchAllUsers = async () => {
         if (showNewChat) { setShowNewChat(false); return; }
         setShowNewChat(true);
@@ -150,9 +151,9 @@ function Chat() {
             });
             if (res.ok) {
                 const data = await res.json();
-                setAllUsers(data.users || []);
+                setAllUsers(data.users || []); // Trả về danh sách bạn bè hợp lệ để chat
             }
-        } catch (error) { console.error("Lỗi lấy danh bạ:", error); }
+        } catch (error) { console.error("Lỗi lấy danh sách bạn chat:", error); }
     };
 
     // --- KHỞI TẠO SOCKET ---
@@ -165,7 +166,6 @@ function Chat() {
         socketRef.current.on('connect', () => console.log("🟢 ĐÃ KẾT NỐI SOCKET"));
         socketRef.current.on('connect_error', (err) => console.error("🔴 LỖI SOCKET:", err.message));
 
-        // Nhận tin nhắn mới
         socketRef.current.on('new_direct_message', (msg) => {
             const currentTab = activeTabRef.current;
             const currentChat = selectedChatRef.current;
@@ -201,7 +201,6 @@ function Chat() {
             if (fetchSidebarDataRef.current) fetchSidebarDataRef.current();
         });
 
-        // ĐÃ SỬA: Lắng nghe đúng sự kiện "direct_message_recalled" từ backend
         socketRef.current.on('direct_message_recalled', (data) => {
             setMessages(prev => prev.map(m => Number(m.id) === Number(data.id) ? { ...m, is_revoked: true } : m));
             if (fetchSidebarDataRef.current) fetchSidebarDataRef.current();
@@ -217,7 +216,6 @@ function Chat() {
         };
     }, []); 
 
-    // Tự động xin vào tất cả các phòng Sự kiện để nhận thông báo ngầm
     useEffect(() => {
         if (socketRef.current && events.length > 0) {
             events.forEach(evt => {
@@ -231,7 +229,6 @@ function Chat() {
         setSelectedChat(chatTarget);
         if (isNewChat) setShowNewChat(false);
        
-        // Tắt in đậm ngay lập tức
         if (activeTab === 'direct') setUnreadDMs(prev => ({ ...prev, [chatTarget.user_id]: false }));
         else setUnreadEvents(prev => ({ ...prev, [chatTarget.id]: false }));
 
@@ -258,7 +255,6 @@ function Chat() {
         const sentText = inputText;
         setInputText(''); 
 
-        // Optimistic UI update
         const tempMsg = {
             id: 'temp-' + Date.now(),
             sender_id: currentUser?.id,
@@ -287,7 +283,8 @@ function Chat() {
                 await loadMessages(selectedChat, activeTab);
                 if (fetchSidebarDataRef.current) fetchSidebarDataRef.current();
             } else {
-                Swal.fire('Lỗi', 'Không thể gửi tin nhắn', 'error');
+                const errData = await res.json();
+                Swal.fire('Lỗi', errData.message || 'Không thể gửi tin nhắn', 'error');
                 setMessages(prev => prev.filter(m => m.id !== tempMsg.id));
             }
         } catch (error) {
@@ -317,7 +314,6 @@ function Chat() {
             try {
                 let res;
                 if (activeTab === 'direct') {
-                    // ĐÃ SỬA: Gọi đúng API PATCH /:id/recall của bạn Backend
                     res = await fetch(`http://localhost:5000/api/direct-messages/${msgId}/recall`, { method: 'PATCH', headers });
                 } else {
                     res = await fetch(`http://localhost:5000/api/messages/${msgId}`, { method: 'DELETE', headers });
@@ -365,29 +361,31 @@ function Chat() {
                 <div className="chat-list">
                     {activeTab === 'direct' && showNewChat ? (
                         <>
-                            <input className="chat-search-input" type="text" placeholder="Nhập tên để tìm kiếm..." value={searchUser} onChange={(e) => setSearchUser(e.target.value)} />
+                            <input className="chat-search-input" type="text" placeholder="Tìm bạn bè để chat..." value={searchUser} onChange={(e) => setSearchUser(e.target.value)} />
                             {filteredAllUsers.length > 0 ? filteredAllUsers.map(user => (
                                 <div key={user.id} className="chat-list-item search-result" onClick={() => handleSelectChat(user, true)}>
-                                    <strong className="chat-item-name">{user.full_name}</strong>
+                                    <div className="chat-item-avatar">
+                                        {user.full_name ? user.full_name.substring(0, 2).toUpperCase() : 'U'}
+                                    </div>
+                                    <div className="chat-item-content">
+                                        <strong className="chat-item-name">{user.full_name}</strong>
+                                        <div className="chat-item-last-msg" style={{fontSize: '12px'}}>{user.email}</div>
+                                    </div>
                                 </div>
-                            )) : <p style={{ fontSize: '13px', color: '#64748b', textAlign: 'center' }}>Không tìm thấy nhân viên.</p>}
+                            )) : <p style={{ fontSize: '13px', color: '#64748b', textAlign: 'center', padding: '10px' }}>Không tìm thấy bạn bè trong danh bạ.</p>}
                         </>
                     ) : (
                         activeTab === 'direct' ? (
                             conversations.length > 0 ? conversations.map(item => {
                                 const isUnread = item.unread_count > 0 || unreadDMs[item.user_id];
-                                // Lấy 2 chữ cái đầu làm Avatar
                                 const avatarInitials = item.full_name ? item.full_name.substring(0, 2).toUpperCase() : 'U';
 
                                 return (
                                     <div key={item.user_id} className={`chat-list-item ${selectedChat?.user_id === item.user_id ? 'selected' : ''} ${isUnread ? 'unread-bg' : ''}`} onClick={() => handleSelectChat(item)}>
-                                        
-                                        {/* THÊM KHỐI AVATAR */}
                                         <div className="chat-item-avatar">
                                             {avatarInitials}
                                         </div>
 
-                                        {/* BỌC NỘI DUNG CŨ VÀO chat-item-content */}
                                         <div className="chat-item-content">
                                             <div className="chat-item-header">
                                                 <strong className={`chat-item-name ${isUnread ? 'unread-text' : ''}`}>{item.full_name}</strong>
@@ -440,7 +438,6 @@ function Chat() {
                     <>
                         <div className="chat-header">
                             <div className="chat-header-avatar">
-                                {/* Dùng icon SVG đẹp thay cho emoji nếu là group chat */}
                                 {activeTab === 'direct' ? (
                                     selectedChat.full_name?.substring(0, 2).toUpperCase()
                                 ) : (
@@ -454,7 +451,7 @@ function Chat() {
                             </div>
                             <div className="chat-header-info">
                                 <h4>{activeTab === 'direct' ? selectedChat.full_name : `${selectedChat.title}`}</h4>
-                                <span className="chat-header-status">● Đang hoạt động</span>
+                                <span className="chat-header-status">● Bạn bè</span>
                             </div>
                         </div>
 
@@ -462,8 +459,6 @@ function Chat() {
                             {loading ? <p style={{ textAlign: 'center', color: '#64748b' }}>Đang tải tin nhắn...</p> : (
                                 messages.length > 0 ? messages.map((msg, index) => {
                                     const isMe = Number(msg.sender_id) === Number(currentUser?.id);
-                                    
-                                    // KIỂM TRA TIN NHẮN CÓ BỊ THU HỒI KHÔNG
                                     const isRevoked = msg.is_revoked || msg.is_deleted || msg.is_deleted_by_sender || msg.is_deleted_by_receiver;
                                    
                                     if (isRevoked) {
@@ -490,7 +485,6 @@ function Chat() {
                                             )}
                                            
                                             <div className={`chat-message-row ${isMe ? 'me' : 'other'}`}>
-                                               
                                                 <div style={{ display: 'flex', flexDirection: 'column', alignItems: isMe ? 'flex-end' : 'flex-start' }}>
                                                     <div className={`chat-message-bubble ${isMe ? 'me' : 'other'}`}>
                                                         {msg.content}
@@ -513,7 +507,6 @@ function Chat() {
                                                         </svg>
                                                     </button>
                                                 )}
-
                                             </div>
                                         </div>
                                     );
@@ -533,7 +526,7 @@ function Chat() {
                     <div className="chat-empty-state">
                         <span style={{ fontSize: '60px', opacity: 0.5 }}>💬</span>
                         <h3>Tin nhắn TaskFlow</h3>
-                        <p>Chọn một cuộc trò chuyện từ thanh bên trái để bắt đầu thảo luận.</p>
+                        <p>Chọn một người bạn từ thanh bên trái để bắt đầu thảo luận.</p>
                     </div>
                 )}
             </div>

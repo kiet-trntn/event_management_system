@@ -24,6 +24,9 @@ function ViewEvent() {
 
     const [filterMemberStatus, setFilterMemberStatus] = useState('');
 
+    // State lưu danh sách trạng thái bạn bè để hiển thị nút kết bạn hợp lý
+    const [friendshipStatuses, setFriendshipStatuses] = useState({});
+
     useEffect(() => {
         try {
             const token = localStorage.getItem('my_token');
@@ -42,6 +45,36 @@ function ViewEvent() {
         const timerId = setTimeout(() => { setDebouncedSearch(urlSearch); }, 500); 
         return () => clearTimeout(timerId);
     }, [urlSearch]);
+
+    // Hàm gọi đồng thời thông tin bạn bè (lời mời đã gửi + danh sách bạn bè đã kết bạn)
+    const fetchFriendshipData = useCallback(async () => {
+        try {
+            const token = localStorage.getItem('my_token');
+            const headers = { 'Authorization': `Bearer ${token}` };
+
+            const [friendsRes, sentRequestsRes] = await Promise.all([
+                fetch('http://localhost:5000/api/friends', { headers }),
+                fetch('http://localhost:5000/api/friends/requests/sent', { headers })
+            ]);
+
+            const mapping = {};
+            if (friendsRes.ok) {
+                const data = await friendsRes.json();
+                (data.friends || []).forEach(f => {
+                    mapping[f.user_id] = 'accepted';
+                });
+            }
+            if (sentRequestsRes.ok) {
+                const data = await sentRequestsRes.json();
+                (data.requests || []).forEach(r => {
+                    mapping[r.receiver_id] = 'pending';
+                });
+            }
+            setFriendshipStatuses(mapping);
+        } catch (e) {
+            console.error("Lỗi lấy thông tin kết bạn:", e);
+        }
+    }, []);
 
     const fetchViewEvent = useCallback(async () => {
         try {
@@ -71,6 +104,8 @@ function ViewEvent() {
                     const membersData = await membersRes.json();
                     setMembers(membersData.members || []);
                 }
+                // Tải kèm dữ liệu trạng thái mối quan hệ để render nút kết bạn
+                await fetchFriendshipData();
             } else {
                 Swal.fire('Lỗi', 'Không thể tải dữ liệu chi tiết', 'error');
                 navigate('/admin/events');
@@ -81,11 +116,33 @@ function ViewEvent() {
         } finally {
             setLoading(false);
         }
-    }, [id, navigate, debouncedSearch]);
+    }, [id, navigate, debouncedSearch, fetchFriendshipData]);
 
     useEffect(() => {
         fetchViewEvent();
     }, [fetchViewEvent]);
+
+    // Hàm xử lý gửi lời mời kết bạn trực tiếp từ danh sách thành viên
+    const handleSendFriendRequest = async (targetUserId, targetName) => {
+        try {
+            const token = localStorage.getItem('my_token');
+            const response = await fetch(`http://localhost:5000/api/friends/requests/${targetUserId}`, {
+                method: 'POST',
+                headers: { 'Authorization': `Bearer ${token}` }
+            });
+
+            const data = await response.json();
+            if (response.ok) {
+                Swal.fire('Thành công', `Đã gửi lời mời kết bạn đến ${targetName}`, 'success');
+                // Cập nhật lại giao diện trạng thái cục bộ
+                setFriendshipStatuses(prev => ({ ...prev, [targetUserId]: 'pending' }));
+            } else {
+                Swal.fire('Thất bại', data.message || 'Không thể kết bạn', 'error');
+            }
+        } catch (error) {
+            Swal.fire('Lỗi', 'Mất kết nối máy chủ', 'error');
+        }
+    };
 
     const handleDeleteTask = async (e, taskId) => {
         e.stopPropagation(); 
@@ -295,14 +352,12 @@ function ViewEvent() {
         });
     };
 
-    // Định nghĩa thứ tự ưu tiên cho task_type
     const taskTypeOrder = {
         'preparation': 1,
         'during_event': 2,
         'post_event': 3
     };
 
-    // Filter đồng thời thực hiện SORT theo thứ tự chuẩn bị -> diễn ra -> kết thúc
     const displayTasks = tasks
         .filter(t => {
             const matchStatus = filterTaskStatus ? t.status === filterTaskStatus : true;
@@ -321,7 +376,7 @@ function ViewEvent() {
         .sort((a, b) => {
             const orderA = taskTypeOrder[a.task_type] || 99;
             const orderB = taskTypeOrder[b.task_type] || 99;
-            return orderA - orderB; // Sắp xếp từ 1 -> 2 -> 3
+            return orderA - orderB;
         });
 
     const displayMembers = members.filter(m => {
@@ -484,6 +539,7 @@ function ViewEvent() {
                     </div>
                 </div>
 
+                {/* CỘT PHẢI: THÀNH VIÊN SỰ KIỆN */}
                 <div style={{ flex: '1 1 28%', minWidth: '300px', margin: 0 }}>
                     <div className="form-card" style={{ maxWidth: '100%', margin: 0, padding: '24px', height: 'fit-content' }}>
                         
@@ -513,30 +569,63 @@ function ViewEvent() {
                             <p className="text-secondary text-center" style={{ fontSize: '13px' }}>Không có thành viên nào khớp bộ lọc.</p>
                         ) : (
                             <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
-                                {displayMembers.map((member, index) => (
-                                    <div key={index} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-                                        <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-                                            <div className="user-avatar" style={{ backgroundColor: 'var(--primary-color)' }}>
-                                                {member.full_name ? member.full_name.charAt(0).toUpperCase() : 'U'}
+                                {displayMembers.map((member, index) => {
+                                    const isMe = currentUser && Number(currentUser.id) === Number(member.user_id);
+                                    const fStatus = friendshipStatuses[member.user_id];
+
+                                    return (
+                                        <div key={index} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                                            <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+                                                <div className="user-avatar" style={{ backgroundColor: 'var(--primary-color)' }}>
+                                                    {member.full_name ? member.full_name.charAt(0).toUpperCase() : 'U'}
+                                                </div>
+                                                <div>
+                                                    <p className="user-name" style={{ margin: 0, fontSize: '14px', fontWeight: '500' }}>
+                                                        {member.full_name} {isMe && <span style={{color: '#94a3b8', fontSize: '12px'}}>(Tôi)</span>}
+                                                        {member.status === 'inactive' && <span style={{color: '#ef4444', fontSize: '11px', marginLeft: '4px'}}>(Đã khóa)</span>}
+                                                    </p>
+                                                </div>
                                             </div>
-                                            <div>
-                                                <p className="user-name" style={{ margin: 0, fontSize: '14px', fontWeight: '500' }}>
-                                                    {member.full_name} 
-                                                    {member.status === 'inactive' && <span style={{color: '#ef4444', fontSize: '11px', marginLeft: '4px'}}>(Đã khóa)</span>}
-                                                </p>
+                                            
+                                            {/* KHỐI XỬ LÝ NÚT KB/XÓA CHỨC NĂNG */}
+                                            <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                                                {!isMe && member.status === 'active' && (
+                                                    <>
+                                                        {!fStatus && (
+                                                            <button 
+                                                                onClick={() => handleSendFriendRequest(member.user_id, member.full_name)}
+                                                                style={{ background: '#3b82f6', border: 'none', color: '#fff', cursor: 'pointer', fontSize: '12px', fontWeight: '500', padding: '4px 8px', borderRadius: '4px' }}
+                                                            >
+                                                                + Kết bạn
+                                                            </button>
+                                                        )}
+                                                        {fStatus === 'pending' && (
+                                                            <span style={{ color: '#64748b', fontSize: '12px', fontStyle: 'italic' }}>Đang chờ...</span>
+                                                        )}
+                                                        {fStatus === 'accepted' && (
+                                                            <button 
+                                                                onClick={() => navigate('/staff/chat')}
+                                                                style={{ background: '#10b981', border: 'none', color: '#fff', cursor: 'pointer', fontSize: '12px', fontWeight: '500', padding: '4px 8px', borderRadius: '4px' }}
+                                                                title="Nhấn để trò chuyện"
+                                                            >
+                                                                Bạn bè 💬
+                                                            </button>
+                                                        )}
+                                                    </>
+                                                )}
+
+                                                {hasManagerRights && isEditable && (
+                                                    <button 
+                                                        onClick={() => handleRemoveMember(member.user_id)}
+                                                        style={{ background: 'none', border: 'none', color: '#ef4444', cursor: 'pointer', fontSize: '13px', fontWeight: '500', padding: 0, marginLeft: '8px' }}
+                                                    >
+                                                        Xóa
+                                                    </button>
+                                                )}
                                             </div>
                                         </div>
-                                        
-                                        {hasManagerRights && isEditable && (
-                                            <button 
-                                                onClick={() => handleRemoveMember(member.user_id)}
-                                                style={{ background: 'none', border: 'none', color: '#ef4444', cursor: 'pointer', fontSize: '13px', fontWeight: '500', padding: 0 }}
-                                            >
-                                                Xóa
-                                            </button>
-                                        )}
-                                    </div>
-                                ))}
+                                    );
+                                })}
                             </div>
                         )}
                     </div>

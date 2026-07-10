@@ -1,251 +1,125 @@
-import React, { useState, useEffect, useCallback, useRef } from 'react';
-import io from 'socket.io-client';
-import { useParams, useNavigate } from 'react-router-dom';
+import React, { useState, useEffect, useCallback } from 'react';
+import { useNavigate, useLocation } from 'react-router-dom';
 import Swal from 'sweetalert2';
 
-function TaskDetail() {
-    const { id } = useParams();
+function MyTasks() {
     const navigate = useNavigate();
+    const location = useLocation();
     
-    const [task, setTask] = useState(null);
-    const [attachments, setAttachments] = useState([]); 
-    const [taskHistory, setTaskHistory] = useState([]);
-    const [submissionHistory, setSubmissionHistory] = useState([]); 
-    const [loading, setLoading] = useState(true);
-    const [uploading, setUploading] = useState(false);
-    const [currentUser, setCurrentUser] = useState(null);
+    const urlSearch = new URLSearchParams(location.search).get('search') || '';
+    const [debouncedSearch, setDebouncedSearch] = useState(urlSearch);
 
-    const [submitContent, setSubmitContent] = useState('');
-    const [submitLinkUrl, setSubmitLinkUrl] = useState('');
-    const [submitFile, setSubmitFile] = useState(null);
+    const [tasks, setTasks] = useState([]);
+    const [loading, setLoading] = useState(true);
+    const [draggedOverCol, setDraggedOverCol] = useState(null);
+    const [filterTaskType, setFilterTaskType] = useState(''); 
 
     useEffect(() => {
-        try {
-            const token = localStorage.getItem('my_token');
-            if (token) { 
-                setCurrentUser(JSON.parse(window.atob(token.split('.')[1]))); 
-            }
-        } catch (e) { console.error("Lỗi giải mã token:", e); }
-    }, []);
+        const timerId = setTimeout(() => {
+            setDebouncedSearch(urlSearch);
+        }, 500); 
+        return () => clearTimeout(timerId);
+    }, [urlSearch]);
 
-    const fetchTaskData = useCallback(async () => {
+    const fetchTasks = useCallback(async () => {
         try {
             setLoading(true);
             const token = localStorage.getItem('my_token');
-            const headers = { 'Authorization': `Bearer ${token}` };
+            const queryParams = new URLSearchParams();
+            if (debouncedSearch) queryParams.append('search', debouncedSearch);
+            if (filterTaskType) queryParams.append('task_type', filterTaskType); 
 
-            const [taskRes, attachRes, historyRes] = await Promise.all([
-                fetch(`http://localhost:5000/api/tasks/${id}`, { headers }),
-                fetch(`http://localhost:5000/api/attachments/task/${id}`, { headers }).catch(() => null),
-                fetch(`http://localhost:5000/api/tasks/${id}/history`, { headers }).catch(() => null)
-            ]);
-
-            if (taskRes.ok) {
-                setTask(await taskRes.json());
-                if (historyRes && historyRes.ok) setTaskHistory((await historyRes.json()).history || []);
-                if (attachRes && attachRes.ok) {
-                    const attachData = await attachRes.json();
-                    setAttachments(attachData.attachments || []);
-                }
-            } else {
-                Swal.fire('Lỗi', 'Không tìm thấy công việc', 'error');
-                navigate(-1);
-            }
-        } catch (error) { 
-            Swal.fire('Lỗi', 'Lỗi kết nối máy chủ', 'error');
-        } finally { setLoading(false); }
-    }, [id, navigate]);
-
-    const fetchSubmissionHistory = useCallback(async () => {
-        try {
-            const token = localStorage.getItem('my_token');
-            const res = await fetch(`http://localhost:5000/api/task-submissions/task/${id}`, {
+            const response = await fetch(`http://localhost:5000/api/tasks/my-tasks?${queryParams.toString()}`, {
                 headers: { 'Authorization': `Bearer ${token}` }
             });
-            if (res.ok) {
-                const data = await res.json();
-                setSubmissionHistory(data.submissions || []);
+
+            if (response.ok) {
+                const data = await response.json();
+                setTasks(data.tasks || []);
             }
-        } catch (err) { console.error("Lỗi tải lịch sử bài nộp:", err); }
-    }, [id]);
-
-    const socketRef = useRef(null);
-
-    useEffect(() => { 
-        document.title = "Chi tiết công việc | TaskFlow";
-        fetchTaskData(); 
-        fetchSubmissionHistory(); 
-    }, [fetchTaskData, fetchSubmissionHistory]);
+        } catch (error) {
+            console.error(error);
+        } finally {
+            setLoading(false);
+        }
+    }, [debouncedSearch, filterTaskType]);
 
     useEffect(() => {
-        const token = localStorage.getItem('my_token');
-        if (!token) return;
-        socketRef.current = io('http://localhost:5000', { auth: { token } });
-        socketRef.current.on('new_notification', (notif) => {
-            try {
-                if (!notif) return;
-                if (Number(notif.related_id) === Number(id)) {
-                    fetchTaskData();
-                    fetchSubmissionHistory();
-                }
-            } catch (e) { }
-        });
-        return () => { if (socketRef.current) socketRef.current.disconnect(); };
-    }, [id, fetchTaskData, fetchSubmissionHistory]);
+        document.title = "Công việc của tôi | TaskFlow";
+        fetchTasks();
+    }, [fetchTasks]);
 
-    const handleFileUpload = async (e) => {
-        const file = e.target.files[0];
-        if (!file) return;
-        setUploading(true);
-        const formData = new FormData();
-        formData.append('file', file);
-        formData.append('task_id', id);
+const handleDragStart = (e, task) => {
+    if (
+        task.status === 'completed' || task.status === 'cancelled' || task.status === 'submitted' ||
+        task.event_status === 'Đã kết thúc' || task.event_status === 'Đã hủy'
+    ) {
+        e.preventDefault(); 
+        return;
+    }
+    e.dataTransfer.setData('text/plain', task.id.toString());
+    e.dataTransfer.effectAllowed = 'move';
+};
 
-        try {
-            const token = localStorage.getItem('my_token');
-            const res = await fetch(`http://localhost:5000/api/attachments`, {
-                method: 'POST',
-                headers: { 'Authorization': `Bearer ${token}` },
-                body: formData
-            });
-            if (res.ok) {
-                Swal.fire({ toast: true, position: 'top-end', icon: 'success', title: 'Đã thêm tài liệu', showConfirmButton: false, timer: 1500 });
-                fetchTaskData(); 
-            } else {
-                const data = await res.json();
-                Swal.fire('Lỗi', data.message || 'Không thể tải file lên', 'error');
-            }
-        } catch (error) { Swal.fire('Lỗi', 'Mất kết nối máy chủ', 'error'); }
-        finally { setUploading(false); e.target.value = null; }
+    const handleDragOver = (e, colId) => {
+        e.preventDefault(); e.dataTransfer.dropEffect = 'move';
+        if (draggedOverCol !== colId) setDraggedOverCol(colId); 
     };
 
-    const handleDeleteFile = async (fileId) => {
-        const result = await Swal.fire({
-            title: 'Xóa file này?',
-            icon: 'warning',
-            showCancelButton: true,
-            confirmButtonColor: '#EF4444',
-            confirmButtonText: 'Xóa ngay',
-            cancelButtonText: 'Hủy'
-        });
-
-        if (result.isConfirmed) {
-            try {
-                const token = localStorage.getItem('my_token');
-                const res = await fetch(`http://localhost:5000/api/attachments/${fileId}/deleted`, {
-                    method: 'PATCH',
-                    headers: { 'Authorization': `Bearer ${token}` }
-                });
-                if (res.ok) {
-                    Swal.fire({ toast: true, position: 'top-end', icon: 'success', title: 'Đã xóa file', showConfirmButton: false, timer: 1500 });
-                    setAttachments(prev => prev.filter(f => f.id !== fileId)); 
-                }
-            } catch (error) { Swal.fire('Lỗi', 'Mất kết nối máy chủ', 'error'); }
-        }
-    };
-
-    const handleSubmitTaskResult = async (e) => {
+    const handleDragLeave = (e) => {
         e.preventDefault();
-        if (!submitContent && !submitLinkUrl && !submitFile) {
-            return Swal.fire('Cảnh báo', 'Vui lòng cung cấp ít nhất một minh chứng!', 'warning');
-        }
-        const formData = new FormData();
-        formData.append('task_id', id);
-        formData.append('content', submitContent);
-        formData.append('link_url', submitLinkUrl);
-        if (submitFile) formData.append('file', submitFile);
-
-        try {
-            setUploading(true);
-            const token = localStorage.getItem('my_token');
-            const response = await fetch('http://localhost:5000/api/task-submissions', { 
-                method: 'POST', 
-                headers: { 'Authorization': `Bearer ${token}` }, 
-                body: formData 
-            });
-            if (response.ok) {
-                Swal.fire('Thành công', 'Đã nộp bài kết quả thành công!', 'success');
-                setSubmitContent(''); setSubmitLinkUrl(''); setSubmitFile(null);
-                fetchTaskData(); fetchSubmissionHistory(); 
-            } else {
-                const errData = await response.json();
-                Swal.fire('Lỗi', errData.message || 'Không thể nộp bài', 'error');
-            }
-        } catch (error) { Swal.fire('Lỗi', 'Mất kết nối máy chủ', 'error'); }
-        finally { setUploading(false); }
+        setDraggedOverCol(null);
     };
 
-    const handleLeaderReview = async (status) => {
-        if (!task.latest_submission_id) {
-            Swal.fire('Lỗi', 'Không tìm thấy dữ liệu bài nộp.', 'error'); return;
-        }
-        let review_note = "";
-        if (status === 'rejected') {
-            const { value: text } = await Swal.fire({
-                title: 'Lý do từ chối bài nộp',
-                input: 'textarea',
-                inputPlaceholder: 'Nhập ghi chú yêu cầu nhân viên sửa đổi...',
-                showCancelButton: true,
-                confirmButtonColor: '#EF4444',
-                confirmButtonText: 'Trả lại bài nộp',
-                cancelButtonText: 'Hủy'
-            });
-            if (text === undefined) return;
-            review_note = text;
-        } else {
-            const confirm = await Swal.fire({
-                title: 'Xác nhận phê duyệt?',
-                text: 'Duyệt bài nộp đồng nghĩa việc chốt Hoàn thành công việc.',
-                icon: 'question',
-                showCancelButton: true,
-                confirmButtonText: 'Đồng ý duyệt'
-            });
-            if (!confirm.isConfirmed) return;
-        }
+    const handleDrop = async (e, newStatus) => {
+        e.preventDefault();
+        setDraggedOverCol(null); 
+
+        const taskId = e.dataTransfer.getData('text/plain');
+        if (!taskId) return;
+
+        const taskToMove = tasks.find(t => t.id.toString() === taskId);
+        if (!taskToMove || taskToMove.status === newStatus) return; 
+
+        if (newStatus === 'cancelled') return Swal.fire('Từ chối', 'Nhân viên không thể tự ý hủy công việc.', 'warning');
+        if (newStatus === 'submitted') return Swal.fire('Từ chối', 'Trạng thái "Chờ phê duyệt" tự động kích hoạt khi nộp file.', 'warning');
+        if (newStatus === 'completed') return Swal.fire('Từ chối', 'Bạn không thể tự hoàn thành công việc.', 'warning');
+
+        const oldStatus = taskToMove.status;
+        setTasks(prev => prev.map(t => t.id.toString() === taskId ? { ...t, status: newStatus } : t));
 
         try {
             const token = localStorage.getItem('my_token');
-            const res = await fetch(`http://localhost:5000/api/task-submissions/${task.latest_submission_id}/review`, {
+            const response = await fetch(`http://localhost:5000/api/tasks/${taskId}/status`, {
                 method: 'PATCH',
                 headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
-                body: JSON.stringify({ status, review_note })
+                body: JSON.stringify({ status: newStatus })
             });
-            if (res.ok) {
-                Swal.fire('Đã xử lý', status === 'approved' ? 'Công việc hoàn thành xuất sắc!' : 'Đã gửi phản hồi từ chối.', 'success');
-                fetchTaskData(); fetchSubmissionHistory(); 
-            } else {
-                const errData = await res.json(); Swal.fire('Lỗi', errData.message || 'Không thể cập nhật', 'error');
-            }
-        } catch (error) { Swal.fire('Lỗi', 'Không thể kết nối máy chủ', 'error'); }
-    };
 
-    const handleDownload = async (fileId, fileName) => {
-        try {
-            const response = await fetch(`http://localhost:5000/api/attachments/${fileId}/download`, { 
-                headers: { 'Authorization': `Bearer ${localStorage.getItem('my_token')}` } 
-            });
             if (response.ok) {
-                const blob = await response.blob();
-                const url = window.URL.createObjectURL(blob);
-                const a = document.createElement('a'); a.href = url; a.download = fileName;
-                document.body.appendChild(a); a.click(); a.remove();
+                Swal.fire({ toast: true, position: 'top-end', icon: 'success', title: 'Cập nhật trạng thái thành công!', showConfirmButton: false, timer: 1500 });
+            } else {
+                setTasks(prev => prev.map(t => t.id.toString() === taskId ? { ...t, status: oldStatus } : t));
             }
-        } catch (e) { console.error(e); }
+        } catch (error) {
+            setTasks(prev => prev.map(t => t.id.toString() === taskId ? { ...t, status: oldStatus } : t));
+        }
     };
 
-    const handleDownloadSubmission = async (subId, fileName) => {
-        try {
-            const token = localStorage.getItem('my_token');
-            const res = await fetch(`http://localhost:5000/api/task-submissions/${subId}/download`, {
-                headers: { 'Authorization': `Bearer ${token}` }
-            });
-            if (res.ok) {
-                const blob = await res.blob();
-                const url = window.URL.createObjectURL(blob);
-                const a = document.createElement('a'); a.href = url; a.download = fileName;
-                document.body.appendChild(a); a.click(); a.remove();
-            }
-        } catch (err) { Swal.fire('Lỗi', 'Mất kết nối', 'error'); }
+    const columns = [
+        { id: 'pending', title: 'Chờ xử lý', titleColor: '#64748b' },
+        { id: 'in_progress', title: 'Đang tiến hành', titleColor: '#2563eb' },
+        { id: 'submitted', title: 'Chờ phê duyệt', titleColor: '#ea580c' }, 
+        { id: 'completed', title: 'Đã hoàn thành', titleColor: '#16a34a' },
+        { id: 'cancelled', title: 'Đã hủy', titleColor: '#6b7280' }
+    ];
+
+    const getPriorityStyle = (priority) => {
+        switch(priority) {
+            case 'high': return { bg: '#fee2e2', color: '#dc2626', text: 'Cao' };
+            case 'medium': return { bg: '#fef3c7', color: '#d97706', text: 'Thường' };
+            default: return { bg: '#f1f5f9', color: '#64748b', text: 'Thấp' };
+        }
     };
 
     const translateTaskType = (type) => {
@@ -255,212 +129,79 @@ function TaskDetail() {
         return type || 'Khác';
     };
 
-    const translateAction = (actionText) => {
-        if (!actionText) return "";
-        return actionText.replace('pending', 'Chờ xử lý').replace('in_progress', 'Đang tiến hành').replace('completed', 'Đã hoàn thành').replace('cancelled', 'Đã hủy');
+    // Định vị thứ tự của task_type
+    const taskTypeOrder = {
+        'preparation': 1,
+        'during_event': 2,
+        'post_event': 3
     };
 
     if (loading) return <div className="page-container"><div className="form-card text-center text-secondary">Đang tải dữ liệu...</div></div>;
-    if (!task) return null;
-
-    const isAdmin = currentUser?.role === 'admin';
-    const isEventLeader = currentUser && (Number(task.event_leader_id) === Number(currentUser.id)); 
-    const isAssignedUser = currentUser && (task.assigned_to === currentUser.id);
-    
-    const hasManagerRights = isAdmin || isEventLeader;
-    const isTaskClosed = task.status === 'completed' || task.status === 'cancelled';
-
-    // 🛑 LOGIC THÊM: Kiểm tra xem sự kiện chứa công việc này đã đóng hoặc hủy chưa
-    const isEventClosedOrCanceled = task.event_status === 'Đã kết thúc' || task.event_status === 'Đã hủy';
 
     return (
-        <div className="page-container" >
-            <div className="page-header-form" style={{ maxWidth: '91%', display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '24px' }}>
-                 <button className="btn-back" onClick={() => navigate(-1)}>
-                    <svg width="18" height="18" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" d="M10 19l-7-7m0 0l7-7m-7 7h18" />
-                    </svg>
-                    Quay lại
-                 </button>   
-                 {/* 🛑 CHẶN: Chỉ hiện nút sửa công việc nếu Sự kiện còn hoạt động */}
-                {hasManagerRights && !isTaskClosed && !isEventClosedOrCanceled && (
-                    <button className="btn-primary" onClick={() => navigate(`/staff/tasks/edit/${task.id}`)}>
-                        Chỉnh sửa công việc
-                    </button>
-                )}
+        <div className="page-container" style={{ maxWidth: '100%' }}>
+            <div className="page-header-form" style={{ maxWidth: '100%', display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '24px' }}>
+                <h3>Công Việc Của Tôi</h3>
+                <div style={{ width: '200px' }}>
+                    <select className="form-input" value={filterTaskType} onChange={(e) => setFilterTaskType(e.target.value)}>
+                        <option value="">-- Tất cả giai đoạn --</option>
+                        <option value="preparation">Chuẩn bị</option>
+                        <option value="during_event">Diễn ra</option>
+                        <option value="post_event">Kết thúc</option>
+                    </select>
+                </div>
             </div>
 
-            <div className="task-view-wrapper" style={{ display: 'flex', gap: '24px', flexWrap: 'wrap' }}>
-                <div className="form-card large" style={{ flex: '2 1 600px', margin: 0, padding: '24px' }}> 
-                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '16px' }}>
-                        <h2 style={{ fontSize: '28px', margin: 0, fontWeight: '700', color: 'var(--text-primary)', letterSpacing: '-0.02em' }}>
-                            {task.title}
-                        </h2>
-                    </div>
+            <div className="kanban-board">
+                {columns.map(col => {
+                    // Lọc task thuộc cột hiện tại + thực hiện SORT theo thứ tự Giai Đoạn
+                    const colTasks = tasks
+                        .filter(t => t.status === col.id)
+                        .sort((a, b) => {
+                            const orderA = taskTypeOrder[a.task_type] || 99;
+                            const orderB = taskTypeOrder[b.task_type] || 99;
+                            return orderA - orderB; // Chuẩn bị -> Diễn ra -> Kết thúc
+                        });
+                        
+                    const isDragOver = draggedOverCol === col.id;
                     
-                    <div className="task-info-grid" style={{ marginBottom: '24px' }}>
-                        <div className="task-grid-item">
-                            <span className="task-grid-label">Giai đoạn:</span>
-                            <span className="badge-assignee" style={{ backgroundColor: '#e2e8f0', color: '#475569' }}>{translateTaskType(task.task_type)}</span>
-                        </div>
-                        <div className="task-grid-item">
-                            <span className="task-grid-label">Người giao:</span>
-                            <span className="badge-creator">{task.created_by_name || 'Hệ thống'}</span>
-                        </div>
-                        <div className="task-grid-item">
-                            <span className="task-grid-label">Người thực hiện:</span>
-                            <span className="badge-assignee">{task.assigned_name || 'Chưa phân công'}</span>
-                        </div>
-                        <div className="task-grid-item">
-                            <span className="task-grid-label">Độ ưu tiên:</span>
-                            {task.priority === 'high' ? <span className="badge-priority-high">Cao</span> : task.priority === 'medium' ? <span className="badge-priority-medium">Trung bình</span> : <span className="badge-priority-low">Thấp</span>}
-                        </div>
-                        <div className="task-grid-item">
-                            <span className="task-grid-label">Hạn chót:</span>
-                            <span className={task.due_date ? "badge-priority-high" : "badge-deadline-empty"}>
-                                {task.due_date ? new Date(task.due_date).toLocaleDateString('vi-VN') : 'Không có'}
-                            </span>
-                        </div>
-                    </div>
+                    return (
+                        <div key={col.id} className={`kanban-column ${isDragOver ? 'drag-over' : ''}`} onDragOver={(e) => handleDragOver(e, col.id)} onDragLeave={handleDragLeave} onDrop={(e) => handleDrop(e, col.id)}>
+                            <div className="kanban-col-header">
+                                <h4 style={{ margin: 0, color: col.titleColor, fontSize: '15px', fontWeight: '600' }}>{col.title}</h4>
+                                <span className="kanban-col-count">{colTasks.length}</span>
+                            </div>
 
-                    <div style={{ marginBottom: '24px' }}>
-                        <h4 className="task-desc-title" style={{ marginBottom: '8px' }}>Mô tả chi tiết</h4>
-                        <div className="task-desc-box" style={{ padding: '14px' }}>
-                            {task.description || <span className="task-desc-empty">Không có mô tả chi tiết cho công việc này.</span>}
-                        </div>
-                    </div>
-
-                    <div style={{ marginTop: '24px', borderTop: '1px solid #E2E8F0', paddingTop: '20px' }}>
-                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px' }}>
-                            <h4 style={{ margin: 0, fontSize: '16px', fontWeight: '600' }}>Tài liệu đính kèm hệ thống ({attachments.length}):</h4>
-                            
-                            {/* 🛑 YÊU CẦU 5: Ẩn nút "+ Thêm tài liệu" nếu sự kiện đã hủy/đóng */}
-                            {hasManagerRights && !isTaskClosed && !isEventClosedOrCanceled && (
-                                <div>
-                                    <input type="file" id="leader-upload-file" style={{ display: 'none' }} onChange={handleFileUpload} disabled={uploading} />
-                                    <label htmlFor="leader-upload-file" className="btn-primary" style={{ cursor: uploading ? 'not-allowed' : 'pointer', fontSize: '13px', padding: '8px 14px', margin: 0 }}>
-                                        {uploading ? 'Đang tải...' : '+ Thêm tài liệu'}
-                                    </label>
-                                </div>
-                            )}
-                        </div>
-
-                        {attachments.length === 0 ? (
-                            <p style={{ color: '#9CA3AF', fontSize: '14px', margin: '10px 0 0 0' }}>Chưa có file tài liệu vật lý nào được lưu trữ.</p>
-                        ) : (
-                            attachments.map(file => (
-                                <div key={file.id} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '12px 16px', backgroundColor: '#F1F5F9', borderRadius: '8px', marginBottom: '10px' }}>
-                                    <span style={{ fontSize: '14px', fontWeight: '500' }}>{file.file_name}</span>
-                                    <div style={{ display: 'flex', gap: '14px' }}>
-                                        <button onClick={() => handleDownload(file.id, file.file_name)} style={{ background: 'none', border: 'none', color: '#3B82F6', cursor: 'pointer', fontWeight: 'bold' }}>Tải về</button>
-                                        
-                                        {/* 🛑 YÊU CẦU 5: Ẩn hoàn toàn nút "Xóa" của toàn bộ tài liệu đã up trước đó nếu sự kiện đóng/hủy */}
-                                        {hasManagerRights && !isEventClosedOrCanceled && (
-                                            <button onClick={() => handleDeleteFile(file.id)} style={{ background: 'none', border: 'none', color: '#EF4444', cursor: 'pointer', fontWeight: 'bold' }}>Xóa</button>
-                                        )}
-                                    </div>
-                                </div>
-                            ))
-                        )}
-                    </div>
-                </div>
-
-                <div style={{ flex: '1 1 340px', display: 'flex', flexDirection: 'column', gap: '24px' }}>
-                    
-                    {/* 🛑 YÊU CẦU 4: KIỂM TRA SỰ KIỆN ĐÓNG/HỦY TRƯỚC KHI HIỂN THỊ KHỐI CỦA NHÂN VIÊN */}
-                    {isEventClosedOrCanceled ? (
-                        <div className="form-card" style={{ margin: 0, padding: '24px', backgroundColor: '#fff5f5', border: '1px solid #fee2e2', borderRadius: '12px', textAlign: 'center' }}>
-                            <p style={{ color: '#dc2626', fontWeight: '700', fontSize: '15px', margin: 0 }}>
-                                ⚠️ Sự kiện này đã đóng/hủy. Không thể nộp thêm minh chứng.
-                            </p>
-                        </div>
-                    ) : (
-                        // Nếu sự kiện bình thường, hiện form nộp bài như cũ
-                        !isTaskClosed && isAssignedUser && (
-                            <div className="form-card" style={{ margin: 0, padding: '24px', backgroundColor: '#ffffff', border: '1px solid #e2e8f0', borderRadius: '12px', boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.05)' }}>
-                                <h3 style={{ fontSize: '18px', margin: '0 0 20px 0', color: '#1e293b', borderBottom: '1px solid #f1f5f9', paddingBottom: '12px' }}>Nộp minh chứng</h3>
-                                <form onSubmit={handleSubmitTaskResult}>
-                                    <div style={{ marginBottom: '18px' }}>
-                                        <label style={{ display: 'block', fontSize: '14px', fontWeight: '600', color: '#475569', marginBottom: '8px' }}>Tóm tắt nội dung hoàn thành:</label>
-                                        <textarea rows="3" value={task.status === 'submitted' ? (task.submission_content || '') : submitContent} onChange={(e) => setSubmitContent(e.target.value)} disabled={task.status === 'submitted' || uploading} style={{ width: '100%', padding: '10px 12px', borderRadius: '8px', border: '1px solid #cbd5e1', backgroundColor: task.status === 'submitted' ? '#f1f5f9' : '#f8fafc', fontSize: '14px', outline: 'none' }} placeholder="Ghi chú..."></textarea>
-                                    </div>
-                                    <div style={{ marginBottom: '18px' }}>
-                                        <label style={{ display: 'block', fontSize: '14px', fontWeight: '600', color: '#475569', marginBottom: '8px' }}>Link kết quả:</label>
-                                        {task.status === 'submitted' && task.submission_link_url ? (
-                                            <div style={{ padding: '10px 12px', borderRadius: '8px', border: '1px solid #cbd5e1', backgroundColor: '#f1f5f9', fontSize: '14px' }}>
-                                                <a href={task.submission_link_url} target="_blank" rel="noopener noreferrer" style={{ color: '#2563eb', textDecoration: 'none', fontWeight: '600' }}>Link minh chứng đã nộp</a>
+                            <div style={{ flex: 1, minHeight: '50px', display: 'flex', flexDirection: 'column' }}>
+                                {colTasks.map(task => {
+                                    const prio = getPriorityStyle(task.priority);
+                                    const isLocked = ['completed', 'cancelled', 'submitted'].includes(task.status);
+                                    return (
+                                        <div 
+                                            key={task.id} 
+                                            className={`kanban-card ${isLocked ? 'locked' : ''}`}
+                                            draggable={!isLocked} 
+                                            onDragStart={(e) => handleDragStart(e, task)}
+                                            onClick={() => navigate(`/staff/tasks/view/${task.id}`)}
+                                            style={{ opacity: isLocked ? 0.85 : 1, cursor: isLocked ? 'pointer' : 'grab' }}
+                                        >
+                                            <div className="kanban-tags" style={{ marginBottom: '8px' }}>
+                                                <span className="kanban-tag" style={{ backgroundColor: prio.bg, color: prio.color }}>Ưu tiên: {prio.text}</span>
+                                                <span className="kanban-tag" style={{ backgroundColor: '#e2e8f0', color: '#475569' }}>{translateTaskType(task.task_type)}</span>
                                             </div>
-                                        ) : (
-                                            <input type="url" value={submitLinkUrl} onChange={(e) => setSubmitLinkUrl(e.target.value)} disabled={task.status === 'submitted' || uploading} style={{ width: '100%', padding: '10px 12px', borderRadius: '8px', border: '1px solid #cbd5e1', backgroundColor: '#f8fafc', fontSize: '14px', outline: 'none' }} placeholder="https://..." />
-                                        )}
-                                    </div>
-                                    <div style={{ marginBottom: '24px' }}>
-                                        <label style={{ display: 'block', fontSize: '14px', fontWeight: '600', color: '#475569', marginBottom: '8px' }}>Tệp báo cáo:</label>
-                                        <input type="file" id="file-upload" onChange={(e) => setSubmitFile(e.target.files[0])} disabled={task.status === 'submitted' || uploading} style={{ display: 'none' }} />
-                                        <label htmlFor={task.status === 'submitted' ? "" : "file-upload"} style={{ display: 'flex', alignItems: 'center', padding: '12px 16px', border: task.status === 'submitted' ? '1px solid #cbd5e1' : '1px dashed #94a3b8', borderRadius: '8px', backgroundColor: '#f1f5f9', cursor: task.status === 'submitted' ? 'default' : 'pointer', fontSize: '14px', color: '#334155', gap: '10px' }}>
-                                            {task.status === 'submitted' ? (<span>{task.submission_file_name || "Không có tệp"}</span>) : submitFile ? (<span>{submitFile.name}</span>) : (<span>Chọn tệp báo cáo...</span>)}
-                                        </label>
-                                    </div>
-                                    {task.status === 'submitted' ? (
-                                        <button type="button" disabled style={{ width: '100%', padding: '12px', backgroundColor: '#f59e0b', color: '#ffffff', border: 'none', borderRadius: '8px', fontWeight: '600', fontSize: '15px', cursor: 'not-allowed' }}>Bài nộp đang chờ phê duyệt...</button>
-                                    ) : (
-                                        <button type="submit" disabled={uploading} style={{ width: '100%', padding: '12px', backgroundColor: '#2563eb', color: '#ffffff', border: 'none', borderRadius: '8px', fontWeight: '600', fontSize: '15px', cursor: 'pointer' }}>{uploading ? 'Đang gửi...' : 'Gửi bài duyệt'}</button>
-                                    )}
-                                </form>
-                            </div>
-                        )
-                    )}
-
-                    {/* TRƯỜNG HỢP BÀI NỘP ĐANG CHỜ DUYỆT */}
-                    {task.status === 'submitted' && !isAssignedUser && (
-                        <div className="form-card" style={{ margin: 0, padding: '24px', backgroundColor: '#ffffff', border: '1px solid #e2e8f0', borderRadius: '12px', boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.05)' }}>
-                            <h3 style={{ fontSize: '18px', margin: '0 0 16px 0', color: '#b45309', borderBottom: '1px solid #e2e8f0', paddingBottom: '12px' }}>Chi tiết minh chứng kết quả</h3>
-                            <div style={{ backgroundColor: '#f8fafc', padding: '14px', borderRadius: '8px', border: '1px solid #e2e8f0', fontSize: '13px', display: 'flex', flexDirection: 'column', gap: '10px', marginBottom: '16px' }}>
-                                <p style={{ margin: 0 }}><strong>Nội dung:</strong> {task.submission_content || 'Không có ghi chú.'}</p>
-                                {task.submission_link_url && (<p style={{ margin: 0 }}><strong>Link:</strong> <a href={task.submission_link_url} target="_blank" rel="noopener noreferrer" style={{ color: '#2563eb', textDecoration: 'underline', fontWeight: '600' }}>Xem sản phẩm nộp</a></p>)}
-                                {task.submission_file_name && (
-                                    <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', marginTop: '4px' }}>
-                                        <p style={{ margin: 0, color: '#475569', fontStyle: 'italic' }}>Tệp: {task.submission_file_name}</p>
-                                        <button onClick={() => handleDownloadSubmission(task.latest_submission_id, task.submission_file_name)} style={{ alignSelf: 'flex-start', background: '#e0f2fe', color: '#0284c7', border: '1px solid #bae6fd', padding: '6px 14px', borderRadius: '6px', cursor: 'pointer', fontSize: '13px', fontWeight: '600' }}>Tải file về xem trước</button>
-                                    </div>
-                                )}
-                            </div>
-                            
-                            {/* 🛑 YÊU CẦU 4: Ẩn hoàn toàn 2 nút "Trả lại" và "Duyệt Đạt" nếu sự kiện đã kết thúc hoặc hủy */}
-                            {isEventLeader && !isEventClosedOrCanceled && (
-                                <div style={{ display: 'flex', gap: '12px', marginTop: '16px' }}>
-                                    <button onClick={() => handleLeaderReview('rejected')} style={{ flex: 1, padding: '12px', backgroundColor: '#ef4444', color: '#ffffff', border: 'none', borderRadius: '8px', fontWeight: '600', cursor: 'pointer', fontSize: '14px' }}>Trả lại</button>
-                                    <button onClick={() => handleLeaderReview('approved')} style={{ flex: 1, padding: '12px', backgroundColor: '#10b981', color: '#ffffff', border: 'none', borderRadius: '8px', fontWeight: '600', cursor: 'pointer', fontSize: '14px' }}>Duyệt Đạt</button>
-                                </div>
-                            )}
-                        </div>
-                    )}
-
-                    {/* CÁC BOX LỊCH SỬ THÌ GIỮ NGUYÊN ĐỂ XEM LẠI */}
-                    {task.status === 'completed' && (
-                        <div className="form-card" style={{ margin: 0, padding: '24px', backgroundColor: '#f0fdf4', border: '1px solid #bbf7d0', borderRadius: '12px' }}>
-                            <div style={{ textAlign: 'center', marginBottom: '16px' }}>
-                                <h3 style={{ fontSize: '18px', margin: '8px 0 4px 0', color: '#166534', fontWeight: '700' }}>Công việc hoàn thành</h3>
-                            </div>
-                            <div style={{ backgroundColor: '#ffffff', padding: '14px', borderRadius: '8px', border: '1px solid #e2e8f0', fontSize: '13px', display: 'flex', flexDirection: 'column', gap: '12px' }}>
-                                {task.submission_content && (<div><strong style={{ color: '#166534', display: 'block', marginBottom: '4px' }}>Nội dung:</strong><span>{task.submission_content}</span></div>)}
-                                {task.submission_link_url && (<div><strong style={{ color: '#166534', display: 'block', marginBottom: '4px' }}>Link:</strong><a href={task.submission_link_url} target="_blank" rel="noopener noreferrer" style={{ color: '#2563eb', textDecoration: 'underline', fontWeight: '600' }}>{task.submission_link_url} ↗</a></div>)}
+                                            <h5 style={{ margin: '0 0 4px 0', fontSize: '15px', color: '#111827', fontWeight: '700', lineHeight: '1.4' }}>{task.title}</h5>
+                                            <p style={{ margin: '0 0 12px 0', fontSize: '13px' }}><span style={{ color: '#6b7280' }}>Sự kiện: </span><span style={{ color: '#3b82f6' }}>{task.event_title}</span></p>
+                                            <p style={{ margin: 0, fontSize: '12px', color: '#626f86' }}>Hạn: {task.due_date ? new Date(task.due_date).toLocaleDateString('vi-VN') : 'Không có'}</p>
+                                        </div>
+                                    )
+                                })}
                             </div>
                         </div>
-                    )}
-
-                    {(isAssignedUser || hasManagerRights) && (
-                        <div className="form-card" style={{ margin: 0, padding: '24px', backgroundColor: 'var(--bg-neutral)', maxWidth: '100%' }}>
-                            <h4 style={{ margin: '0 0 16px 0', fontSize: '16px', fontWeight: '600' }}>Lịch sử hoạt động</h4>
-                            <div style={{ maxHeight: '200px', overflowY: 'auto' }}>
-                                {taskHistory.map(h => (<p key={h.id} style={{ fontSize: '13px', margin: '0 0 8px 0' }}><span style={{ fontWeight: '600' }}>{h.full_name}</span>: {translateAction(h.action)}</p>))}
-                            </div>
-                        </div>
-                    )}
-                </div>
+                    );
+                })}
             </div>
         </div>
     );
 }
 
-export default TaskDetail;
+export default MyTasks;
