@@ -2,20 +2,32 @@ const db = require("../config/db");
 const createNotification = require("../utils/createNotification");
 const { emitToUser } = require("../socket/socket");
 const handleServerError = require("../utils/handleServerError");
+const checkFriendship = require("../utils/checkFriendship");
 
 // Gửi tin nhắn riêng
 const sendDirectMessage = async (req, res) => {
-
     try {
-
         const {
             receiver_id,
             content
         } = req.body;
 
-        if (!receiver_id || !content || content.trim() === "") {
+        if (
+            !receiver_id ||
+            !content ||
+            content.trim() === ""
+        ) {
             return res.status(400).json({
                 message: "Vui lòng nhập người nhận và nội dung tin nhắn"
+            });
+        }
+
+        if (
+            !Number.isInteger(Number(receiver_id)) ||
+            Number(receiver_id) <= 0
+        ) {
+            return res.status(400).json({
+                message: "Mã người nhận không hợp lệ"
             });
         }
 
@@ -28,11 +40,16 @@ const sendDirectMessage = async (req, res) => {
         // Kiểm tra người nhận tồn tại
         const [receivers] = await db.query(
             `
-            SELECT id, full_name, email, status
+            SELECT
+                id,
+                full_name,
+                email,
+                status
             FROM users
             WHERE id = ?
+            LIMIT 1
             `,
-            [receiver_id]
+            [Number(receiver_id)]
         );
 
         if (receivers.length === 0) {
@@ -43,16 +60,28 @@ const sendDirectMessage = async (req, res) => {
 
         const receiver = receivers[0];
 
-        if (receiver.status === "inactive") {
+        if (receiver.status !== "active") {
             return res.status(400).json({
-                message: "Tài khoản người nhận đang bị khóa"
+                message: "Tài khoản người nhận hiện không hoạt động"
             });
         }
 
+        // Kiểm tra hai người đã kết bạn chưa
+        const areFriends = await checkFriendship(
+            req.user.id,
+            receiver_id
+        );
+
+        if (!areFriends) {
+            return res.status(403).json({
+                message: "Bạn phải kết bạn với người này trước khi nhắn tin"
+            });
+        }
+
+        // Lưu tin nhắn
         const [result] = await db.query(
             `
-            INSERT INTO direct_messages
-            (
+            INSERT INTO direct_messages (
                 sender_id,
                 receiver_id,
                 content
@@ -61,7 +90,7 @@ const sendDirectMessage = async (req, res) => {
             `,
             [
                 req.user.id,
-                receiver_id,
+                Number(receiver_id),
                 content.trim()
             ]
         );
@@ -77,40 +106,34 @@ const sendDirectMessage = async (req, res) => {
             created_at: new Date()
         };
 
-        // Realtime cho người nhận
         emitToUser(
             receiver_id,
             "new_direct_message",
             messageData
         );
 
-        // Realtime lại cho người gửi nếu người gửi đang mở nhiều tab/thiết bị
         emitToUser(
             req.user.id,
             "new_direct_message",
             messageData
         );
 
-        // Tạo notification cho người nhận
         await createNotification({
-            user_id: receiver_id,
+            user_id: Number(receiver_id),
             title: "Tin nhắn mới",
             content: `${req.user.full_name} đã gửi cho bạn một tin nhắn`,
             type: "message",
             related_id: result.insertId
         });
 
-        res.status(201).json({
+        return res.status(201).json({
             message: "Gửi tin nhắn thành công",
             data: messageData
         });
 
     } catch (error) {
-
         return handleServerError(res, error);
-
     }
-
 };
 
 // Xem cuộc trò chuyện giữa mình và một user khác
@@ -120,15 +143,36 @@ const getConversationWithUser = async (req, res) => {
 
         const { userId } = req.params;
 
+        if (
+            !Number.isInteger(Number(userId)) ||
+            Number(userId) <= 0
+        ) {
+            return res.status(400).json({
+                message: "Mã người dùng không hợp lệ"
+            });
+        }
+
+        if (Number(userId) === Number(req.user.id)) {
+            return res.status(400).json({
+                message: "Không thể mở cuộc trò chuyện với chính mình"
+            });
+        }
+
         // Kiểm tra user kia tồn tại
         const [users] = await db.query(
             `
-            SELECT id, full_name, email
+            SELECT
+                id,
+                full_name,
+                email,
+                status
             FROM users
             WHERE id = ?
+            LIMIT 1
             `,
-            [userId]
+            [Number(userId)]
         );
+
 
         if (users.length === 0) {
             return res.status(404).json({
@@ -137,6 +181,17 @@ const getConversationWithUser = async (req, res) => {
         }
 
         const otherUser = users[0];
+
+        const areFriends = await checkFriendship(
+            req.user.id,
+            userId
+        );
+
+        if (!areFriends) {
+            return res.status(403).json({
+                message: "Bạn phải kết bạn với người này trước khi xem cuộc trò chuyện"
+            });
+        }
 
         const [messages] = await db.query(
             `
@@ -217,9 +272,7 @@ const getConversationWithUser = async (req, res) => {
 
 // Xem danh sách cuộc trò chuyện
 const getMyConversations = async (req, res) => {
-
     try {
-
         const [conversations] = await db.query(
             `
             SELECT
@@ -245,23 +298,42 @@ const getMyConversations = async (req, res) => {
                 ON last_msg.id = (
                     SELECT dm2.id
                     FROM direct_messages dm2
-                    WHERE
-                    (
+
+                    WHERE (
                         dm2.sender_id = ?
                         AND dm2.receiver_id = other_user.id
                         AND dm2.is_deleted_by_sender = FALSE
                     )
-                    OR
-                    (
+                    OR (
                         dm2.sender_id = other_user.id
                         AND dm2.receiver_id = ?
                         AND dm2.is_deleted_by_receiver = FALSE
                     )
+
                     ORDER BY dm2.created_at DESC
                     LIMIT 1
                 )
 
             WHERE other_user.id <> ?
+
+            AND EXISTS (
+                SELECT 1
+                FROM friendships f
+
+                WHERE f.status = 'accepted'
+
+                AND (
+                    (
+                        f.requester_id = ?
+                        AND f.receiver_id = other_user.id
+                    )
+                    OR
+                    (
+                        f.requester_id = other_user.id
+                        AND f.receiver_id = ?
+                    )
+                )
+            )
 
             ORDER BY last_msg.created_at DESC
             `,
@@ -269,21 +341,20 @@ const getMyConversations = async (req, res) => {
                 req.user.id,
                 req.user.id,
                 req.user.id,
+                req.user.id,
+                req.user.id,
                 req.user.id
             ]
         );
 
-        res.json({
+        return res.status(200).json({
             total: conversations.length,
             conversations
         });
 
     } catch (error) {
-
         return handleServerError(res, error);
-
     }
-
 };
 
 // Xóa tin nhắn phía mình
@@ -355,56 +426,76 @@ const deleteDirectMessage = async (req, res) => {
 
 // Lấy danh sách người dùng có thể nhắn tin
 const getChatUsers = async (req, res) => {
-
     try {
-
         const { search } = req.query;
 
         let sql = `
             SELECT
-                id,
-                full_name,
-                email,
-                role,
-                status
-            FROM users
-            WHERE id <> ?
-            AND status = 'active'
+                u.id,
+                u.full_name,
+                u.email,
+                u.role,
+                u.status,
+
+                f.id AS friendship_id,
+                f.status AS friendship_status
+
+            FROM friendships f
+
+            INNER JOIN users u
+                ON u.id = CASE
+                    WHEN f.requester_id = ?
+                        THEN f.receiver_id
+                    ELSE f.requester_id
+                END
+
+            WHERE (
+                f.requester_id = ?
+                OR f.receiver_id = ?
+            )
+
+            AND f.status = 'accepted'
+            AND u.status = 'active'
+            AND u.id <> ?
         `;
 
-        let params = [req.user.id];
+        const params = [
+            req.user.id,
+            req.user.id,
+            req.user.id,
+            req.user.id
+        ];
 
-        if (search) {
+        if (search && search.trim()) {
+            const keyword = `%${search.trim()}%`;
+
             sql += `
                 AND (
-                    full_name LIKE ?
-                    OR email LIKE ?
+                    u.full_name LIKE ?
+                    OR u.email LIKE ?
                 )
             `;
 
             params.push(
-                `%${search}%`,
-                `%${search}%`
+                keyword,
+                keyword
             );
         }
 
         sql += `
-            ORDER BY full_name ASC
+            ORDER BY u.full_name ASC
         `;
 
         const [users] = await db.query(sql, params);
 
-        res.json({
+        return res.status(200).json({
             total: users.length,
             users
         });
 
     } catch (error) {
-
         return handleServerError(res, error);
-
     }
-
 };
 
 // thu hồi tin nhắn
