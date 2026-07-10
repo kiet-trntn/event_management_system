@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useCallback, useRef } from "react";
 import { NavLink, useNavigate, Outlet } from "react-router-dom"; 
 import io from 'socket.io-client'; 
+import Swal from 'sweetalert2';
 
 function Layout() {
     const navigate = useNavigate();
@@ -10,6 +11,9 @@ function Layout() {
     
     const [unreadCount, setUnreadCount] = useState(0); 
     const [unreadMessageCount, setUnreadMessageCount] = useState(0); 
+    
+    // State lưu lại các ID thông báo kết bạn đã được xử lý (đã bấm Chấp nhận hoặc Từ chối)
+    const [handledNotifs, setHandledNotifs] = useState([]);
 
     const [showNewNotifToast, setShowNewNotifToast] = useState(false);
     const [toastMessage, setToastMessage] = useState('');
@@ -23,11 +27,11 @@ function Layout() {
     const user = JSON.parse(localStorage.getItem('user'));
 
     // =========================================================
-    // LOGIC TÌM KIẾM TOÀN NĂNG CHO STAFF (Chỉ tìm Sự kiện & Task)
+    // LOGIC TÌM KIẾM TOÀN NĂNG CHO STAFF
     // =========================================================
     const [globalSearch, setGlobalSearch] = useState('');
     const [debouncedSearch, setDebouncedSearch] = useState('');
-    const [searchResults, setSearchResults] = useState({ events: [], tasks: [] }); // Bỏ users
+    const [searchResults, setSearchResults] = useState({ events: [], tasks: [] }); 
     const [isSearchOpen, setIsSearchOpen] = useState(false);
     const [isSearching, setIsSearching] = useState(false);
 
@@ -165,6 +169,33 @@ function Layout() {
             } catch (e) {}
         };
 
+        // Lắng nghe sự kiện kết bạn để bật thông báo pop-up
+        socket.on('new_friend_request', (data) => {
+            Swal.fire({
+                title: 'Lời mời kết bạn!',
+                text: `${data.requester_name} muốn kết bạn với bạn.`,
+                icon: 'info',
+                toast: true,
+                position: 'top-end',
+                showConfirmButton: false,
+                timer: 4000
+            });
+            fetchNotifications(); 
+        });
+
+        socket.on('friend_request_accepted', (data) => {
+            Swal.fire({
+                title: 'Thành công!',
+                text: `${data.accept_user_name} đã chấp nhận lời mời kết bạn!`,
+                icon: 'success',
+                toast: true,
+                position: 'top-end',
+                showConfirmButton: false,
+                timer: 4000
+            });
+            fetchNotifications();
+        });
+
         socket.on('new_direct_message', handleNewMessage);
         socket.on('new_message', handleNewMessage); 
 
@@ -172,7 +203,7 @@ function Layout() {
             socket.disconnect();
             if (toastTimerRef.current) clearTimeout(toastTimerRef.current);
         };
-    }, []);
+    }, [fetchNotifications]);
 
     const handleReadNotif = async (id, relatedId, type) => {
         try {
@@ -211,6 +242,67 @@ function Layout() {
 
     const handleMessagesClick = () => {
         setUnreadMessageCount(0);
+    };
+
+    // =========================================================
+    // HÀM XỬ LÝ CHẤP NHẬN / TỪ CHỐI KẾT BẠN NGAY TẠI THÔNG BÁO
+    // =========================================================
+    const handleAcceptFriend = async (e, notifId, friendshipId) => {
+        e.stopPropagation(); 
+        try {
+            const token = localStorage.getItem('my_token');
+            const res = await fetch(`http://localhost:5000/api/friends/requests/${friendshipId}/accept`, {
+                method: 'PATCH',
+                headers: { 'Authorization': `Bearer ${token}` }
+            });
+            
+            if (res.ok) {
+                // Đánh dấu đã đọc
+                await fetch(`http://localhost:5000/api/notifications/${notifId}/read`, { 
+                    method: 'PATCH', 
+                    headers: { 'Authorization': `Bearer ${token}` } 
+                });
+                
+                // Lưu ID thông báo vào mảng handledNotifs để ẩn nút
+                setHandledNotifs(prev => [...prev, notifId]);
+                fetchNotifications(); 
+                Swal.fire({ title: 'Thành công!', text: 'Đã chấp nhận kết bạn', icon: 'success', timer: 2000, toast: true, position: 'top-end', showConfirmButton: false });
+            } else {
+                const err = await res.json();
+                Swal.fire('Lỗi', err.message, 'error');
+            }
+        } catch (error) {
+            Swal.fire('Lỗi', 'Mất kết nối máy chủ', 'error');
+        }
+    };
+
+    const handleRejectFriend = async (e, notifId, friendshipId) => {
+        e.stopPropagation();
+        try {
+            const token = localStorage.getItem('my_token');
+            const res = await fetch(`http://localhost:5000/api/friends/requests/${friendshipId}/reject`, {
+                method: 'PATCH',
+                headers: { 'Authorization': `Bearer ${token}` }
+            });
+            
+            if (res.ok) {
+                // Đánh dấu đã đọc
+                await fetch(`http://localhost:5000/api/notifications/${notifId}/read`, { 
+                    method: 'PATCH', 
+                    headers: { 'Authorization': `Bearer ${token}` } 
+                });
+                
+                // Lưu ID thông báo vào mảng handledNotifs để ẩn nút
+                setHandledNotifs(prev => [...prev, notifId]);
+                fetchNotifications();
+                Swal.fire({ title: 'Đã từ chối!', text: 'Bạn đã từ chối lời mời kết bạn', icon: 'info', timer: 2000, toast: true, position: 'top-end', showConfirmButton: false });
+            } else {
+                const err = await res.json();
+                Swal.fire('Lỗi', err.message, 'error');
+            }
+        } catch (error) {
+            Swal.fire('Lỗi', 'Mất kết nối máy chủ', 'error');
+        }
     };
 
     return (
@@ -371,6 +463,28 @@ function Layout() {
                                                         <p className="notif-title">{notif.title}</p>
                                                         <p className="notif-desc">{notif.content}</p>
                                                         <p className="notif-time">{new Date(notif.created_at).toLocaleString('vi-VN')}</p>
+                                                        
+                                                        {/* CHỈ HIỆN NÚT KHI TIÊU ĐỀ CÓ CHỮ "mới" VÀ CHƯA BẤM NÚT XỬ LÝ */}
+                                                        {notif.title && notif.title.includes('kết bạn') && notif.title.includes('mới') && notif.related_id && !handledNotifs.includes(notif.id) && (
+                                                            <div style={{ display: 'flex', gap: '8px', marginTop: '10px' }}>
+                                                                <button 
+                                                                    onClick={(e) => handleAcceptFriend(e, notif.id, notif.related_id)}
+                                                                    style={{ padding: '6px 12px', fontSize: '12px', fontWeight: '500', background: '#3b82f6', color: 'white', border: 'none', borderRadius: '6px', cursor: 'pointer', transition: '0.2s' }}
+                                                                    onMouseOver={(e) => e.target.style.background = '#2563eb'}
+                                                                    onMouseOut={(e) => e.target.style.background = '#3b82f6'}
+                                                                >
+                                                                    Chấp nhận
+                                                                </button>
+                                                                <button 
+                                                                    onClick={(e) => handleRejectFriend(e, notif.id, notif.related_id)}
+                                                                    style={{ padding: '6px 12px', fontSize: '12px', fontWeight: '500', background: '#e2e8f0', color: '#475569', border: 'none', borderRadius: '6px', cursor: 'pointer', transition: '0.2s' }}
+                                                                    onMouseOver={(e) => e.target.style.background = '#cbd5e1'}
+                                                                    onMouseOut={(e) => e.target.style.background = '#e2e8f0'}
+                                                                >
+                                                                    Từ chối
+                                                                </button>
+                                                            </div>
+                                                        )}
                                                     </div>
                                                     <button className="notif-delete-btn" onClick={(e) => handleDeleteNotif(e, notif.id)}>✕</button>
                                                 </div>

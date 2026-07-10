@@ -604,11 +604,11 @@ function ViewEvent() {
                                                         )}
                                                         {fStatus === 'accepted' && (
                                                             <button 
-                                                                onClick={() => navigate('/staff/chat')}
+                                                                onClick={() => navigate('/staff/messages', { state: { autoOpenChat: member }})}
                                                                 style={{ background: '#10b981', border: 'none', color: '#fff', cursor: 'pointer', fontSize: '12px', fontWeight: '500', padding: '4px 8px', borderRadius: '4px' }}
                                                                 title="Nhấn để trò chuyện"
                                                             >
-                                                                Bạn bè 💬
+                                                                Nhắn tin
                                                             </button>
                                                         )}
                                                     </>

@@ -1,6 +1,7 @@
 const db = require("../config/db");
 const handleServerError = require("../utils/handleServerError");
 const createNotification = require("../utils/createNotification");
+const { emitToUser } = require("../socket/socket");
 
 const VALID_FRIENDSHIP_STATUSES = [
     "pending",
@@ -187,6 +188,13 @@ const sendFriendRequest = async (req, res) => {
             type: "friend_request",
             related_id: result.insertId
         });
+
+         emitToUser(receiverId, "new_friend_request", {
+                    id: result.insertId,
+                    requester_id: requesterId,
+                    requester_name: req.user.full_name
+                });
+
 
         return res.status(201).json({
             message: "Gửi lời mời kết bạn thành công",
@@ -377,6 +385,12 @@ const acceptFriendRequest = async (req, res) => {
             content: `${req.user.full_name} đã chấp nhận lời mời kết bạn của bạn`,
             type: "friend_request",
             related_id: friendshipId
+        });
+
+        emitToUser(friendship.requester_id, "friend_request_accepted", {
+            friendship_id: friendshipId,
+            accept_user_id: req.user.id,
+            accept_user_name: req.user.full_name
         });
 
         return res.status(200).json({

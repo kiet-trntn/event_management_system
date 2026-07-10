@@ -1,8 +1,10 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
+import { useLocation } from 'react-router-dom';
 import io from 'socket.io-client';
 import Swal from 'sweetalert2';
 
 function Chat() {
+    const location = useLocation();
     const [activeTab, setActiveTab] = useState('direct');
     const [conversations, setConversations] = useState([]);
     const [events, setEvents] = useState([]);            
@@ -22,7 +24,6 @@ function Chat() {
     const socketRef = useRef(null);
     const messagesEndRef = useRef(null);
 
-    // Refs theo dõi UI để dùng trong Socket
     const activeTabRef = useRef(activeTab);
     const selectedChatRef = useRef(selectedChat);
 
@@ -36,7 +37,23 @@ function Chat() {
     };
     const currentUser = getCurrentUser();
 
-    // HÀM FORMAT THỜI GIAN CHO KHUNG CHAT CHÍNH
+    // =========================================================
+    // LOGIC TỰ ĐỘNG MỞ CHAT TỪ TRANG KHÁC CHUYỂN TỚI
+    // =========================================================
+    useEffect(() => {
+        if (location.state && location.state.autoOpenChat) {
+            const targetMember = location.state.autoOpenChat;
+            setActiveTab('direct');
+            handleSelectChat({
+                user_id: targetMember.user_id,
+                id: targetMember.user_id, 
+                full_name: targetMember.full_name
+            });
+            window.history.replaceState({}, document.title);
+        }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [location.state]); 
+
     const formatTime = (dateString) => {
         if (!dateString) return '';
         const date = new Date(dateString);
@@ -52,7 +69,6 @@ function Chat() {
         return `${timeStr} • ${date.toLocaleDateString('vi-VN')}`;
     };
 
-    // HÀM FORMAT THỜI GIAN CHO SIDEBAR
     const formatSidebarTime = (dateString) => {
         if (!dateString) return '';
         const date = new Date(dateString);
@@ -140,7 +156,6 @@ function Chat() {
     const loadMessagesRef = useRef(loadMessages);
     useEffect(() => { loadMessagesRef.current = loadMessages; }, [loadMessages]);
 
-    // Gọi API lấy danh sách bạn bè có trạng thái 'accepted' dựa theo Controller Backend
     const fetchAllUsers = async () => {
         if (showNewChat) { setShowNewChat(false); return; }
         setShowNewChat(true);
@@ -151,9 +166,9 @@ function Chat() {
             });
             if (res.ok) {
                 const data = await res.json();
-                setAllUsers(data.users || []); // Trả về danh sách bạn bè hợp lệ để chat
+                setAllUsers(data.users || []);
             }
-        } catch (error) { console.error("Lỗi lấy danh sách bạn chat:", error); }
+        } catch (error) { console.error("Lỗi lấy danh bạ:", error); }
     };
 
     // --- KHỞI TẠO SOCKET ---
@@ -361,7 +376,14 @@ function Chat() {
                 <div className="chat-list">
                     {activeTab === 'direct' && showNewChat ? (
                         <>
-                            <input className="chat-search-input" type="text" placeholder="Tìm bạn bè để chat..." value={searchUser} onChange={(e) => setSearchUser(e.target.value)} />
+                            {/* TÙY CHỈNH PLACEHOLDER THEO ROLE */}
+                            <input 
+                                className="chat-search-input" 
+                                type="text" 
+                                placeholder={currentUser?.role === 'admin' ? "Tìm nhân viên để chat..." : "Tìm bạn bè để chat..."} 
+                                value={searchUser} 
+                                onChange={(e) => setSearchUser(e.target.value)} 
+                            />
                             {filteredAllUsers.length > 0 ? filteredAllUsers.map(user => (
                                 <div key={user.id} className="chat-list-item search-result" onClick={() => handleSelectChat(user, true)}>
                                     <div className="chat-item-avatar">
@@ -372,7 +394,12 @@ function Chat() {
                                         <div className="chat-item-last-msg" style={{fontSize: '12px'}}>{user.email}</div>
                                     </div>
                                 </div>
-                            )) : <p style={{ fontSize: '13px', color: '#64748b', textAlign: 'center', padding: '10px' }}>Không tìm thấy bạn bè trong danh bạ.</p>}
+                            )) : (
+                                /* TÙY CHỈNH TEXT THEO ROLE */
+                                <p style={{ fontSize: '13px', color: '#64748b', textAlign: 'center', padding: '10px' }}>
+                                    {currentUser?.role === 'admin' ? 'Không tìm thấy nhân viên.' : 'Không tìm thấy bạn bè trong danh bạ.'}
+                                </p>
+                            )}
                         </>
                     ) : (
                         activeTab === 'direct' ? (
@@ -451,7 +478,10 @@ function Chat() {
                             </div>
                             <div className="chat-header-info">
                                 <h4>{activeTab === 'direct' ? selectedChat.full_name : `${selectedChat.title}`}</h4>
-                                <span className="chat-header-status">● Bạn bè</span>
+                                {/* TÙY CHỈNH HEADER STATUS THEO ROLE */}
+                                <span className="chat-header-status">
+                                    ● {activeTab === 'event' ? 'Nhóm' : (currentUser?.role === 'admin' ? 'Liên hệ' : 'Bạn bè')}
+                                </span>
                             </div>
                         </div>
 
@@ -526,7 +556,12 @@ function Chat() {
                     <div className="chat-empty-state">
                         <span style={{ fontSize: '60px', opacity: 0.5 }}>💬</span>
                         <h3>Tin nhắn TaskFlow</h3>
-                        <p>Chọn một người bạn từ thanh bên trái để bắt đầu thảo luận.</p>
+                        {/* TÙY CHỈNH TEXT MÀN HÌNH CHỜ THEO ROLE */}
+                        <p>
+                            {currentUser?.role === 'admin' 
+                                ? 'Chọn một nhân viên từ thanh bên trái để bắt đầu thảo luận.' 
+                                : 'Chọn một người bạn từ thanh bên trái để bắt đầu thảo luận.'}
+                        </p>
                     </div>
                 )}
             </div>
