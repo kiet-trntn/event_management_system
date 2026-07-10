@@ -1,45 +1,63 @@
 import React, { useState, useEffect } from 'react';
-import { useNavigate, useParams, useSearchParams } from 'react-router-dom'; // Thêm useSearchParams
+import { useNavigate, useParams, useSearchParams } from 'react-router-dom';
 import Swal from 'sweetalert2';
 
 function AddTask() {
     const { eventId: urlEventId } = useParams(); 
-    const [searchParams] = useSearchParams(); // Hook để đọc ?event_id=...
+    const [searchParams] = useSearchParams();
     const eventIdFromQuery = searchParams.get('event_id');
     const navigate = useNavigate();
 
-    // Ưu tiên lấy eventId từ URL parameter, nếu không có thì lấy từ query string
     const selectedEventId = urlEventId || eventIdFromQuery || '';
     const isEventLocked = Boolean(selectedEventId);
     const [eventId, setEventId] = useState(selectedEventId);
     
-    // ... phần còn lại của state giữ nguyên
     const [title, setTitle] = useState('');
     const [description, setDescription] = useState('');
     const [assignedTo, setAssignedTo] = useState('');
     const [priority, setPriority] = useState('medium');
+    const [taskType, setTaskType] = useState('preparation'); // Thêm task_type
     const [dueDate, setDueDate] = useState('');
+    
     const [eventsList, setEventsList] = useState([]);
     const [membersList, setMembersList] = useState([]);
     const [loading, setLoading] = useState(false);
 
-    useEffect(() => {
-        document.title = "Thêm công việc mới | TaskFlow";
-        const fetchEvents = async () => {
-            try {
-                const response = await fetch('http://localhost:5000/api/events', {
-                    headers: { 'Authorization': `Bearer ${localStorage.getItem('my_token')}` }
-                });
-                const data = await response.json();
-                if (response.ok) {
-                    setEventsList(data.events || data || []);
-                }
-            } catch (error) { console.error(error); }
-        };
-        fetchEvents();
-    }, []);
+   useEffect(() => {
+    document.title = "Thêm công việc mới | TaskFlow";
+    const fetchEvents = async () => {
+        try {
+            const response = await fetch('http://localhost:5000/api/events', {
+                headers: { 'Authorization': `Bearer ${localStorage.getItem('my_token')}` }
+            });
+            const data = await response.json();
+            
+            if (response.ok) {
+                const list = data.events || data || [];
+                setEventsList(list);
 
-    // Fetch members for an event (callable so we can refresh on demand)
+                if (selectedEventId) {
+                    const currentEvent = list.find(ev => String(ev.id) === String(selectedEventId));
+                    
+                    if (currentEvent && (currentEvent.status === 'Đã kết thúc' || currentEvent.status === 'Đã hủy')) {
+                        Swal.fire({
+                            title: 'Cảnh báo!',
+                            text: 'Sự kiện này đã kết thúc hoặc bị hủy, không thể tạo thêm công việc mới.',
+                            icon: 'warning',
+                            confirmButtonText: 'Quay lại'
+                        }).then(() => {
+                            navigate(-1); 
+                        });
+                    }
+                }
+            }
+        } catch (error) { 
+            console.error(error); 
+        }
+    };
+    fetchEvents();
+}, [selectedEventId, navigate]); 
+
     const fetchEventMembers = async (id = selectedEventId) => {
         if (!id) {
             setMembersList([]);
@@ -51,9 +69,7 @@ function AddTask() {
                 headers: { 'Authorization': `Bearer ${localStorage.getItem('my_token')}` }
             });
             const data = await response.json();
-            if (response.ok) {
-                setMembersList(data.members || []);
-            }
+            if (response.ok) setMembersList(data.members || []);
         } catch (error) { console.error(error); }
     };
 
@@ -64,7 +80,7 @@ function AddTask() {
 
     const handleSubmit = async (e) => {
         e.preventDefault();
-        if (!eventId || !title) return Swal.fire('Lỗi', 'Vui lòng điền đủ trường bắt buộc!', 'warning');
+        if (!eventId || !title || !taskType) return Swal.fire('Lỗi', 'Vui lòng điền đủ trường bắt buộc!', 'warning');
 
         setLoading(true);
         try {
@@ -74,12 +90,20 @@ function AddTask() {
                     'Content-Type': 'application/json',
                     'Authorization': `Bearer ${localStorage.getItem('my_token')}` 
                 },
-                body: JSON.stringify({ event_id: eventId, title, description, assigned_to: assignedTo || null, priority, due_date: dueDate || null })
+                // Bổ sung task_type vào body
+                body: JSON.stringify({ 
+                    event_id: eventId, 
+                    title, 
+                    description, 
+                    assigned_to: assignedTo || null, 
+                    priority, 
+                    task_type: taskType, 
+                    due_date: dueDate || null 
+                })
             });
 
             if (response.ok) {
                 Swal.fire('Thành công!', 'Tạo công việc thành công.', 'success').then(() => {
-                    // Trả về đúng trang phân hệ chi tiết sự kiện của Staff/Leader vừa quản lý
                     navigate(`/staff/events/view/${eventId}`);
                 });
             } else {
@@ -108,17 +132,7 @@ function AddTask() {
                             <div className="form-group">
                                 <label className="form-label">Sự kiện <span className="text-error">*</span></label>
                                 {isEventLocked ? (
-                                    <div
-                                        className="form-input"
-                                        style={{
-                                            display: 'flex',
-                                            alignItems: 'center',
-                                            minHeight: '44px',
-                                            backgroundColor: '#e5e7eb',
-                                            color: '#6b7280',
-                                            cursor: 'not-allowed'
-                                        }}
-                                    >
+                                    <div className="form-input" style={{ display: 'flex', alignItems: 'center', minHeight: '44px', backgroundColor: '#e5e7eb', color: '#6b7280', cursor: 'not-allowed' }}>
                                         {eventsList.find(ev => String(ev.id) === String(eventId))?.title || 'Đang tải...'}
                                     </div>
                                 ) : (
@@ -134,10 +148,18 @@ function AddTask() {
                             </div>
                             <div className="form-group">
                                 <label className="form-label">Mô tả chi tiết</label>
-                                <textarea className="form-input" rows="4" value={description} onChange={(e) => setDescription(e.target.value)} />
+                                <textarea className="form-input" rows="4" value={description} style={{ resize: 'vertical' }} onChange={(e) => setDescription(e.target.value)} />
                             </div>
                         </div>
                         <div>
+                            <div className="form-group">
+                                <label className="form-label">Giai đoạn <span className="text-error">*</span></label>
+                                <select className="form-input" value={taskType} onChange={(e) => setTaskType(e.target.value)}>
+                                    <option value="preparation">Chuẩn bị</option>
+                                    <option value="during_event">Diễn ra</option>
+                                    <option value="post_event">Kết thúc</option>
+                                </select>
+                            </div>
                             <div className="form-group">
                                 <label className="form-label">Phân công cho</label>
                                 <select className="form-input" value={assignedTo} onChange={(e) => setAssignedTo(e.target.value)}>
@@ -148,7 +170,9 @@ function AddTask() {
                             <div className="form-group">
                                 <label className="form-label">Mức độ ưu tiên</label>
                                 <select className="form-input" value={priority} onChange={(e) => setPriority(e.target.value)}>
-                                    <option value="low">Thấp</option><option value="medium">Trung bình</option><option value="high">Cao</option>
+                                    <option value="low">Thấp</option>
+                                    <option value="medium">Trung bình</option>
+                                    <option value="high">Cao</option>
                                 </select>
                             </div>
                             <div className="form-group">

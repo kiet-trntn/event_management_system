@@ -7,7 +7,6 @@ function ViewEvent() {
     const navigate = useNavigate();
     const location = useLocation();
     
-    // --- ĐỌC TỪ KHÓA TÌM KIẾM TỪ HEADER ---
     const urlSearch = new URLSearchParams(location.search).get('search') || '';
     const [debouncedSearch, setDebouncedSearch] = useState(urlSearch);
 
@@ -17,16 +16,14 @@ function ViewEvent() {
     const [loading, setLoading] = useState(true);
     const [currentUser, setCurrentUser] = useState(null); 
 
-    // --- BỘ LỌC CÔNG VIỆC TRONG SỰ KIỆN ---
     const [filterTaskStatus, setFilterTaskStatus] = useState('');
     const [filterTaskPriority, setFilterTaskPriority] = useState('');
+    const [filterTaskType, setFilterTaskType] = useState(''); 
     const [filterTaskFromDate, setFilterTaskFromDate] = useState('');
     const [filterTaskToDate, setFilterTaskToDate] = useState('');
 
-    // --- BỘ LỌC THÀNH VIÊN (MINI FILTER) ---
     const [filterMemberStatus, setFilterMemberStatus] = useState('');
 
-    // Giải mã token
     useEffect(() => {
         try {
             const token = localStorage.getItem('my_token');
@@ -41,7 +38,6 @@ function ViewEvent() {
         }
     }, []);
 
-    // Chống lag khi gõ tìm kiếm Header
     useEffect(() => {
         const timerId = setTimeout(() => { setDebouncedSearch(urlSearch); }, 500); 
         return () => clearTimeout(timerId);
@@ -56,7 +52,6 @@ function ViewEvent() {
             const queryParams = new URLSearchParams();
             if (debouncedSearch) queryParams.append('search', debouncedSearch);
 
-            // Gửi chữ tìm kiếm vào cả 2 API (Công việc & Thành viên)
             const [eventRes, tasksRes, membersRes] = await Promise.all([
                 fetch(`http://localhost:5000/api/events/${id}`, { headers }),
                 fetch(`http://localhost:5000/api/tasks?event_id=${id}&${queryParams.toString()}`, { headers }),
@@ -69,7 +64,6 @@ function ViewEvent() {
                 
                 setEvent(eventData.event || eventData);
                 
-                // Lọc bỏ task đã xóa
                 const filteredTasks = (tasksData.tasks || []).filter(t => !t.is_deleted);
                 setTasks(filteredTasks);
 
@@ -126,7 +120,6 @@ function ViewEvent() {
         }
     };
 
-    // --- LOGIC THÊM THÀNH VIÊN TRỰC TIẾP TỪ VIEW EVENT ---
     const handleAddMemberPopup = async () => {
         try {
             const res = await fetch(`http://localhost:5000/api/users/available/${id}`, {
@@ -173,7 +166,7 @@ function ViewEvent() {
 
                 if (addRes.ok) {
                     Swal.fire('Thành công!', 'Đã thêm thành viên vào sự kiện.', 'success');
-                    fetchViewEvent(); // Cập nhật lại danh sách ngay lập tức
+                    fetchViewEvent();
                 } else {
                     const errorData = await addRes.json();
                     Swal.fire('Lỗi', errorData.message || 'Không thể thêm thành viên', 'error');
@@ -185,7 +178,6 @@ function ViewEvent() {
         }
     };
 
-    // --- LOGIC XÓA CÓ XÁC NHẬN NẾU VƯỚNG TASK ---
     const handleRemoveMember = async (userId) => {
         const result = await Swal.fire({
             title: 'Loại bỏ thành viên?',
@@ -200,7 +192,6 @@ function ViewEvent() {
 
         if (result.isConfirmed) {
             try {
-                // Gọi API lần 1
                 const response = await fetch(`http://localhost:5000/api/events/${id}/members/${userId}`, {
                     method: 'DELETE',
                     headers: { 'Authorization': `Bearer ${localStorage.getItem('my_token')}` }
@@ -211,7 +202,6 @@ function ViewEvent() {
                     Swal.fire('Thành công!', 'Đã xóa thành viên khỏi sự kiện.', 'success');
                     fetchViewEvent();
                 } else if (response.status === 409 && data.need_confirm) {
-                    // Hỏi lại nếu đang vướng task
                     const confirmResult = await Swal.fire({
                         title: 'Thành viên đang có công việc!',
                         html: `Người này đang phụ trách <b>${data.affected_task_count}</b> công việc chưa hoàn thành.<br/><br/>Nếu tiếp tục xóa, các công việc này sẽ bị gỡ người phụ trách. Bạn có chắc chắn không?`,
@@ -248,6 +238,7 @@ function ViewEvent() {
     const handleResetTaskFilter = () => {
         setFilterTaskStatus('');
         setFilterTaskPriority('');
+        setFilterTaskType('');
         setFilterTaskFromDate('');
         setFilterTaskToDate('');
     };
@@ -280,18 +271,20 @@ function ViewEvent() {
         }
     };
 
+    const getTaskTypeLabel = (type) => {
+        if(type === 'preparation') return 'Chuẩn bị';
+        if(type === 'during_event') return 'Diễn ra';
+        if(type === 'post_event') return 'Kết thúc';
+        return type || 'Khác';
+    };
+
     if (loading) return <div className="page-container event-page"><div className="form-card text-center text-secondary">Đang tải chi tiết sự kiện...</div></div>;
     if (!event) return null;
 
     const isAdmin = currentUser?.role === 'admin';
     const isLeader = currentUser && event && (Number(event.leader_id) === Number(currentUser.id));
-    
-    // Biến này quyết định xem user hiện tại có quyền Quản lý hay không
     const hasManagerRights = isAdmin || isLeader; 
-    
-    // Biến này kiểm tra xem sự kiện có ĐANG CHO PHÉP CHỈNH SỬA hay không (Khóa nếu Đã kết thúc / Đã hủy / Đang diễn ra)
-    const isEditable = event.status === 'Nháp' || event.status === 'Sắp diễn ra';
-    
+    const isEditable = event.status !== 'Đã kết thúc' && event.status !== 'Đã hủy' && event.status !== 'Đang diễn ra';
     const leaderName = event.leader_name || 'Chưa cập nhật';
 
     const formatDateTime = (value) => {
@@ -302,19 +295,34 @@ function ViewEvent() {
         });
     };
 
-    const displayTasks = tasks.filter(t => {
-        const matchStatus = filterTaskStatus ? t.status === filterTaskStatus : true;
-        const matchPriority = filterTaskPriority ? t.priority === filterTaskPriority : true;
-        let matchFromDate = true;
-        let matchToDate = true;
-        if (filterTaskFromDate) {
-            matchFromDate = t.due_date ? new Date(t.due_date) >= new Date(filterTaskFromDate) : false;
-        }
-        if (filterTaskToDate) {
-            matchToDate = t.due_date ? new Date(t.due_date) <= new Date(filterTaskToDate) : false;
-        }
-        return matchStatus && matchPriority && matchFromDate && matchToDate;
-    });
+    // Định nghĩa thứ tự ưu tiên cho task_type
+    const taskTypeOrder = {
+        'preparation': 1,
+        'during_event': 2,
+        'post_event': 3
+    };
+
+    // Filter đồng thời thực hiện SORT theo thứ tự chuẩn bị -> diễn ra -> kết thúc
+    const displayTasks = tasks
+        .filter(t => {
+            const matchStatus = filterTaskStatus ? t.status === filterTaskStatus : true;
+            const matchPriority = filterTaskPriority ? t.priority === filterTaskPriority : true;
+            const matchTaskType = filterTaskType ? t.task_type === filterTaskType : true; 
+            let matchFromDate = true;
+            let matchToDate = true;
+            if (filterTaskFromDate) {
+                matchFromDate = t.due_date ? new Date(t.due_date) >= new Date(filterTaskFromDate) : false;
+            }
+            if (filterTaskToDate) {
+                matchToDate = t.due_date ? new Date(t.due_date) <= new Date(filterTaskToDate) : false;
+            }
+            return matchStatus && matchPriority && matchTaskType && matchFromDate && matchToDate;
+        })
+        .sort((a, b) => {
+            const orderA = taskTypeOrder[a.task_type] || 99;
+            const orderB = taskTypeOrder[b.task_type] || 99;
+            return orderA - orderB; // Sắp xếp từ 1 -> 2 -> 3
+        });
 
     const displayMembers = members.filter(m => {
         const matchStatus = filterMemberStatus ? m.status === filterMemberStatus : true;
@@ -364,7 +372,6 @@ function ViewEvent() {
                             )}
                         </div>
 
-                        {/* BỘ LỌC CÔNG VIỆC */}
                         <div style={{ display: 'flex', gap: '12px', alignItems: 'flex-end', flexWrap: 'wrap', marginBottom: '24px', paddingBottom: '16px', borderBottom: '1px solid var(--border-neutral)' }}>
                             <div style={{ flex: '1 1 120px' }}>
                                 <select className="form-input" value={filterTaskStatus} onChange={(e) => setFilterTaskStatus(e.target.value)} style={{ padding: '6px 12px', height: '36px' }}>
@@ -384,7 +391,15 @@ function ViewEvent() {
                                     <option value="low">Thấp</option>
                                 </select>
                             </div>
-                            <div style={{ flex: '1 1 140px', position: 'relative' }}>
+                            <div style={{ flex: '1 1 120px' }}>
+                                <select className="form-input" value={filterTaskType} onChange={(e) => setFilterTaskType(e.target.value)} style={{ padding: '6px 12px', height: '36px' }}>
+                                    <option value="">Tất cả giai đoạn</option>
+                                    <option value="preparation">Chuẩn bị</option>
+                                    <option value="during_event">Diễn ra</option>
+                                    <option value="post_event">Kết thúc</option>
+                                </select>
+                            </div>
+                            <div style={{ flex: '1 1 120px', position: 'relative' }}>
                                 <input 
                                     type={filterTaskFromDate ? 'date' : 'text'} 
                                     placeholder="Từ ngày..." 
@@ -393,11 +408,11 @@ function ViewEvent() {
                                     onFocus={(e) => e.target.type = 'date'} 
                                     onBlur={(e) => { if (!e.target.value) e.target.type = 'text'; }}
                                     onChange={(e) => setFilterTaskFromDate(e.target.value)} 
-                                    style={{ padding: '6px 30px 6px 12px', height: '36px', width: '100%' }} 
+                                    style={{ padding: '6px 12px', height: '36px', width: '100%' }} 
                                 />
                             </div>
                             
-                            <div style={{ flex: '1 1 140px', position: 'relative' }}>
+                            <div style={{ flex: '1 1 120px', position: 'relative' }}>
                                 <input 
                                     type={filterTaskToDate ? 'date' : 'text'} 
                                     placeholder="Đến ngày..." 
@@ -406,7 +421,7 @@ function ViewEvent() {
                                     onFocus={(e) => e.target.type = 'date'} 
                                     onBlur={(e) => { if (!e.target.value) e.target.type = 'text'; }}
                                     onChange={(e) => setFilterTaskToDate(e.target.value)} 
-                                    style={{ padding: '6px 30px 6px 12px', height: '36px', width: '100%' }} 
+                                    style={{ padding: '6px 12px', height: '36px', width: '100%' }} 
                                 />
                             </div>
                             <button type="button" className="btn-secondary" onClick={handleResetTaskFilter} style={{ height: '36px', padding: '0 12px', fontSize: '13px' }}>Khôi phục</button>
@@ -440,6 +455,9 @@ function ViewEvent() {
                                                     Hạn: {task.due_date ? new Date(task.due_date).toLocaleDateString('vi-VN') : 'Không có hạn'}
                                                 </p>
                                                 <p style={{ margin: 0, fontSize: '13px', color: 'var(--text-secondary)' }}>
+                                                    Giai đoạn: <span style={{ fontWeight: '500', color: '#475569' }}>{getTaskTypeLabel(task.task_type)}</span>
+                                                </p>
+                                                <p style={{ margin: 0, fontSize: '13px', color: 'var(--text-secondary)' }}>
                                                     Giao cho: <span style={{ fontWeight: '600', color: 'var(--primary-color)' }}>{task.assigned_name || 'Chưa phân công'}</span>
                                                 </p>
                                             </div>
@@ -471,7 +489,6 @@ function ViewEvent() {
                         
                       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px' }}>
                             <h3 className="section-title" style={{ margin: 0 }}>Thành viên ({displayMembers.length}/{members.length})</h3>
-                            {/* Nút + Thêm chỉ hiện khi có quyền quản lý VÀ sự kiện đang ở trạng thái cho phép sửa */}
                             {hasManagerRights && isEditable && (
                                 <button className="btn-secondary" style={{ padding: '4px 12px', fontSize: '12px' }} onClick={handleAddMemberPopup}>
                                     + Thêm
@@ -510,7 +527,6 @@ function ViewEvent() {
                                             </div>
                                         </div>
                                         
-                                        {/* Nút Xóa thành viên cũng chỉ hiện khi có quyền VÀ sự kiện cho phép sửa */}
                                         {hasManagerRights && isEditable && (
                                             <button 
                                                 onClick={() => handleRemoveMember(member.user_id)}

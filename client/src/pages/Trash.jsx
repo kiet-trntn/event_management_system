@@ -202,31 +202,31 @@ function Trash() {
                                 <span className="status-badge status-inactive">Đã xóa</span>
                             </div>
                             
-                            <h4 className="event-title text-secondary" style={{ wordBreak: 'break-all' }}>
-                                {activeTab === 'events' && '🎉 '}
-                                {activeTab === 'tasks' && '✅ '}
-                                {activeTab === 'attachments' && '📄 '}
+                            <h4 className="event-title text-secondary" style={{ wordBreak: 'break-word', overflowWrap: 'break-word' }}>
+                                {activeTab === 'events'}
+                                {activeTab === 'tasks'}
+                                {activeTab === 'attachments'}
                                 {item.title || item.file_name || 'Không có tiêu đề'}
                             </h4>
                             
                             {activeTab === 'events' && (
                                 <>
-                                    <p className="event-detail-row">📍 {item.location || 'Chưa xác định'}</p>
-                                    <p className="event-detail-row">🕒 {item.start_date ? new Date(item.start_date).toLocaleDateString('vi-VN') : 'Không có'}</p>
+                                    <p className="event-detail-row">{item.location || 'Chưa xác định'}</p>
+                                    <p className="event-detail-row">{item.start_date ? new Date(item.start_date).toLocaleDateString('vi-VN') : 'Không có'}</p>
                                 </>
                             )}
 
                             {activeTab === 'tasks' && (
                                 <>
-                                    <p className="event-detail-row">🎯 Ưu tiên: {item.priority === 'high' ? 'Cao' : item.priority === 'medium' ? 'Trung bình' : 'Thấp'}</p>
-                                    <p className="event-detail-row">🕒 Hạn chót: {item.due_date ? new Date(item.due_date).toLocaleDateString('vi-VN') : 'Không có'}</p>
+                                    <p className="event-detail-row">Ưu tiên: {item.priority === 'high' ? 'Cao' : item.priority === 'medium' ? 'Trung bình' : 'Thấp'}</p>
+                                    <p className="event-detail-row">Hạn chót: {item.due_date ? new Date(item.due_date).toLocaleDateString('vi-VN') : 'Không có'}</p>
                                 </>
                             )}
 
                             {activeTab === 'attachments' && (
                                 <>
-                                    <p className="event-detail-row">📦 Kích thước: {item.file_size ? (item.file_size / 1024 / 1024).toFixed(2) : 0} MB</p>
-                                    <p className="event-detail-row">👤 Người nộp: {item.uploaded_by_name || 'Hệ thống'}</p>
+                                    <p className="event-detail-row">Kích thước: {item.file_size ? (item.file_size / 1024 / 1024).toFixed(2) : 0} MB</p>
+                                    <p className="event-detail-row">Người nộp: {item.uploaded_by_name || 'Hệ thống'}</p>
                                 </>
                             )}
                             
