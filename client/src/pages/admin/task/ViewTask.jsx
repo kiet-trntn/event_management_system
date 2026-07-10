@@ -7,17 +7,15 @@ function ViewTask() {
     const navigate = useNavigate();
     
     const [task, setTask] = useState(null);
-    const [taskHistory, setTaskHistory] = useState([]); // Chứa lịch sử
+    const [taskHistory, setTaskHistory] = useState([]);
     const [loading, setLoading] = useState(true);
 
-    // --- 1. LẤY DỮ LIỆU CÔNG VIỆC VÀ LỊCH SỬ THAO TÁC ---
     const fetchTaskDetail = useCallback(async () => {
         try {
             setLoading(true);
             const token = localStorage.getItem('my_token');
             const headers = { 'Authorization': `Bearer ${token}` };
 
-            // Gọi 2 API song song: Chi tiết & Lịch sử
             const [taskRes, historyRes] = await Promise.all([
                 fetch(`http://localhost:5000/api/tasks/${id}`, { headers }),
                 fetch(`http://localhost:5000/api/tasks/${id}/history`, { headers }).catch(() => null)
@@ -47,7 +45,6 @@ function ViewTask() {
         fetchTaskDetail();
     }, [fetchTaskDetail]);
 
-    // --- 2. XÓA CÔNG VIỆC (QUYỀN ADMIN) ---
     const handleDelete = async () => { 
         const result = await Swal.fire({
             title: 'Chuyển vào thùng rác?',
@@ -79,7 +76,6 @@ function ViewTask() {
         }
     };
 
-    // --- CÁC HÀM TIỆN ÍCH DỊCH TIẾNG VIỆT ---
     const getStatusStyle = (status) => {
         switch(status) {
             case 'completed': return { bg: '#dcfce7', color: '#16a34a', text: 'Đã hoàn thành' };
@@ -98,6 +94,13 @@ function ViewTask() {
         }
     };
 
+    const translateTaskType = (type) => {
+        if(type === 'preparation') return 'Chuẩn bị';
+        if(type === 'during_event') return 'Diễn ra';
+        if(type === 'post_event') return 'Kết thúc';
+        return type || 'Khác';
+    };
+
     const translateAction = (actionText) => {
         if (!actionText) return "";
         return actionText
@@ -107,7 +110,6 @@ function ViewTask() {
             .replace('cancelled', 'Đã hủy');
     };
 
-    // --- GIAO DIỆN CHÍNH ---
     if (loading) return <div className="page-container"><div className="text-center text-secondary">⏳ Đang tải chi tiết...</div></div>;
     if (!task) return null;
 
@@ -129,7 +131,6 @@ function ViewTask() {
 
             <div style={{ display: 'flex', gap: '24px', flexWrap: 'wrap', alignItems: 'flex-start' }}>
                 
-                {/* --- CỘT TRÁI: THÔNG TIN CHI TIẾT --- */}
                 <div className="form-card" style={{ flex: '2 1 500px', margin: 0, padding: '24px' }}>
                     <div style={{ display: 'flex', gap: '12px', marginBottom: '16px' }}>
                         <span style={{ backgroundColor: statusStyle.bg, color: statusStyle.color, padding: '6px 14px', borderRadius: '99px', fontSize: '13px', fontWeight: '600' }}>
@@ -149,6 +150,10 @@ function ViewTask() {
                             <div style={{ display: 'flex', alignItems: 'center' }}>
                                 <strong style={{ width: '120px', color: '#4B5563', fontSize: '14px' }}>Sự kiện:</strong>
                                 <span style={{ color: '#2563EB', fontWeight: '500' }}>{task.event_title}</span>
+                            </div>
+                            <div style={{ display: 'flex', alignItems: 'center' }}>
+                                <strong style={{ width: '120px', color: '#4B5563', fontSize: '14px' }}>Giai đoạn:</strong>
+                                <span style={{ color: '#111827' }}>{translateTaskType(task.task_type)}</span>
                             </div>
                             <div style={{ display: 'flex', alignItems: 'center' }}>
                                 <strong style={{ width: '120px', color: '#4B5563', fontSize: '14px' }}>Người tạo:</strong>
@@ -174,7 +179,6 @@ function ViewTask() {
                         </div>
                     </div>
 
-                    {/* DÀNH CHO ADMIN: CÁC NÚT THAO TÁC XÓA / SỬA / XEM FILE */}
                     <div style={{ display: 'flex', gap: '12px', marginTop: '24px', paddingTop: '24px', borderTop: '1px solid #E5E7EB', justifyContent: 'flex-end' }}>
                         <button 
                             className="btn-secondary" 
@@ -204,7 +208,6 @@ function ViewTask() {
                     </div>
                 </div>
 
-                {/* --- CỘT PHẢI: LỊCH SỬ THAO TÁC --- */}
                 <div style={{ flex: '1 1 300px', display: 'flex', flexDirection: 'column', gap: '20px' }}>
                     <div className="form-card" style={{ margin: 0, padding: '24px', backgroundColor: '#F8FAFC' }}>
                         <h4 style={{ margin: '0 0 20px 0', fontSize: '16px', color: '#111827', display: 'flex', alignItems: 'center', gap: '8px' }}>

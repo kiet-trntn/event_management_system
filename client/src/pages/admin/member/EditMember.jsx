@@ -160,7 +160,7 @@ function EditMember() {
 
                     <div className="form-group">
                         <label className="form-label">Tiểu sử (Bio)</label>
-                        <textarea className="form-input" rows="3"
+                        <textarea className="form-input" rows="3" style={{ resize: 'vertical' }}
                             value={formData.bio}
                             onChange={e => setFormData({...formData, bio: e.target.value})}></textarea>
                     </div>

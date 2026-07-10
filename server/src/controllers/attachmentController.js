@@ -6,32 +6,25 @@ const createNotification = require("../utils/createNotification");
 const handleServerError = require("../utils/handleServerError");
 
 const uploadAttachment = async (req, res) => {
-
     try {
+        const { task_id } = req.body;
 
-        const {
-            task_id
-        } = req.body;
-
-        // Kiểm tra có file không
         if (!req.file) {
             return res.status(400).json({
                 message: "Vui lòng chọn file"
             });
         }
 
-        // Kiểm tra task tồn tại
+        // 🛑 ĐÃ SỬA: INNER JOIN lấy thêm trạng thái e.status AS event_status để kiểm tra
         const [tasks] = await db.query(
             `
             SELECT
                 t.*,
-                e.leader_id
-
+                e.leader_id,
+                e.status AS event_status
             FROM tasks t
-
             INNER JOIN events e
                 ON t.event_id = e.id
-
             WHERE t.id = ?
             AND t.is_deleted = FALSE
             `,
@@ -46,7 +39,13 @@ const uploadAttachment = async (req, res) => {
 
         const task = tasks[0];
 
-        // Chỉ Admin, Leader hoặc người được giao mới được upload file
+        // 🛑 CHẶN TUYỆT ĐỐI: Không cho upload file vào công việc thuộc sự kiện đã đóng/hủy
+        if (task.event_status === "Đã kết thúc" || task.event_status === "Đã hủy") {
+            return res.status(403).json({
+                message: "Sự kiện chứa công việc này đã kết thúc hoặc bị hủy, hồ sơ tài liệu đã đóng băng vĩnh viễn!"
+            });
+        }
+
         if (
             req.user.role !== "admin" &&
             req.user.id !== task.leader_id &&
@@ -57,13 +56,8 @@ const uploadAttachment = async (req, res) => {
             });
         }
 
-        // Lấy đuôi file
-        const fileType =
-            path.extname(
-                req.file.originalname
-            ).replace(".", "");
+        const fileType = path.extname(req.file.originalname).replace(".", "");
 
-        // Lưu DB
         const [result] = await db.query(
             `
             INSERT INTO attachments
@@ -93,20 +87,10 @@ const uploadAttachment = async (req, res) => {
             req.user.id
         );
 
-        // Tạo thông báo khi có file mới được tải lên
         const receivers = new Set();
-
-        if (task.leader_id && task.leader_id !== req.user.id) {
-            receivers.add(task.leader_id);
-        }
-
-        if (task.created_by && task.created_by !== req.user.id) {
-            receivers.add(task.created_by);
-        }
-
-        if (task.assigned_to && task.assigned_to !== req.user.id) {
-            receivers.add(task.assigned_to);
-        }
+        if (task.leader_id && task.leader_id !== req.user.id) receivers.add(task.leader_id);
+        if (task.created_by && task.created_by !== req.user.id) receivers.add(task.created_by);
+        if (task.assigned_to && task.assigned_to !== req.user.id) receivers.add(task.assigned_to);
 
         for (const userId of receivers) {
             await createNotification({
@@ -119,50 +103,33 @@ const uploadAttachment = async (req, res) => {
         }
 
         res.status(201).json({
-
-            message:
-                "Upload file thành công",
-
+            message: "Upload file thành công",
             attachment: {
-
                 id: result.insertId,
-
                 task_id,
-
-                file_name:
-                    req.file.originalname,
-
-                file_size:
-                    req.file.size,
-
-                file_type:
-                    fileType
-
+                file_name: req.file.originalname,
+                file_size: req.file.size,
+                file_type: fileType
             }
-
         });
 
     } catch (error) {
-
         return handleServerError(res, error);
-
     }
-
 };
 
 const getAttachmentsByTask = async (req, res) => {
-
     try {
-
         const { id } = req.params;
 
-        // Kiểm tra Task tồn tại
+        // 🛑 ĐÃ SỬA: INNER JOIN sang events lấy trạng thái event_status trả ra cho giao diện React sử dụng bọc view
         const [tasks] = await db.query(
             `
-            SELECT *
-            FROM tasks
-            WHERE id = ?
-            AND is_deleted = FALSE
+            SELECT t.*, e.status AS event_status
+            FROM tasks t
+            INNER JOIN events e ON t.event_id = e.id
+            WHERE t.id = ?
+            AND t.is_deleted = FALSE
             `,
             [id]
         );
@@ -173,7 +140,8 @@ const getAttachmentsByTask = async (req, res) => {
             });
         }
 
-        // Lấy danh sách file
+        const taskInfo = tasks[0];
+
         const [attachments] = await db.query(
             `
             SELECT
@@ -183,56 +151,45 @@ const getAttachmentsByTask = async (req, res) => {
                 a.file_type,
                 a.file_path,
                 a.created_at,
-
                 u.id AS uploaded_by_id,
                 u.full_name AS uploaded_by_name
-
             FROM attachments a
-
-            LEFT JOIN users u
-                ON a.uploaded_by = u.id
-
+            LEFT JOIN users u ON a.uploaded_by = u.id
             WHERE a.task_id = ?
             AND a.deleted_at IS NULL
-
             ORDER BY a.id DESC
             `,
             [id]
         );
 
+        // Trả thêm thuộc tính event_status ra ngoài Client
         res.json({
+            event_status: taskInfo.event_status,
             attachments
         });
 
     } catch (error) {
-
         return handleServerError(res, error);
-
     }
-
 };
 
 const deleteAttachment = async (req, res) => {
-
     try {
-
         const { id } = req.params;
 
+        // 🛑 ĐÃ SỬA: SELECT kéo kèm e.status AS event_status từ câu query
         const [attachments] = await db.query(
             `
             SELECT
                 a.*,
                 t.assigned_to,
-                e.leader_id
-
+                t.title AS task_title,
+                t.created_by,
+                e.leader_id,
+                e.status AS event_status
             FROM attachments a
-
-            INNER JOIN tasks t
-                ON a.task_id = t.id
-
-            INNER JOIN events e
-                ON t.event_id = e.id
-
+            INNER JOIN tasks t ON a.task_id = t.id
+            INNER JOIN events e ON t.event_id = e.id
             WHERE a.id = ?
             AND a.deleted_at IS NULL
             `,
@@ -247,7 +204,13 @@ const deleteAttachment = async (req, res) => {
 
         const attachment = attachments[0];
 
-        // Chỉ Admin, Leader hoặc người upload được xóa file
+        // 🛑 CHẶN TUYỆT ĐỐI: Không cho xóa hồ sơ tư liệu nếu sự kiện đã Đóng/Hủy
+        if (attachment.event_status === "Đã kết thúc" || attachment.event_status === "Đã hủy") {
+            return res.status(403).json({
+                message: "Sự kiện đã hoàn thành hoặc đã bị hủy, không cho phép xóa hồ sơ lưu trữ!"
+            });
+        }
+
         if (
             req.user.role !== "admin" &&
             req.user.id !== attachment.leader_id &&
@@ -275,28 +238,11 @@ const deleteAttachment = async (req, res) => {
             req.user.id
         );
 
-        // Tạo thông báo khi file bị xóa
         const receivers = new Set();
-
-        // Thông báo cho Leader nếu người xóa không phải Leader
-        if (attachment.leader_id && attachment.leader_id !== req.user.id) {
-            receivers.add(attachment.leader_id);
-        }
-
-        // Thông báo cho người được giao task nếu khác người xóa
-        if (attachment.assigned_to && attachment.assigned_to !== req.user.id) {
-            receivers.add(attachment.assigned_to);
-        }
-
-        // Thông báo cho người tạo task nếu khác người xóa
-        if (attachment.created_by && attachment.created_by !== req.user.id) {
-            receivers.add(attachment.created_by);
-        }
-
-        // Thông báo cho người upload file nếu khác người xóa
-        if (attachment.uploaded_by && attachment.uploaded_by !== req.user.id) {
-            receivers.add(attachment.uploaded_by);
-        }
+        if (attachment.leader_id && attachment.leader_id !== req.user.id) receivers.add(attachment.leader_id);
+        if (attachment.assigned_to && attachment.assigned_to !== req.user.id) receivers.add(attachment.assigned_to);
+        if (attachment.created_by && attachment.created_by !== req.user.id) receivers.add(attachment.created_by);
+        if (attachment.uploaded_by && attachment.uploaded_by !== req.user.id) receivers.add(attachment.uploaded_by);
 
         for (const userId of receivers) {
             await createNotification({
@@ -313,155 +259,69 @@ const deleteAttachment = async (req, res) => {
         });
 
     } catch (error) {
-
-return handleServerError(res, error);
-
+        return handleServerError(res, error);
     }
-
 };
 
 const getDeletedAttachments = async (req, res) => {
-
     try {
-
         const [attachments] = await db.query(
             `
             SELECT
-                a.id,
-                a.file_name,
-                a.file_size,
-                a.file_type,
-                a.deleted_at,
-
-                u.id AS uploaded_by_id,
-                u.full_name AS uploaded_by_name
-
+                a.id, a.file_name, a.file_size, a.file_type, a.deleted_at,
+                u.id AS uploaded_by_id, u.full_name AS uploaded_by_name
             FROM attachments a
-
-            LEFT JOIN users u
-                ON a.uploaded_by = u.id
-
+            LEFT JOIN users u ON a.uploaded_by = u.id
             WHERE a.deleted_at IS NOT NULL
-
             ORDER BY a.deleted_at DESC
             `
         );
-
-        res.json({
-            total: attachments.length,
-            attachments
-        });
-
+        res.json({ total: attachments.length, attachments });
     } catch (error) {
-
-        console.log(error);
-
-        res.status(500).json({
-            message: error.message
-        });
-
+        res.status(500).json({ message: error.message });
     }
-
 };
 
 const restoreAttachment = async (req, res) => {
-
     try {
-
         const { id } = req.params;
-
-        // Lấy file đã bị xóa + lấy leader_id của sự kiện chứa task đó
         const [attachments] = await db.query(
             `
             SELECT
-                a.id,
-                a.task_id,
-                a.file_name,
-                a.file_path,
-                a.uploaded_by,
-                a.deleted_at,
-
-                t.title AS task_title,
-                t.assigned_to,
-                t.created_by,
-
-                e.id AS event_id,
-                e.title AS event_title,
-                e.leader_id
-
+                a.id, a.task_id, a.file_name, a.file_path, a.uploaded_by, a.deleted_at,
+                t.title AS task_title, t.assigned_to, t.created_by,
+                e.id AS event_id, e.title AS event_title, e.leader_id, e.status AS event_status
             FROM attachments a
-
-            INNER JOIN tasks t
-                ON a.task_id = t.id
-
-            INNER JOIN events e
-                ON t.event_id = e.id
-
-            WHERE a.id = ?
-            AND a.deleted_at IS NOT NULL
+            INNER JOIN tasks t ON a.task_id = t.id
+            INNER JOIN events e ON t.event_id = e.id
+            WHERE a.id = ? AND a.deleted_at IS NOT NULL
             `,
             [id]
         );
 
         if (attachments.length === 0) {
-            return res.status(404).json({
-                message: "Không tìm thấy file đã xóa"
-            });
+            return res.status(404).json({ message: "Không tìm thấy file đã xóa" });
         }
 
         const attachment = attachments[0];
 
-        // Chỉ Admin hoặc Leader của sự kiện mới được khôi phục file
-        if (
-            req.user.role !== "admin" &&
-            req.user.id !== attachment.leader_id
-        ) {
-            return res.status(403).json({
-                message: "Bạn không có quyền khôi phục file này"
-            });
+        // Chặn khôi phục file nếu sự kiện chứa nó đã đóng/hủy
+        if (attachment.event_status === "Đã kết thúc" || attachment.event_status === "Đã hủy") {
+            return res.status(403).json({ message: "Sự kiện đã kết thúc hoặc hủy, không thể khôi phục tài liệu!" });
         }
 
-        // Khôi phục file
-        await db.query(
-            `
-            UPDATE attachments
-            SET
-                is_deleted = FALSE,
-                deleted_at = NULL
-            WHERE id = ?
-            `,
-            [id]
-        );
+        if (req.user.role !== "admin" && req.user.id !== attachment.leader_id) {
+            return res.status(403).json({ message: "Bạn không có quyền khôi phục file này" });
+        }
 
-        // Ghi lịch sử nếu bạn đang dùng task_history
-        await addTaskHistory(
-            attachment.task_id,
-            `${req.user.full_name} đã khôi phục tệp "${attachment.file_name}"`,
-            req.user.id
-        );
+        await db.query(`UPDATE attachments SET is_deleted = FALSE, deleted_at = NULL WHERE id = ?`, [id]);
+        await addTaskHistory(attachment.task_id, `${req.user.full_name} đã khôi phục tệp "${attachment.file_name}"`, req.user.id);
 
-        // Tạo thông báo khi file được khôi phục
         const receivers = new Set();
-
-        // Thông báo cho Leader nếu người khôi phục không phải Leader
-        if (attachment.leader_id && attachment.leader_id !== req.user.id) {
-            receivers.add(attachment.leader_id);
-        }
-
-        // Thông báo cho người được giao task nếu khác người khôi phục
-        if (attachment.assigned_to && attachment.assigned_to !== req.user.id) {
-            receivers.add(attachment.assigned_to);
-        }
-
-        // Thông báo cho người tạo task nếu khác người khôi phục
-        if (attachment.created_by && attachment.created_by !== req.user.id) {
-            receivers.add(attachment.created_by);
-        }
-
-        // Thông báo cho người upload file nếu khác người khôi phục
-        if (attachment.uploaded_by && attachment.uploaded_by !== req.user.id) {
-            receivers.add(attachment.uploaded_by);
-        }
+        if (attachment.leader_id && attachment.leader_id !== req.user.id) receivers.add(attachment.leader_id);
+        if (attachment.assigned_to && attachment.assigned_to !== req.user.id) receivers.add(attachment.assigned_to);
+        if (attachment.created_by && attachment.created_by !== req.user.id) receivers.add(attachment.created_by);
+        if (attachment.uploaded_by && attachment.uploaded_by !== req.user.id) receivers.add(attachment.uploaded_by);
 
         for (const userId of receivers) {
             await createNotification({
@@ -473,208 +333,88 @@ const restoreAttachment = async (req, res) => {
             });
         }
 
-
-        res.json({
-            message: "Khôi phục file thành công"
-        });
-
+        res.json({ message: "Khôi phục file thành công" });
     } catch (error) {
-
-        console.log(error);
-
-        res.status(500).json({
-            message: error.message
-        });
-
+        res.status(500).json({ message: error.message });
     }
-
 };
 
 const downloadAttachment = async (req, res) => {
-
     try {
-
         const { id } = req.params;
-
         const [attachments] = await db.query(
             `
-            SELECT
-                a.*,
-                t.event_id,
-                e.leader_id
-
+            SELECT a.*, t.event_id, e.leader_id
             FROM attachments a
-
-            INNER JOIN tasks t
-                ON a.task_id = t.id
-
-            INNER JOIN events e
-                ON t.event_id = e.id
-
-            WHERE a.id = ?
-            AND a.deleted_at IS NULL
+            INNER JOIN tasks t ON a.task_id = t.id
+            INNER JOIN events e ON t.event_id = e.id
+            WHERE a.id = ? AND a.deleted_at IS NULL
             `,
             [id]
         );
 
         if (attachments.length === 0) {
-            return res.status(404).json({
-                message: "Không tìm thấy file"
-            });
+            return res.status(404).json({ message: "Không tìm thấy file" });
         }
 
         const attachment = attachments[0];
 
-        // Admin tải mọi file
         if (req.user.role !== "admin") {
-
             const [members] = await db.query(
-                `
-                SELECT *
-                FROM event_members
-                WHERE event_id = ?
-                AND user_id = ?
-                `,
-                [
-                    attachment.event_id,
-                    req.user.id
-                ]
+                `SELECT * FROM event_members WHERE event_id = ? AND user_id = ?`,
+                [attachment.event_id, req.user.id]
             );
-
-            const isLeader =
-                attachment.leader_id === req.user.id;
-
-            if (
-                members.length === 0 &&
-                !isLeader
-            ) {
-                return res.status(403).json({
-                    message:
-                    "Bạn không có quyền tải file này"
-                });
+            if (members.length === 0 && attachment.leader_id !== req.user.id) {
+                return res.status(403).json({ message: "Bạn không có quyền tải file này" });
             }
         }
 
-        console.log("file_path:", attachment.file_path);
-
         const filePath = attachment.file_path;
-
-        console.log(filePath);
-
         if (!fs.existsSync(filePath)) {
-            return res.status(404).json({
-                message:
-                "File không tồn tại trên server"
-            });
+            return res.status(404).json({ message: "File không tồn tại trên server" });
         }
-
-        res.download(
-            filePath,
-            attachment.file_name
-        );
-
+        res.download(filePath, attachment.file_name);
     } catch (error) {
-
-        console.log(error);
-
-        res.status(500).json({
-            message: error.message
-        });
-
+        res.status(500).json({ message: error.message });
     }
-
 };
 
 const permanentDeleteAttachment = async (req, res) => {
-
     try {
-
         const { id } = req.params;
-
-        // Lấy file trong thùng rác + thông tin task/event
         const [attachments] = await db.query(
             `
-            SELECT
-                a.*,
-
-                t.id AS task_id,
-                t.title AS task_title,
-                t.assigned_to,
-                t.created_by,
-
-                e.leader_id
+            SELECT a.*, t.id AS task_id, e.leader_id
             FROM attachments a
-
-            INNER JOIN tasks t
-                ON a.task_id = t.id
-
-            INNER JOIN events e
-                ON t.event_id = e.id
-
-            WHERE a.id = ?
-            AND a.deleted_at IS NOT NULL
+            INNER JOIN tasks t ON a.task_id = t.id
+            INNER JOIN events e ON t.event_id = e.id
+            WHERE a.id = ? AND a.deleted_at IS NOT NULL
             `,
             [id]
         );
 
         if (attachments.length === 0) {
-            return res.status(404).json({
-                message: "Không tìm thấy file trong thùng rác"
-            });
+            return res.status(404).json({ message: "Không tìm thấy file trong thùng rác" });
         }
 
         const attachment = attachments[0];
 
-        // Chỉ Admin hoặc Leader được xóa vĩnh viễn file
-        if (
-            req.user.role !== "admin" &&
-            req.user.id !== attachment.leader_id
-        ) {
-            return res.status(403).json({
-                message: "Bạn không có quyền xóa vĩnh viễn file này"
-            });
+        if (req.user.role !== "admin" && req.user.id !== attachment.leader_id) {
+            return res.status(403).json({ message: "Bạn không có quyền xóa vĩnh viễn file này" });
         }
 
-        // Xóa file thật trong thư mục uploads
-        if (
-            attachment.file_path &&
-            fs.existsSync(attachment.file_path)
-        ) {
+        if (attachment.file_path && fs.existsSync(attachment.file_path)) {
             fs.unlinkSync(attachment.file_path);
         }
 
-        // Xóa record trong database
-        await db.query(
-            `
-            DELETE FROM attachments
-            WHERE id = ?
-            `,
-            [id]
-        );
+        await db.query(`DELETE FROM attachments WHERE id = ?`, [id]);
+        await addTaskHistory(attachment.task_id, `${req.user.full_name} đã xóa vĩnh viễn tệp "${attachment.file_name}"`, req.user.id);
 
-        // Ghi lịch sử vào task
-        await addTaskHistory(
-            attachment.task_id,
-            `${req.user.full_name} đã xóa vĩnh viễn tệp "${attachment.file_name}"`,
-            req.user.id
-        );
-
-        res.json({
-            message: "Xóa vĩnh viễn file thành công"
-        });
-
+        res.json({ message: "Xóa vĩnh viễn file thành công" });
     } catch (error) {
-
-        console.log(error);
-
-        res.status(500).json({
-            message: error.message
-        });
-
+        res.status(500).json({ message: error.message });
     }
-
 };
-
 
 module.exports = {
     uploadAttachment,

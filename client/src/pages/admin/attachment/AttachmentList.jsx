@@ -8,9 +8,12 @@ function AttachmentList() {
     
     const [task, setTask] = useState(null);
     const [attachments, setAttachments] = useState([]);
-    const [submissionHistory, setSubmissionHistory] = useState([]); // THÊM: State lưu lịch sử bài nộp
+    const [submissionHistory, setSubmissionHistory] = useState([]); 
     const [loading, setLoading] = useState(true);
     const [uploading, setUploading] = useState(false);
+
+    // 🛑 THÊM STATE: Quản lý trạng thái đóng băng dữ liệu dựa vào Sự kiện
+    const [eventStatus, setEventStatus] = useState('');
 
     const fetchTaskData = useCallback(async () => {
         try {
@@ -28,6 +31,9 @@ function AttachmentList() {
                 if (attachRes && attachRes.ok) {
                     const attachData = await attachRes.json();
                     setAttachments(attachData.attachments || []);
+                    
+                    // 🛑 ĐÃ FIX: Nhận trạng thái sự kiện từ object response
+                    setEventStatus(attachData.event_status || '');
                 }
             } else {
                 Swal.fire('Lỗi', 'Không thể tải thông tin công việc', 'error');
@@ -40,7 +46,6 @@ function AttachmentList() {
         }
     }, [id, navigate]);
 
-    // THÊM: Hàm lấy lịch sử bài nộp
     const fetchSubmissionHistory = useCallback(async () => {
         try {
             const token = localStorage.getItem('my_token');
@@ -56,7 +61,7 @@ function AttachmentList() {
 
     useEffect(() => {
         fetchTaskData();
-        fetchSubmissionHistory(); // Gọi hàm khi load trang
+        fetchSubmissionHistory(); 
     }, [fetchTaskData, fetchSubmissionHistory]);
 
     const handleFileUpload = async (e) => {
@@ -103,11 +108,8 @@ function AttachmentList() {
                 const blob = await response.blob();
                 const url = window.URL.createObjectURL(blob);
                 const a = document.createElement('a');
-                a.href = url;
-                a.download = fileName;
-                document.body.appendChild(a);
-                a.click();
-                a.remove();
+                a.href = url; a.download = fileName;
+                document.body.appendChild(a); a.click(); a.remove();
                 window.URL.revokeObjectURL(url);
             }
         } catch (error) {
@@ -115,7 +117,6 @@ function AttachmentList() {
         }
     };
 
-    // THÊM: Hàm download file của lịch sử nộp
     const handleDownloadSubmission = async (subId, fileName) => {
         try {
             const token = localStorage.getItem('my_token');
@@ -193,7 +194,7 @@ function AttachmentList() {
             if (res.ok) {
                 Swal.fire('Thành công', status === 'approved' ? 'Đã phê duyệt công việc!' : 'Đã từ chối.', 'success');
                 fetchTaskData();
-                fetchSubmissionHistory(); // Bổ sung: Cập nhật lại lịch sử sau khi duyệt/từ chối
+                fetchSubmissionHistory(); 
             }
         } catch (error) {
             Swal.fire('Lỗi', 'Lỗi kết nối mạng', 'error');
@@ -208,9 +209,7 @@ function AttachmentList() {
             completed: { label: 'Đã hoàn thành', bg: '#f0fdf4', color: '#166534' },
             cancelled: { label: 'Đã hủy', bg: '#fef2f2', color: '#dc2626' }
         };
-
         const current = badges[status] || { label: status, bg: '#f3f4f6', color: '#1f2937' };
-
         return (
             <span style={{ display: 'inline-block', padding: '4px 12px', borderRadius: '9999px', fontSize: '13px', fontWeight: '600', backgroundColor: current.bg, color: current.color }}>
                 {current.label}
@@ -220,6 +219,9 @@ function AttachmentList() {
 
     if (loading) return <div style={{ padding: '40px', textAlign: 'center' }}>Đang tải...</div>;
     if (!task) return <div style={{ padding: '40px', textAlign: 'center', color: '#EF4444' }}>Không tìm thấy công việc!</div>;
+
+    // 🛑 ĐỊNH NGHĨA BIẾN CHECK SỰ KIỆN ĐÃ ĐÓNG HOẶC HỦY
+    const isEventClosedOrCanceled = eventStatus === 'Đã kết thúc' || eventStatus === 'Đã hủy';
 
     return (
         <div className="page-container" style={{ maxWidth: '800px', margin: '20px auto', padding: '24px' }}>
@@ -231,6 +233,14 @@ function AttachmentList() {
              </button>  
             
             <div style={{ padding: '24px', backgroundColor: '#fff', borderRadius: '12px', boxShadow: '0 4px 6px -1px rgba(0,0,0,0.1)' }}>
+                
+                {/* 🛑 BANNER CẢNH BÁO ĐÓNG BĂNG HỒ SƠ TÀI LIỆU */}
+                {isEventClosedOrCanceled && (
+                    <div style={{ padding: '12px 16px', backgroundColor: '#fdf2f2', borderLeft: '4px solid #ef4444', color: '#b91c1c', borderRadius: '6px', fontSize: '14px', fontWeight: '600', marginBottom: '20px' }}>
+                        Sự kiện chứa công việc này đã {eventStatus.toLowerCase()}. Hồ sơ minh chứng và tài liệu đính kèm đã bị khóa cứng ở chế độ chỉ đọc.
+                    </div>
+                )}
+
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px' }}>
                     <h2 style={{ margin: 0 }}>{task.title}</h2>
                     {renderStatusBadge(task.status)}
@@ -250,34 +260,28 @@ function AttachmentList() {
                             </p>
                         )}
                         
-                            {(task.submission_file_name || task.submission_file_path) && (
-                                        <div style={{ marginTop: '8px', display: 'flex', flexDirection: 'column', gap: '8px' }}>
-                                            <p style={{ margin: 0, color: '#4b5563', fontStyle: 'italic', fontSize: '14px' }}>
-                                                Đính kèm tệp vật lý: {task.submission_file_name || 'Có file đính kèm'}
-                                            </p>
-                                            <button 
-                                                onClick={() => handleDownloadSubmission(task.latest_submission_id, task.submission_file_name || 'minh-chung.pdf')}
-                                                style={{ 
-                                                    alignSelf: 'flex-start', 
-                                                    background: '#eff6ff', 
-                                                    color: '#2563eb', 
-                                                    border: '1px solid #bfdbfe', 
-                                                    padding: '6px 14px', 
-                                                    borderRadius: '6px', 
-                                                    cursor: 'pointer', 
-                                                    fontSize: '13px', 
-                                                    fontWeight: '600'
-                                                }}
-                                            >
-                                                Tải file về xem trước
-                                            </button>
-                                        </div>
-                            )}
-                                    <div style={{ display: 'flex', gap: '12px', justifyContent: 'flex-end', marginTop: '20px', borderTop: '1px solid #e5e7eb', paddingTop: '14px' }}>
-                                        <button onClick={() => handleReviewSubmission('rejected')} style={{ backgroundColor: '#EF4444', color: '#fff', padding: '8px 16px', border:'none', borderRadius:'6px', cursor:'pointer', fontWeight:'600' }}>Từ chối</button>
-                                        <button onClick={() => handleReviewSubmission('approved')} style={{ backgroundColor: '#10B981', color: '#fff', padding: '8px 16px', border:'none', borderRadius:'6px', cursor:'pointer', fontWeight:'600' }}>Phê duyệt</button>
-                                    </div>
-                                    </div>
+                        {(task.submission_file_name || task.submission_file_path) && (
+                            <div style={{ marginTop: '8px', display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                                <p style={{ margin: 0, color: '#4b5563', fontStyle: 'italic', fontSize: '14px' }}>
+                                    Đính kèm tệp vật lý: {task.submission_file_name || 'Có file đính kèm'}
+                                </p>
+                                <button 
+                                    onClick={() => handleDownloadSubmission(task.latest_submission_id, task.submission_file_name || 'minh-chung.pdf')}
+                                    style={{ alignSelf: 'flex-start', background: '#eff6ff', color: '#2563eb', border: '1px solid #bfdbfe', padding: '6px 14px', borderRadius: '6px', cursor: 'pointer', fontSize: '13px', fontWeight: '600' }}
+                                >
+                                    Tải file về xem trước
+                                </button>
+                            </div>
+                        )}
+                        
+                        {/* 🛑 CHẶN 4: Ẩn các nút duyệt ("Từ chối", "Phê duyệt") nếu Sự kiện đã đóng hoặc hủy */}
+                        {!isEventClosedOrCanceled && (
+                            <div style={{ display: 'flex', gap: '12px', justifyContent: 'flex-end', marginTop: '20px', borderTop: '1px solid #e5e7eb', paddingTop: '14px' }}>
+                                <button onClick={() => handleReviewSubmission('rejected')} style={{ backgroundColor: '#EF4444', color: '#fff', padding: '8px 16px', border:'none', borderRadius:'6px', cursor:'pointer', fontWeight:'600' }}>Từ chối</button>
+                                <button onClick={() => handleReviewSubmission('approved')} style={{ backgroundColor: '#10B981', color: '#fff', padding: '8px 16px', border:'none', borderRadius:'6px', cursor:'pointer', fontWeight:'600' }}>Phê duyệt</button>
+                            </div>
+                        )}
+                    </div>
                 )}
 
                 {/* THÔNG BÁO KHI ĐÃ DUYỆT XONG */}
@@ -300,7 +304,7 @@ function AttachmentList() {
                     </div>
                 )}
 
-                {/* BỔ SUNG: DANH SÁCH LỊCH SỬ NỘP BÀI */}
+                {/* DANH SÁCH LỊCH SỬ NỘP BÀI */}
                 <div style={{ marginBottom: '32px' }}>
                     <h3 style={{ margin: '0 0 16px 0', borderBottom: '2px solid #F1F5F9', paddingBottom: '8px' }}>Lịch sử minh chứng đã nộp</h3>
                     <div style={{ maxHeight: '250px', overflowY: 'auto' }}>
@@ -313,27 +317,27 @@ function AttachmentList() {
                                         <strong style={{ color: '#374151' }}>{sub.submitted_by_name}</strong> - {new Date(sub.created_at).toLocaleString('vi-VN')}
                                     </div>
                                     {sub.content && <div style={{ fontSize: '14px', color: '#4b5563' }}>{sub.content}</div>}
-                                        {sub.link_url && (
-                                            <div style={{ fontSize: '13px' }}>
-                                                <strong>Link kết quả:</strong>{' '}
-                                                <a href={sub.link_url} target="_blank" rel="noopener noreferrer" style={{ color: '#2563eb', textDecoration: 'underline', fontWeight: '500' }}>
-                                                    {sub.link_url}
-                                                </a>
-                                            </div>
-                                        )}
-                                        {sub.file_name && (
-                                            <button 
-                                                onClick={() => handleDownloadSubmission(sub.id, sub.file_name)}
-                                                style={{ alignSelf: 'flex-start', background: '#eff6ff', color: '#2563eb', border: '1px solid #bfdbfe', padding: '4px 12px', borderRadius: '6px', cursor: 'pointer', fontSize: '12px', fontWeight: '600', marginTop: '4px' }}
-                                            >
-                                                ⬇ Tải file: {sub.file_name}
-                                            </button>
-                                        )}
-                                        {sub.status === 'rejected' && (
-                                            <div style={{ fontSize: '13px', color: '#b91c1c', backgroundColor: '#fef2f2', padding: '6px 10px', borderRadius: '4px', marginTop: '4px', borderLeft: '3px solid #ef4444' }}>
-                                                Từ chối: {sub.review_note}
-                                            </div>
-                                        )}
+                                    {sub.link_url && (
+                                        <div style={{ fontSize: '13px' }}>
+                                            <strong>Link kết quả:</strong>{' '}
+                                            <a href={sub.link_url} target="_blank" rel="noopener noreferrer" style={{ color: '#2563eb', textDecoration: 'underline', fontWeight: '500' }}>
+                                                {sub.link_url}
+                                            </a>
+                                        </div>
+                                    )}
+                                    {sub.file_name && (
+                                        <button 
+                                            onClick={() => handleDownloadSubmission(sub.id, sub.file_name)}
+                                            style={{ alignSelf: 'flex-start', background: '#eff6ff', color: '#2563eb', border: '1px solid #bfdbfe', padding: '4px 12px', borderRadius: '6px', cursor: 'pointer', fontSize: '12px', fontWeight: '600', marginTop: '4px' }}
+                                        >
+                                            ⬇ Tải file: {sub.file_name}
+                                        </button>
+                                    )}
+                                    {sub.status === 'rejected' && (
+                                        <div style={{ fontSize: '13px', color: '#b91c1c', backgroundColor: '#fef2f2', padding: '6px 10px', borderRadius: '4px', marginTop: '4px', borderLeft: '3px solid #ef4444' }}>
+                                            Từ chối: {sub.review_note}
+                                        </div>
+                                    )}
                                 </div>
                             ))
                         )}
@@ -343,7 +347,9 @@ function AttachmentList() {
                 {/* DANH SÁCH TÀI LIỆU VẬT LÝ HỆ THỐNG */}
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px', borderBottom: '2px solid #F1F5F9', paddingBottom: '12px' }}>
                     <h3 style={{ margin: 0 }}>Tài liệu đính kèm hệ thống ({attachments.length})</h3>
-                    {task.status !== 'completed' && (
+                    
+                    {/* 🛑 CHẶN 5: Ẩn hoàn toàn nút "Thêm file đính kèm" nếu Sự kiện đã bị đóng hoặc hủy */}
+                    {task.status !== 'completed' && !isEventClosedOrCanceled && (
                         <label htmlFor="admin-upload-file" className="btn-primary" style={{ cursor: 'pointer', padding: '8px 14px', fontSize: '13px', backgroundColor: '#2563eb', color: '#fff', borderRadius: '6px' }}>
                             {uploading ? 'Đang tải...' : 'Thêm file đính kèm'}
                             <input type="file" id="admin-upload-file" style={{ display: 'none' }} onChange={handleFileUpload} disabled={uploading} />
@@ -361,7 +367,11 @@ function AttachmentList() {
                             <span style={{ fontWeight: '600', fontSize: '14px' }}>{file.file_name}</span>
                             <div style={{ display: 'flex', gap: '8px' }}>
                                 <button style={{ padding: '6px 12px', fontSize: '13px', backgroundColor: '#e5e7eb', border: 'none', borderRadius: '4px', cursor: 'pointer', fontWeight: '500' }} onClick={() => handleDownload(file.id, file.file_name)}>Tải về</button>
-                                <button style={{ padding: '6px 12px', fontSize: '13px', backgroundColor: '#fee2e2', color: '#ef4444', border: 'none', borderRadius: '4px', cursor: 'pointer', fontWeight: '500' }} onClick={() => handleDeleteFile(file.id)}>Xóa</button>
+                                
+                                {/* 🛑 CHẶN 5: Ẩn hoàn toàn nút "Xóa" đính kèm cũ nếu Sự kiện đã kết thúc hoặc hủy */}
+                                {!isEventClosedOrCanceled && (
+                                    <button style={{ padding: '6px 12px', fontSize: '13px', backgroundColor: '#fee2e2', color: '#ef4444', border: 'none', borderRadius: '4px', cursor: 'pointer', fontWeight: '500' }} onClick={() => handleDeleteFile(file.id)}>Xóa</button>
+                                )}
                             </div>
                         </div>
                     ))

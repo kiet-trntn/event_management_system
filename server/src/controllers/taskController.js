@@ -618,7 +618,7 @@ const createTask = async (req, res) => {
 
         const event = events[0];
 
-        // Không tạo công việc cho sự kiện đã kết thúc hoặc đã hủy
+        // 🛑 SỬA ĐỔI: Chặn hoàn toàn (cho cả Admin lẫn Leader) việc tạo Task trong sự kiện đã đóng/hủy
         if (
             event.status === "Đã kết thúc" ||
             event.status === "Đã hủy"
@@ -796,6 +796,16 @@ const updateTask = async (req, res) => {
         }
 
         const task = tasks[0];
+
+        // 🛑 SỬA ĐỔI: Chặn tuyệt đối không cho chỉnh sửa thông tin task nếu Sự kiện đã kết thúc hoặc hủy
+        if (
+            task.event_status === "Đã kết thúc" ||
+            task.event_status === "Đã hủy"
+        ) {
+            return res.status(403).json({
+                message: "Không thể chỉnh sửa công việc thuộc sự kiện đã kết thúc hoặc đã hủy"
+            });
+        }
 
         const isAdmin = req.user.role === "admin";
 
@@ -1135,11 +1145,8 @@ const updateTask = async (req, res) => {
 };
 
 const updateTaskStatus = async (req, res) => {
-
     try {
-
         const { id } = req.params;
-
         const { status } = req.body;
 
         // Validate status
@@ -1157,18 +1164,16 @@ const updateTaskStatus = async (req, res) => {
             });
         }
 
-        // Kiểm tra task tồn tại
+        // 🛑 SỬA ĐỔI: INNER JOIN thêm bảng events để lấy trạng thái event_status bảo vệ tiến độ
         const [tasks] = await db.query(
             `
             SELECT
                 t.*,
-                e.leader_id
-
+                e.leader_id,
+                e.status AS event_status
             FROM tasks t
-
             INNER JOIN events e
                 ON t.event_id = e.id
-
             WHERE t.id = ?
             AND t.is_deleted = FALSE
             `,
@@ -1182,6 +1187,16 @@ const updateTaskStatus = async (req, res) => {
         }
 
         const task = tasks[0];
+
+        // 🛑 SỬA ĐỔI: Chặn không cho đổi trạng thái công việc nếu sự kiện chứa nó đã Kết thúc hoặc Hủy
+        if (
+            task.event_status === "Đã kết thúc" ||
+            task.event_status === "Đã hủy"
+        ) {
+            return res.status(403).json({
+                message: "Sự kiện đã kết thúc hoặc bị hủy, không thể thay đổi trạng thái công việc!"
+            });
+        }
 
         // Chỉ Admin, Leader hoặc người được giao mới được đổi trạng thái
         if (
@@ -1200,16 +1215,14 @@ const updateTaskStatus = async (req, res) => {
             task.status === "cancelled"
         ) {
             return res.status(403).json({
-                message:
-                    "Công việc đã hoàn thành hoặc đã hủy"
+                message: "Công việc đã hoàn thành hoặc đã hủy"
             });
         }
 
         // Không cho cập nhật cùng trạng thái
         if (task.status === status) {
             return res.status(400).json({
-                message:
-                    "Trạng thái mới trùng với trạng thái hiện tại"
+                message: "Trạng thái mới trùng với trạng thái hiện tại"
             });
         }
 
@@ -1276,17 +1289,12 @@ const updateTaskStatus = async (req, res) => {
         });
 
     } catch (error) {
-
         return handleServerError(res, error);
-
     }
-
 };
 
 const deleteTask = async (req, res) => {
-
     try {
-
         const { id } = req.params;
 
         // Kiểm tra task tồn tại
@@ -1376,17 +1384,12 @@ const deleteTask = async (req, res) => {
         });
 
     } catch (error) {
-
         return handleServerError(res, error);
-
     }
-
 };
 
 const restoreTask = async (req, res) => {
-
     try {
-
         const { id } = req.params;
 
         // Kiểm tra task có tồn tại không
@@ -1482,11 +1485,8 @@ const restoreTask = async (req, res) => {
         });
 
     } catch (error) {
-
         return handleServerError(res, error);
-
     }
-
 };
 
 const getDeletedTasks = async (req, res) => {
@@ -1583,15 +1583,12 @@ const getDeletedTasks = async (req, res) => {
 };
 
 const getTaskHistory = async (req, res) => {
-
     try {
-
         const { id } = req.params;
 
         const [history] = await db.query(
             `
             SELECT
-
                 th.id,
                 th.action,
                 th.created_at,
@@ -1617,17 +1614,12 @@ const getTaskHistory = async (req, res) => {
         });
 
     } catch (error) {
-
         return handleServerError(res, error);
-
     }
-
 };
 
 const permanentDeleteTask = async (req, res) => {
-
     try {
-
         const { id } = req.params;
 
         // Kiểm tra task tồn tại
@@ -1713,12 +1705,10 @@ const permanentDeleteTask = async (req, res) => {
             );
 
         } catch (error) {
-
             // Nếu chưa có bảng task_submissions thì bỏ qua
             if (error.code !== "ER_NO_SUCH_TABLE") {
                 throw error;
             }
-
         }
 
         // Xóa dữ liệu liên quan trước
@@ -1752,11 +1742,8 @@ const permanentDeleteTask = async (req, res) => {
         });
 
     } catch (error) {
-
         return handleServerError(res, error);
-
     }
-
 };
 
 module.exports = {

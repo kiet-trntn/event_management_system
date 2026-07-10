@@ -10,12 +10,11 @@ function TaskDetail() {
     const [task, setTask] = useState(null);
     const [attachments, setAttachments] = useState([]); 
     const [taskHistory, setTaskHistory] = useState([]);
-    const [submissionHistory, setSubmissionHistory] = useState([]); // Thêm state lịch sử bài nộp
+    const [submissionHistory, setSubmissionHistory] = useState([]); 
     const [loading, setLoading] = useState(true);
     const [uploading, setUploading] = useState(false);
     const [currentUser, setCurrentUser] = useState(null);
 
-    // Form nộp bài của nhân viên
     const [submitContent, setSubmitContent] = useState('');
     const [submitLinkUrl, setSubmitLinkUrl] = useState('');
     const [submitFile, setSubmitFile] = useState(null);
@@ -26,9 +25,7 @@ function TaskDetail() {
             if (token) { 
                 setCurrentUser(JSON.parse(window.atob(token.split('.')[1]))); 
             }
-        } catch (e) { 
-            console.error("Lỗi giải mã token:", e); 
-        }
+        } catch (e) { console.error("Lỗi giải mã token:", e); }
     }, []);
 
     const fetchTaskData = useCallback(async () => {
@@ -56,12 +53,9 @@ function TaskDetail() {
             }
         } catch (error) { 
             Swal.fire('Lỗi', 'Lỗi kết nối máy chủ', 'error');
-        } finally { 
-            setLoading(false); 
-        }
+        } finally { setLoading(false); }
     }, [id, navigate]);
 
-    // Thêm hàm lấy lịch sử bài nộp
     const fetchSubmissionHistory = useCallback(async () => {
         try {
             const token = localStorage.getItem('my_token');
@@ -75,53 +69,33 @@ function TaskDetail() {
         } catch (err) { console.error("Lỗi tải lịch sử bài nộp:", err); }
     }, [id]);
 
-    // Socket ref for realtime updates (auto-refresh when leader/admin reviews)
     const socketRef = useRef(null);
 
     useEffect(() => { 
         document.title = "Chi tiết công việc | TaskFlow";
         fetchTaskData(); 
-        fetchSubmissionHistory(); // Gọi hàm lấy lịch sử khi load trang
+        fetchSubmissionHistory(); 
     }, [fetchTaskData, fetchSubmissionHistory]);
 
-    // Thiết lập socket để lắng nghe thông báo duyệt bài và tự động reload
     useEffect(() => {
         const token = localStorage.getItem('my_token');
         if (!token) return;
-
         socketRef.current = io('http://localhost:5000', { auth: { token } });
-
-        socketRef.current.on('connect', () => {
-            // console.log('Socket connected in ViewTask');
-        });
-
-        socketRef.current.on('connect_error', (err) => {
-            // console.error('Socket error in ViewTask:', err.message);
-        });
-
-        // Khi server gửi notification mới (createNotification emits 'new_notification')
         socketRef.current.on('new_notification', (notif) => {
             try {
-                // Nếu notification liên quan tới task hiện tại, refresh
                 if (!notif) return;
-                // related_id được dùng cho task id
                 if (Number(notif.related_id) === Number(id)) {
-                    // Cập nhật lại task và lịch sử nộp
                     fetchTaskData();
                     fetchSubmissionHistory();
                 }
-            } catch (e) { /* ignore */ }
+            } catch (e) { }
         });
-
-        return () => {
-            if (socketRef.current) socketRef.current.disconnect();
-        };
+        return () => { if (socketRef.current) socketRef.current.disconnect(); };
     }, [id, fetchTaskData, fetchSubmissionHistory]);
 
     const handleFileUpload = async (e) => {
         const file = e.target.files[0];
         if (!file) return;
-
         setUploading(true);
         const formData = new FormData();
         formData.append('file', file);
@@ -134,7 +108,6 @@ function TaskDetail() {
                 headers: { 'Authorization': `Bearer ${token}` },
                 body: formData
             });
-
             if (res.ok) {
                 Swal.fire({ toast: true, position: 'top-end', icon: 'success', title: 'Đã thêm tài liệu', showConfirmButton: false, timer: 1500 });
                 fetchTaskData(); 
@@ -142,55 +115,45 @@ function TaskDetail() {
                 const data = await res.json();
                 Swal.fire('Lỗi', data.message || 'Không thể tải file lên', 'error');
             }
-        } catch (error) {
-            Swal.fire('Lỗi', 'Mất kết nối máy chủ', 'error');
-        } finally {
-            setUploading(false);
-            e.target.value = null; 
-        }
+        } catch (error) { Swal.fire('Lỗi', 'Mất kết nối máy chủ', 'error'); }
+        finally { setUploading(false); e.target.value = null; }
     };
 
-     const handleDeleteFile = async (fileId) => {
-            const result = await Swal.fire({
-                title: 'Xóa file này?',
-                icon: 'warning',
-                showCancelButton: true,
-                confirmButtonColor: '#EF4444',
-                confirmButtonText: 'Xóa ngay',
-                cancelButtonText: 'Hủy'
-            });
-    
-            if (result.isConfirmed) {
-                try {
-                    const token = localStorage.getItem('my_token');
-                    const res = await fetch(`http://localhost:5000/api/attachments/${fileId}/deleted`, {
-                        method: 'PATCH',
-                        headers: { 'Authorization': `Bearer ${token}` }
-                    });
-    
-                    if (res.ok) {
-                        Swal.fire({ toast: true, position: 'top-end', icon: 'success', title: 'Đã xóa file', showConfirmButton: false, timer: 1500 });
-                        setAttachments(prev => prev.filter(f => f.id !== fileId)); 
-                    }
-                } catch (error) {
-                    Swal.fire('Lỗi', 'Mất kết nối máy chủ', 'error');
+    const handleDeleteFile = async (fileId) => {
+        const result = await Swal.fire({
+            title: 'Xóa file này?',
+            icon: 'warning',
+            showCancelButton: true,
+            confirmButtonColor: '#EF4444',
+            confirmButtonText: 'Xóa ngay',
+            cancelButtonText: 'Hủy'
+        });
+
+        if (result.isConfirmed) {
+            try {
+                const token = localStorage.getItem('my_token');
+                const res = await fetch(`http://localhost:5000/api/attachments/${fileId}/deleted`, {
+                    method: 'PATCH',
+                    headers: { 'Authorization': `Bearer ${token}` }
+                });
+                if (res.ok) {
+                    Swal.fire({ toast: true, position: 'top-end', icon: 'success', title: 'Đã xóa file', showConfirmButton: false, timer: 1500 });
+                    setAttachments(prev => prev.filter(f => f.id !== fileId)); 
                 }
-            }
-        };
+            } catch (error) { Swal.fire('Lỗi', 'Mất kết nối máy chủ', 'error'); }
+        }
+    };
 
     const handleSubmitTaskResult = async (e) => {
         e.preventDefault();
         if (!submitContent && !submitLinkUrl && !submitFile) {
-            return Swal.fire('Cảnh báo', 'Vui lòng cung cấp ít nhất một minh chứng (nội dung, link, hoặc file)!', 'warning');
+            return Swal.fire('Cảnh báo', 'Vui lòng cung cấp ít nhất một minh chứng!', 'warning');
         }
-
         const formData = new FormData();
         formData.append('task_id', id);
         formData.append('content', submitContent);
         formData.append('link_url', submitLinkUrl);
-        if (submitFile) {
-            formData.append('file', submitFile);
-        }
+        if (submitFile) formData.append('file', submitFile);
 
         try {
             setUploading(true);
@@ -200,31 +163,22 @@ function TaskDetail() {
                 headers: { 'Authorization': `Bearer ${token}` }, 
                 body: formData 
             });
-
             if (response.ok) {
-                Swal.fire('Thành công', 'Đã nộp bài kết quả thành công! Vui lòng chờ Leader/Admin duyệt.', 'success');
-                setSubmitContent('');
-                setSubmitLinkUrl('');
-                setSubmitFile(null);
-                fetchTaskData();
-                fetchSubmissionHistory(); // Cập nhật lại lịch sử nộp
+                Swal.fire('Thành công', 'Đã nộp bài kết quả thành công!', 'success');
+                setSubmitContent(''); setSubmitLinkUrl(''); setSubmitFile(null);
+                fetchTaskData(); fetchSubmissionHistory(); 
             } else {
                 const errData = await response.json();
                 Swal.fire('Lỗi', errData.message || 'Không thể nộp bài', 'error');
             }
-        } catch (error) {
-            Swal.fire('Lỗi', 'Mất kết nối máy chủ', 'error');
-        } finally {
-            setUploading(false);
-        }
+        } catch (error) { Swal.fire('Lỗi', 'Mất kết nối máy chủ', 'error'); }
+        finally { setUploading(false); }
     };
 
     const handleLeaderReview = async (status) => {
         if (!task.latest_submission_id) {
-            Swal.fire('Lỗi', 'Không tìm thấy dữ liệu bài nộp. Có thể nhân viên chưa nộp.', 'error');
-            return;
+            Swal.fire('Lỗi', 'Không tìm thấy dữ liệu bài nộp.', 'error'); return;
         }
-
         let review_note = "";
         if (status === 'rejected') {
             const { value: text } = await Swal.fire({
@@ -256,18 +210,13 @@ function TaskDetail() {
                 headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
                 body: JSON.stringify({ status, review_note })
             });
-
             if (res.ok) {
                 Swal.fire('Đã xử lý', status === 'approved' ? 'Công việc hoàn thành xuất sắc!' : 'Đã gửi phản hồi từ chối.', 'success');
-                fetchTaskData();
-                fetchSubmissionHistory(); // Cập nhật lại lịch sử nộp
+                fetchTaskData(); fetchSubmissionHistory(); 
             } else {
-                const errData = await res.json();
-                Swal.fire('Lỗi', errData.message || 'Không thể cập nhật', 'error');
+                const errData = await res.json(); Swal.fire('Lỗi', errData.message || 'Không thể cập nhật', 'error');
             }
-        } catch (error) {
-            Swal.fire('Lỗi', 'Không thể kết nối máy chủ', 'error');
-        }
+        } catch (error) { Swal.fire('Lỗi', 'Không thể kết nối máy chủ', 'error'); }
     };
 
     const handleDownload = async (fileId, fileName) => {
@@ -278,19 +227,12 @@ function TaskDetail() {
             if (response.ok) {
                 const blob = await response.blob();
                 const url = window.URL.createObjectURL(blob);
-                const a = document.createElement('a'); 
-                a.href = url; 
-                a.download = fileName;
-                document.body.appendChild(a); 
-                a.click(); 
-                a.remove();
+                const a = document.createElement('a'); a.href = url; a.download = fileName;
+                document.body.appendChild(a); a.click(); a.remove();
             }
-        } catch (e) { 
-            console.error(e); 
-        }
+        } catch (e) { console.error(e); }
     };
 
-    // Thêm hàm download dành riêng cho file bài nộp
     const handleDownloadSubmission = async (subId, fileName) => {
         try {
             const token = localStorage.getItem('my_token');
@@ -300,13 +242,17 @@ function TaskDetail() {
             if (res.ok) {
                 const blob = await res.blob();
                 const url = window.URL.createObjectURL(blob);
-                const a = document.createElement('a');
-                a.href = url; a.download = fileName;
+                const a = document.createElement('a'); a.href = url; a.download = fileName;
                 document.body.appendChild(a); a.click(); a.remove();
-            } else {
-                Swal.fire('Lỗi', 'Không thể tải file', 'error');
             }
         } catch (err) { Swal.fire('Lỗi', 'Mất kết nối', 'error'); }
+    };
+
+    const translateTaskType = (type) => {
+        if(type === 'preparation') return 'Chuẩn bị';
+        if(type === 'during_event') return 'Diễn ra';
+        if(type === 'post_event') return 'Kết thúc';
+        return type || 'Khác';
     };
 
     const translateAction = (actionText) => {
@@ -324,6 +270,9 @@ function TaskDetail() {
     const hasManagerRights = isAdmin || isEventLeader;
     const isTaskClosed = task.status === 'completed' || task.status === 'cancelled';
 
+    // 🛑 LOGIC THÊM: Kiểm tra xem sự kiện chứa công việc này đã đóng hoặc hủy chưa
+    const isEventClosedOrCanceled = task.event_status === 'Đã kết thúc' || task.event_status === 'Đã hủy';
+
     return (
         <div className="page-container" >
             <div className="page-header-form" style={{ maxWidth: '91%', display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '24px' }}>
@@ -333,7 +282,8 @@ function TaskDetail() {
                     </svg>
                     Quay lại
                  </button>   
-                {hasManagerRights && !isTaskClosed && (
+                 {/* 🛑 CHẶN: Chỉ hiện nút sửa công việc nếu Sự kiện còn hoạt động */}
+                {hasManagerRights && !isTaskClosed && !isEventClosedOrCanceled && (
                     <button className="btn-primary" onClick={() => navigate(`/staff/tasks/edit/${task.id}`)}>
                         Chỉnh sửa công việc
                     </button>
@@ -341,7 +291,6 @@ function TaskDetail() {
             </div>
 
             <div className="task-view-wrapper" style={{ display: 'flex', gap: '24px', flexWrap: 'wrap' }}>
-                {/* --- CỘT TRÁI: THÔNG TIN CHI TIẾT & TÀI LIỆU ĐÍNH KÈM --- */}
                 <div className="form-card large" style={{ flex: '2 1 600px', margin: 0, padding: '24px' }}> 
                     <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '16px' }}>
                         <h2 style={{ fontSize: '28px', margin: 0, fontWeight: '700', color: 'var(--text-primary)', letterSpacing: '-0.02em' }}>
@@ -350,6 +299,10 @@ function TaskDetail() {
                     </div>
                     
                     <div className="task-info-grid" style={{ marginBottom: '24px' }}>
+                        <div className="task-grid-item">
+                            <span className="task-grid-label">Giai đoạn:</span>
+                            <span className="badge-assignee" style={{ backgroundColor: '#e2e8f0', color: '#475569' }}>{translateTaskType(task.task_type)}</span>
+                        </div>
                         <div className="task-grid-item">
                             <span className="task-grid-label">Người giao:</span>
                             <span className="badge-creator">{task.created_by_name || 'Hệ thống'}</span>
@@ -380,7 +333,9 @@ function TaskDetail() {
                     <div style={{ marginTop: '24px', borderTop: '1px solid #E2E8F0', paddingTop: '20px' }}>
                         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px' }}>
                             <h4 style={{ margin: 0, fontSize: '16px', fontWeight: '600' }}>Tài liệu đính kèm hệ thống ({attachments.length}):</h4>
-                            {hasManagerRights && !isTaskClosed && (
+                            
+                            {/* 🛑 YÊU CẦU 5: Ẩn nút "+ Thêm tài liệu" nếu sự kiện đã hủy/đóng */}
+                            {hasManagerRights && !isTaskClosed && !isEventClosedOrCanceled && (
                                 <div>
                                     <input type="file" id="leader-upload-file" style={{ display: 'none' }} onChange={handleFileUpload} disabled={uploading} />
                                     <label htmlFor="leader-upload-file" className="btn-primary" style={{ cursor: uploading ? 'not-allowed' : 'pointer', fontSize: '13px', padding: '8px 14px', margin: 0 }}>
@@ -398,7 +353,9 @@ function TaskDetail() {
                                     <span style={{ fontSize: '14px', fontWeight: '500' }}>{file.file_name}</span>
                                     <div style={{ display: 'flex', gap: '14px' }}>
                                         <button onClick={() => handleDownload(file.id, file.file_name)} style={{ background: 'none', border: 'none', color: '#3B82F6', cursor: 'pointer', fontWeight: 'bold' }}>Tải về</button>
-                                        {hasManagerRights && (
+                                        
+                                        {/* 🛑 YÊU CẦU 5: Ẩn hoàn toàn nút "Xóa" của toàn bộ tài liệu đã up trước đó nếu sự kiện đóng/hủy */}
+                                        {hasManagerRights && !isEventClosedOrCanceled && (
                                             <button onClick={() => handleDeleteFile(file.id)} style={{ background: 'none', border: 'none', color: '#EF4444', cursor: 'pointer', fontWeight: 'bold' }}>Xóa</button>
                                         )}
                                     </div>
@@ -408,113 +365,69 @@ function TaskDetail() {
                     </div>
                 </div>
 
-                {/* --- CỘT PHẢI: PHÂN QUYỀN HIỂN THỊ MINH CHỨNG --- */}
                 <div style={{ flex: '1 1 340px', display: 'flex', flexDirection: 'column', gap: '24px' }}>
                     
-                    {/* TRƯỜNG HỢP 1: CHƯA HOÀN THÀNH VÀ LÀ NGƯỜI ĐƯỢC GIAO TASK -> Hiện form điền nộp bài hoặc box chờ duyệt */}
-                    {!isTaskClosed && isAssignedUser && (
-                        <div className="form-card" style={{ margin: 0, padding: '24px', backgroundColor: '#ffffff', border: '1px solid #e2e8f0', borderRadius: '12px', boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.05)' }}>
-                            <h3 style={{ fontSize: '18px', margin: '0 0 20px 0', color: '#1e293b', borderBottom: '1px solid #f1f5f9', paddingBottom: '12px' }}>
-                                Nộp minh chứng công việc
-                            </h3>
-                            <form onSubmit={handleSubmitTaskResult}>
-                                <div style={{ marginBottom: '18px' }}>
-                                    <label style={{ display: 'block', fontSize: '14px', fontWeight: '600', color: '#475569', marginBottom: '8px' }}>Tóm tắt nội dung hoàn thành:</label>
-                                    <textarea 
-                                        rows="3" 
-                                        value={task.status === 'submitted' ? (task.submission_content || '') : submitContent} 
-                                        onChange={(e) => setSubmitContent(e.target.value)} 
-                                        disabled={task.status === 'submitted' || uploading}
-                                        style={{ width: '100%', padding: '10px 12px', borderRadius: '8px', border: '1px solid #cbd5e1', backgroundColor: task.status === 'submitted' ? '#f1f5f9' : '#f8fafc', fontSize: '14px', outline: 'none' }} 
-                                        placeholder="Ghi chú những việc đã làm..."
-                                    ></textarea>
-                                </div>
-
-                                <div style={{ marginBottom: '18px' }}>
-                                    <label style={{ display: 'block', fontSize: '14px', fontWeight: '600', color: '#475569', marginBottom: '8px' }}>Link kết quả (Drive, GitHub,...):</label>
-                                    {task.status === 'submitted' && task.submission_link_url ? (
-                                        <div style={{ padding: '10px 12px', borderRadius: '8px', border: '1px solid #cbd5e1', backgroundColor: '#f1f5f9', fontSize: '14px' }}>
-                                            <a href={task.submission_link_url} target="_blank" rel="noopener noreferrer" style={{ color: '#2563eb', textDecoration: 'none', fontWeight: '600' }}>
-                                                Link minh chứng đã nộp
-                                            </a>
-                                        </div>
-                                    ) : (
-                                        <input 
-                                            type="url" 
-                                            value={submitLinkUrl} 
-                                            onChange={(e) => setSubmitLinkUrl(e.target.value)} 
-                                            disabled={task.status === 'submitted' || uploading}
-                                            style={{ width: '100%', padding: '10px 12px', borderRadius: '8px', border: '1px solid #cbd5e1', backgroundColor: '#f8fafc', fontSize: '14px', outline: 'none' }} 
-                                            placeholder="https://..." 
-                                        />
-                                    )}
-                                </div>
-
-                                <div style={{ marginBottom: '24px' }}>
-                                    <label style={{ display: 'block', fontSize: '14px', fontWeight: '600', color: '#475569', marginBottom: '8px' }}>Tệp báo cáo đính kèm:</label>
-                                    <input type="file" id="file-upload" onChange={(e) => setSubmitFile(e.target.files[0])} disabled={task.status === 'submitted' || uploading} style={{ display: 'none' }} />
-                                    <label 
-                                        htmlFor={task.status === 'submitted' ? "" : "file-upload"} 
-                                        style={{ display: 'flex', alignItems: 'center', padding: '12px 16px', border: task.status === 'submitted' ? '1px solid #cbd5e1' : '1px dashed #94a3b8', borderRadius: '8px', backgroundColor: '#f1f5f9', cursor: task.status === 'submitted' ? 'default' : 'pointer', fontSize: '14px', color: '#334155', gap: '10px' }}
-                                    >
-                                        {task.status === 'submitted' ? (
-                                            <span style={{ fontWeight: '500', color: '#0f172a' }}>
-                                                {task.submission_file_name || "Không có tệp đính kèm"} 
-                                                {task.submission_file_name && <span style={{ fontSize: '12px', color: '#64748b', fontWeight: 'normal' }}><br/>(Sẽ đưa lên mục Tài liệu sau khi duyệt)</span>}
-                                            </span>
-                                        ) : submitFile ? (
-                                            <span style={{ fontWeight: '500', color: '#0f172a' }}>{submitFile.name}</span>
-                                        ) : (
-                                            <span style={{ color: '#64748b' }}>Nhấn vào đây để chọn tệp báo cáo...</span>
-                                        )}
-                                    </label>
-                                </div>
-
-                                {task.status === 'submitted' ? (
-                                    <button type="button" disabled style={{ width: '100%', padding: '12px', backgroundColor: '#f59e0b', color: '#ffffff', border: 'none', borderRadius: '8px', fontWeight: '600', fontSize: '15px', cursor: 'not-allowed' }}>
-                                        Bài nộp đang chờ phê duyệt...
-                                    </button>
-                                ) : (
-                                    <button type="submit" disabled={uploading} style={{ width: '100%', padding: '12px', backgroundColor: '#2563eb', color: '#ffffff', border: 'none', borderRadius: '8px', fontWeight: '600', fontSize: '15px', cursor: 'pointer' }}>
-                                        {uploading ? 'Đang gửi...' : 'Gửi bài duyệt'}
-                                    </button>
-                                )}
-                            </form>
+                    {/* 🛑 YÊU CẦU 4: KIỂM TRA SỰ KIỆN ĐÓNG/HỦY TRƯỚC KHI HIỂN THỊ KHỐI CỦA NHÂN VIÊN */}
+                    {isEventClosedOrCanceled ? (
+                        <div className="form-card" style={{ margin: 0, padding: '24px', backgroundColor: '#fff5f5', border: '1px solid #fee2e2', borderRadius: '12px', textAlign: 'center' }}>
+                            <p style={{ color: '#dc2626', fontWeight: '700', fontSize: '15px', margin: 0 }}>
+                                Sự kiện này đã đóng/hủy. Không thể nộp thêm minh chứng.
+                            </p>
                         </div>
+                    ) : (
+                        // Nếu sự kiện bình thường, hiện form nộp bài như cũ
+                        !isTaskClosed && isAssignedUser && (
+                            <div className="form-card" style={{ margin: 0, padding: '24px', backgroundColor: '#ffffff', border: '1px solid #e2e8f0', borderRadius: '12px', boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.05)' }}>
+                                <h3 style={{ fontSize: '18px', margin: '0 0 20px 0', color: '#1e293b', borderBottom: '1px solid #f1f5f9', paddingBottom: '12px' }}>Nộp minh chứng</h3>
+                                <form onSubmit={handleSubmitTaskResult}>
+                                    <div style={{ marginBottom: '18px' }}>
+                                        <label style={{ display: 'block', fontSize: '14px', fontWeight: '600', color: '#475569', marginBottom: '8px' }}>Tóm tắt nội dung hoàn thành:</label>
+                                        <textarea rows="3" value={task.status === 'submitted' ? (task.submission_content || '') : submitContent} onChange={(e) => setSubmitContent(e.target.value)} disabled={task.status === 'submitted' || uploading} style={{ width: '100%', padding: '10px 12px', borderRadius: '8px', border: '1px solid #cbd5e1', backgroundColor: task.status === 'submitted' ? '#f1f5f9' : '#f8fafc', fontSize: '14px', outline: 'none' }} placeholder="Ghi chú..."></textarea>
+                                    </div>
+                                    <div style={{ marginBottom: '18px' }}>
+                                        <label style={{ display: 'block', fontSize: '14px', fontWeight: '600', color: '#475569', marginBottom: '8px' }}>Link kết quả:</label>
+                                        {task.status === 'submitted' && task.submission_link_url ? (
+                                            <div style={{ padding: '10px 12px', borderRadius: '8px', border: '1px solid #cbd5e1', backgroundColor: '#f1f5f9', fontSize: '14px' }}>
+                                                <a href={task.submission_link_url} target="_blank" rel="noopener noreferrer" style={{ color: '#2563eb', textDecoration: 'none', fontWeight: '600' }}>Link minh chứng đã nộp</a>
+                                            </div>
+                                        ) : (
+                                            <input type="url" value={submitLinkUrl} onChange={(e) => setSubmitLinkUrl(e.target.value)} disabled={task.status === 'submitted' || uploading} style={{ width: '100%', padding: '10px 12px', borderRadius: '8px', border: '1px solid #cbd5e1', backgroundColor: '#f8fafc', fontSize: '14px', outline: 'none' }} placeholder="https://..." />
+                                        )}
+                                    </div>
+                                    <div style={{ marginBottom: '24px' }}>
+                                        <label style={{ display: 'block', fontSize: '14px', fontWeight: '600', color: '#475569', marginBottom: '8px' }}>Tệp báo cáo:</label>
+                                        <input type="file" id="file-upload" onChange={(e) => setSubmitFile(e.target.files[0])} disabled={task.status === 'submitted' || uploading} style={{ display: 'none' }} />
+                                        <label htmlFor={task.status === 'submitted' ? "" : "file-upload"} style={{ display: 'flex', alignItems: 'center', padding: '12px 16px', border: task.status === 'submitted' ? '1px solid #cbd5e1' : '1px dashed #94a3b8', borderRadius: '8px', backgroundColor: '#f1f5f9', cursor: task.status === 'submitted' ? 'default' : 'pointer', fontSize: '14px', color: '#334155', gap: '10px' }}>
+                                            {task.status === 'submitted' ? (<span>{task.submission_file_name || "Không có tệp"}</span>) : submitFile ? (<span>{submitFile.name}</span>) : (<span>Chọn tệp báo cáo...</span>)}
+                                        </label>
+                                    </div>
+                                    {task.status === 'submitted' ? (
+                                        <button type="button" disabled style={{ width: '100%', padding: '12px', backgroundColor: '#f59e0b', color: '#ffffff', border: 'none', borderRadius: '8px', fontWeight: '600', fontSize: '15px', cursor: 'not-allowed' }}>Bài nộp đang chờ phê duyệt...</button>
+                                    ) : (
+                                        <button type="submit" disabled={uploading} style={{ width: '100%', padding: '12px', backgroundColor: '#2563eb', color: '#ffffff', border: 'none', borderRadius: '8px', fontWeight: '600', fontSize: '15px', cursor: 'pointer' }}>{uploading ? 'Đang gửi...' : 'Gửi bài duyệt'}</button>
+                                    )}
+                                </form>
+                            </div>
+                        )
                     )}
 
-                    {/* TRƯỜNG HỢP 2: BÀI NỘP ĐANG CHỜ DUYỆT -> Hiện thông tin minh chứng tĩnh và 2 nút Duyệt/Từ chối */}
+                    {/* TRƯỜNG HỢP BÀI NỘP ĐANG CHỜ DUYỆT */}
                     {task.status === 'submitted' && !isAssignedUser && (
                         <div className="form-card" style={{ margin: 0, padding: '24px', backgroundColor: '#ffffff', border: '1px solid #e2e8f0', borderRadius: '12px', boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.05)' }}>
-                            <h3 style={{ fontSize: '18px', margin: '0 0 16px 0', color: '#b45309', borderBottom: '1px solid #e2e8f0', paddingBottom: '12px' }}>
-                                Chi tiết minh chứng kết quả
-                            </h3>
-                            
+                            <h3 style={{ fontSize: '18px', margin: '0 0 16px 0', color: '#b45309', borderBottom: '1px solid #e2e8f0', paddingBottom: '12px' }}>Chi tiết minh chứng kết quả</h3>
                             <div style={{ backgroundColor: '#f8fafc', padding: '14px', borderRadius: '8px', border: '1px solid #e2e8f0', fontSize: '13px', display: 'flex', flexDirection: 'column', gap: '10px', marginBottom: '16px' }}>
                                 <p style={{ margin: 0 }}><strong>Nội dung:</strong> {task.submission_content || 'Không có ghi chú.'}</p>
-                                {task.submission_link_url && (
-                                    <p style={{ margin: 0 }}>
-                                        <strong>Đường dẫn (Link):</strong>{' '}
-                                        <a href={task.submission_link_url} target="_blank" rel="noopener noreferrer" style={{ color: '#2563eb', textDecoration: 'underline', fontWeight: '600' }}>
-                                            Xem sản phẩm nộp
-                                        </a>
-                                    </p>
-                                )}
-                                
+                                {task.submission_link_url && (<p style={{ margin: 0 }}><strong>Link:</strong> <a href={task.submission_link_url} target="_blank" rel="noopener noreferrer" style={{ color: '#2563eb', textDecoration: 'underline', fontWeight: '600' }}>Xem sản phẩm nộp</a></p>)}
                                 {task.submission_file_name && (
                                     <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', marginTop: '4px' }}>
-                                        <p style={{ margin: 0, color: '#475569', fontStyle: 'italic' }}>
-                                            Đính kèm tệp vật lý: {task.submission_file_name}
-                                        </p>
-                                        <button 
-                                            onClick={() => handleDownloadSubmission(task.latest_submission_id, task.submission_file_name)}
-                                            style={{ alignSelf: 'flex-start',  background: '#e0f2fe',  color: '#0284c7', border: '1px solid #bae6fd', padding: '6px 14px', borderRadius: '6px', cursor: 'pointer', fontSize: '13px',    fontWeight: '600',transition: 'all 0.2s' }}> 
-                                            Tải file về xem trước
-                                        </button>
+                                        <p style={{ margin: 0, color: '#475569', fontStyle: 'italic' }}>Tệp: {task.submission_file_name}</p>
+                                        <button onClick={() => handleDownloadSubmission(task.latest_submission_id, task.submission_file_name)} style={{ alignSelf: 'flex-start', background: '#e0f2fe', color: '#0284c7', border: '1px solid #bae6fd', padding: '6px 14px', borderRadius: '6px', cursor: 'pointer', fontSize: '13px', fontWeight: '600' }}>Tải file về xem trước</button>
                                     </div>
                                 )}
                             </div>
-                            {isEventLeader && (
+                            
+                            {/* 🛑 YÊU CẦU 4: Ẩn hoàn toàn 2 nút "Trả lại" và "Duyệt Đạt" nếu sự kiện đã kết thúc hoặc hủy */}
+                            {isEventLeader && !isEventClosedOrCanceled && (
                                 <div style={{ display: 'flex', gap: '12px', marginTop: '16px' }}>
                                     <button onClick={() => handleLeaderReview('rejected')} style={{ flex: 1, padding: '12px', backgroundColor: '#ef4444', color: '#ffffff', border: 'none', borderRadius: '8px', fontWeight: '600', cursor: 'pointer', fontSize: '14px' }}>Trả lại</button>
                                     <button onClick={() => handleLeaderReview('approved')} style={{ flex: 1, padding: '12px', backgroundColor: '#10b981', color: '#ffffff', border: 'none', borderRadius: '8px', fontWeight: '600', cursor: 'pointer', fontSize: '14px' }}>Duyệt Đạt</button>
@@ -523,82 +436,24 @@ function TaskDetail() {
                         </div>
                     )}
 
-                    {/* TRƯỜNG HỢP 3: CÔNG VIỆC ĐÃ HOÀN THÀNH -> Xem lại text/link kết quả */}
+                    {/* CÁC BOX LỊCH SỬ THÌ GIỮ NGUYÊN ĐỂ XEM LẠI */}
                     {task.status === 'completed' && (
                         <div className="form-card" style={{ margin: 0, padding: '24px', backgroundColor: '#f0fdf4', border: '1px solid #bbf7d0', borderRadius: '12px' }}>
                             <div style={{ textAlign: 'center', marginBottom: '16px' }}>
                                 <h3 style={{ fontSize: '18px', margin: '8px 0 4px 0', color: '#166534', fontWeight: '700' }}>Công việc hoàn thành</h3>
-                                <p style={{ fontSize: '13px', color: '#15803d', margin: 0 }}>Ghi nhận kết quả minh chứng thành công.</p>
                             </div>
-                            
                             <div style={{ backgroundColor: '#ffffff', padding: '14px', borderRadius: '8px', border: '1px solid #e2e8f0', fontSize: '13px', display: 'flex', flexDirection: 'column', gap: '12px' }}>
-                                {task.submission_content && (
-                                    <div>
-                                        <strong style={{ color: '#166534', display: 'block', marginBottom: '4px' }}>Nội dung báo cáo:</strong>
-                                        <span style={{ color: '#475569', whiteSpace: 'pre-wrap' }}>{task.submission_content}</span>
-                                    </div>
-                                )}
-                                {task.submission_link_url && (
-                                    <div>
-                                        <strong style={{ color: '#166534', display: 'block', marginBottom: '4px' }}>Đường dẫn (Link):</strong>
-                                        <a href={task.submission_link_url} target="_blank" rel="noopener noreferrer" style={{ color: '#2563eb', textDecoration: 'underline', fontWeight: '600', wordBreak: 'break-all' }}>
-                                            {task.submission_link_url} ↗
-                                        </a>
-                                    </div>
-                                )}
-                                {!task.submission_content && !task.submission_link_url && (
-                                    <span style={{ color: '#94a3b8', fontStyle: 'italic' }}>Báo cáo bằng tệp đính kèm vật lý (Xem ở mục Tài liệu).</span>
-                                )}
+                                {task.submission_content && (<div><strong style={{ color: '#166534', display: 'block', marginBottom: '4px' }}>Nội dung:</strong><span>{task.submission_content}</span></div>)}
+                                {task.submission_link_url && (<div><strong style={{ color: '#166534', display: 'block', marginBottom: '4px' }}>Link:</strong><a href={task.submission_link_url} target="_blank" rel="noopener noreferrer" style={{ color: '#2563eb', textDecoration: 'underline', fontWeight: '600' }}>{task.submission_link_url} ↗</a></div>)}
                             </div>
                         </div>
                     )}
 
-                    {/* LỊCH SỬ HOẠT ĐỘNG CHUNG */}
                     {(isAssignedUser || hasManagerRights) && (
                         <div className="form-card" style={{ margin: 0, padding: '24px', backgroundColor: 'var(--bg-neutral)', maxWidth: '100%' }}>
-                            <h4 style={{ margin: '0 0 16px 0', fontSize: '16px', fontWeight: '600', color: 'var(--text-primary)' }}>Lịch sử hoạt động</h4>
+                            <h4 style={{ margin: '0 0 16px 0', fontSize: '16px', fontWeight: '600' }}>Lịch sử hoạt động</h4>
                             <div style={{ maxHeight: '200px', overflowY: 'auto' }}>
-                                {taskHistory.map(h => (
-                                    <p key={h.id} style={{ fontSize: '13px', margin: '0 0 8px 0', color: 'var(--text-primary)' }}><span style={{ fontWeight: '600' }}>{h.full_name}</span>: {translateAction(h.action)}</p>
-                                ))}
-                            </div>
-                        </div>
-                    )}
-
-                    {/* LỊCH SỬ MINH CHỨNG ĐÃ NỘP (BỔ SUNG) */}
-                    {(isAssignedUser || hasManagerRights) && (
-                        <div className="form-card" style={{ margin: 0, padding: '24px', backgroundColor: '#ffffff', border: '1px solid #e2e8f0', borderRadius: '12px' }}>
-                            <h4 style={{ margin: '0 0 16px 0', fontSize: '16px', fontWeight: '600', color: '#1e293b' }}>Lịch sử minh chứng đã nộp</h4>
-                            <div style={{ maxHeight: '250px', overflowY: 'auto', paddingRight: '8px' }}>
-                                {submissionHistory.map(sub => (
-                                    <div key={sub.id} style={{ borderBottom: '1px solid #E5E7EB', padding: '12px 0', display: 'flex', flexDirection: 'column', gap: '6px' }}>
-                                        <div style={{ fontSize: '13px', color: '#64748b' }}>
-                                            <strong style={{ color: '#374151' }}>{sub.submitted_by_name}</strong> - {new Date(sub.created_at).toLocaleString('vi-VN')}
-                                        </div>
-                                        {sub.content && <div style={{ fontSize: '14px', color: '#4b5563' }}>{sub.content}</div>}
-                                        {sub.link_url && (
-                                            <div style={{ fontSize: '13px' }}>
-                                                <strong>Link kết quả:</strong>{' '}
-                                                <a href={sub.link_url} target="_blank" rel="noopener noreferrer" style={{ color: '#2563eb', textDecoration: 'underline', fontWeight: '500' }}>
-                                                    {sub.link_url}
-                                                </a>
-                                            </div>
-                                        )}
-                                        {sub.file_name && (
-                                            <button 
-                                                onClick={() => handleDownloadSubmission(sub.id, sub.file_name)}
-                                                style={{ alignSelf: 'flex-start', background: '#eff6ff', color: '#2563eb', border: '1px solid #bfdbfe', padding: '4px 12px', borderRadius: '6px', cursor: 'pointer', fontSize: '12px', fontWeight: '600', marginTop: '4px' }}
-                                            >
-                                                ⬇ Tải file: {sub.file_name}
-                                            </button>
-                                        )}
-                                        {sub.status === 'rejected' && (
-                                            <div style={{ fontSize: '13px', color: '#b91c1c', backgroundColor: '#fef2f2', padding: '6px 10px', borderRadius: '4px', marginTop: '4px', borderLeft: '3px solid #ef4444' }}>
-                                                Từ chối: {sub.review_note}
-                                            </div>
-                                        )}
-                                    </div>
-                                ))}
+                                {taskHistory.map(h => (<p key={h.id} style={{ fontSize: '13px', margin: '0 0 8px 0' }}><span style={{ fontWeight: '600' }}>{h.full_name}</span>: {translateAction(h.action)}</p>))}
                             </div>
                         </div>
                     )}
