@@ -35,7 +35,14 @@ function EditEvent() {
                 });
                 const usersData = await usersResponse.json();
                 if (usersResponse.ok) {
-                    setUsers(usersData.data || usersData);
+                    // 🛑 Đã sửa: Kiểm tra an toàn để trích xuất đúng mảng users
+                    if (usersData.users && Array.isArray(usersData.users)) {
+                        setUsers(usersData.users);
+                    } else if (Array.isArray(usersData)) {
+                        setUsers(usersData);
+                    } else if (usersData.data && Array.isArray(usersData.data)) {
+                        setUsers(usersData.data);
+                    }
                 }
 
                 const eventResponse = await fetch(`http://localhost:5000/api/events/${id}`, {
@@ -128,7 +135,6 @@ function EditEvent() {
 
     return (
         <div className="page-container event-page">
-            
             <div className="page-header-form">
                 <button type="button" className="btn-back" onClick={() => navigate(-1)}>
                     <svg width="18" height="18" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth="2">
@@ -141,7 +147,6 @@ function EditEvent() {
 
             <div className="form-card large">
                 <form onSubmit={handleSubmit}>
-                    
                     <div className="form-group">
                         <label className="form-label">Tiêu đề sự kiện</label>
                         <input 
@@ -239,7 +244,6 @@ function EditEvent() {
                     </div>
                 </form>
             </div>
-            
         </div>
     );
 }

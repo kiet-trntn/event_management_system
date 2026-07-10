@@ -11,7 +11,7 @@ function EditTask() {
     const [description, setDescription] = useState('');
     const [assignedTo, setAssignedTo] = useState('');
     const [priority, setPriority] = useState('medium');
-    const [taskType, setTaskType] = useState('preparation'); // Thêm taskType
+    const [taskType, setTaskType] = useState('preparation');
     const [dueDate, setDueDate] = useState('');
 
     const [eventsList, setEventsList] = useState([]);
@@ -47,8 +47,14 @@ function EditTask() {
             const taskData = await taskRes.json();
             
             if (taskRes.ok) {
+                // 🛑 BỔ SUNG CHẶN: Chặn sửa nếu bản thân task đã đóng HOẶC sự kiện cha đã bị kết thúc/hủy
+                if (taskData.status === 'completed' || taskData.status === 'cancelled') {
+                    Swal.fire('Cảnh báo', 'Không thể sửa công việc đã Đóng/Hủy', 'warning').then(() => navigate(-1));
+                    return;
+                }
+                
                 if (taskData.event_status === 'Đã kết thúc' || taskData.event_status === 'Đã hủy') {
-                    Swal.fire('Cảnh báo', 'Sự kiện đã kết thúc hoặc bị hủy, không thể chỉnh sửa công việc!', 'warning').then(() => navigate(-1));
+                    Swal.fire('Cảnh báo', 'Sự kiện chứa công việc này đã đóng hoặc bị hủy, không cho phép chỉnh sửa!', 'warning').then(() => navigate(-1));
                     return;
                 }
 
@@ -57,7 +63,7 @@ function EditTask() {
                 setDescription(taskData.description || '');
                 setAssignedTo(taskData.assigned_to || '');
                 setPriority(taskData.priority || 'medium');
-                setTaskType(taskData.task_type || 'preparation'); // Gán task_type
+                setTaskType(taskData.task_type || 'preparation');
                 setDueDate(formatForDateTimeLocal(taskData.due_date));
             } else {
                 Swal.fire('Lỗi', 'Không tìm thấy công việc', 'error').then(() => navigate(-1));
@@ -90,7 +96,7 @@ function EditTask() {
 
     const handleSubmit = async (e) => {
         e.preventDefault();
-        if (!eventId || !title || !taskType) return Swal.fire('Lỗi', 'Vui lòng điền đủ trường bắt buộc!', 'warning');
+        if (!eventId || !title) return Swal.fire('Lỗi', 'Vui lòng điền đủ trường bắt buộc!', 'warning');
 
         setIsSaving(true);
         try {
@@ -100,15 +106,7 @@ function EditTask() {
                     'Content-Type': 'application/json',
                     'Authorization': `Bearer ${localStorage.getItem('my_token')}` 
                 },
-                body: JSON.stringify({ 
-                    event_id: eventId, 
-                    title, 
-                    description, 
-                    assigned_to: assignedTo || null, 
-                    priority, 
-                    task_type: taskType, 
-                    due_date: dueDate || null 
-                })
+                body: JSON.stringify({ event_id: eventId, title, description, assigned_to: assignedTo || null, priority, task_type: taskType, due_date: dueDate || null })
             });
 
             if (response.ok) {
@@ -152,7 +150,7 @@ function EditTask() {
                             </div>
                             <div className="form-group">
                                 <label className="form-label">Mô tả chi tiết</label>
-                                <textarea className="form-input" rows="5" value={description} style={{ resize: 'vertical' }} onChange={(e) => setDescription(e.target.value)} />
+                                <textarea className="form-input" rows="5" value={description} onChange={(e) => setDescription(e.target.value)} style={{ resize: 'vertical' }} />
                             </div>
                         </div>
                         <div>
@@ -168,15 +166,13 @@ function EditTask() {
                                 <label className="form-label">Phân công cho</label>
                                 <select className="form-input" value={assignedTo} onChange={(e) => setAssignedTo(e.target.value)}>
                                     <option value="">-- Chưa giao cho ai --</option>
-                                    {membersList.map(m => <option key={m.user_id} value={m.user_id}>{m.user_id}.{m.full_name}</option>)}
+                                    {membersList.map(member => <option key={member.id} value={member.id}>#{member.id} - {member.full_name} ({translateRole(member.role_in_event)})</option>)}
                                 </select>
                             </div>
                             <div className="form-group">
                                 <label className="form-label">Mức độ ưu tiên</label>
                                 <select className="form-input" value={priority} onChange={(e) => setPriority(e.target.value)}>
-                                    <option value="low">🟢 Thấp</option>
-                                    <option value="medium">🟠 Trung bình</option>
-                                    <option value="high">🔴 Cao</option>
+                                    <option value="low">🟢 Thấp</option><option value="medium">🟠 Trung bình</option><option value="high">🔴 Cao</option>
                                 </select>
                             </div>
                             <div className="form-group">

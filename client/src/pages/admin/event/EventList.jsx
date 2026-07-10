@@ -44,7 +44,6 @@ function EventList() {
         setCurrentOfficialPage(1);
         setCurrentDraftPage(1);
         fetchEvents();
-        // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [fetchEvents]); 
 
     // Khôi phục bộ lọc
@@ -57,12 +56,27 @@ function EventList() {
 
     const handleCardClick = (id) => navigate(`/admin/events/view/${id}`);
 
-    // Tách mảng để hiển thị giao diện
+    // Định nghĩa trọng số sắp xếp trạng thái sự kiện cho mục Đóng/Hủy xuống cuối
+    const statusOrderWeight = {
+        'Đang diễn ra': 1, // Ưu tiên hàng đầu
+        'Sắp diễn ra': 2,  // Ưu tiên thứ hai
+        'Đã kết thúc': 3,  // Bị đẩy xuống dưới
+        'Đã hủy': 4        // Nằm ở cuối cùng
+    };
+
+    // Tách mảng để hiển thị giao diện và thực hiện SORT theo yêu cầu
     const officialEvents = events
         .filter(event => event.status !== 'Nháp')
         .sort((a, b) => {
-            if (a.status === 'Đã hủy' && b.status !== 'Đã hủy') return 1;
-            if (a.status !== 'Đã hủy' && b.status === 'Đã hủy') return -1;
+            const weightA = statusOrderWeight[a.status] || 99;
+            const weightB = statusOrderWeight[b.status] || 99;
+
+            // 1. So sánh theo nhóm trạng thái trước (Đang/Sắp diễn ra xếp trước, Kết thúc/Hủy xếp sau)
+            if (weightA !== weightB) {
+                return weightA - weightB;
+            }
+
+            // 2. Nếu cùng nhóm trạng thái, sắp xếp theo thời gian từ gần nhất đến xa nhất
             return new Date(a.start_date) - new Date(b.start_date);
         });
     
@@ -104,28 +118,28 @@ function EventList() {
                         </select>
                     </div>
                     <div style={{ flex: '1 1 140px' }}>
-                                 <input 
-                                    type={fromDate ? 'date' : 'text'} 
-                                    placeholder="Từ ngày..." 
-                                    className="form-input" 
-                                    value={fromDate} 
-                                    onFocus={(e) => e.target.type = 'date'} 
-                                    onBlur={(e) => { if (!e.target.value) e.target.type = 'text'; }}
-                                    onChange={(e) => setFromDate(e.target.value)} 
-                                    style={{ padding: '6px 30px 6px 12px', height: '36px', width: '100%' }} 
-                                />                  
+                        <input 
+                            type={fromDate ? 'date' : 'text'} 
+                            placeholder="Từ ngày..." 
+                            className="form-input" 
+                            value={fromDate} 
+                            onFocus={(e) => e.target.type = 'date'} 
+                            onBlur={(e) => { if (!e.target.value) e.target.type = 'text'; }}
+                            onChange={(e) => setFromDate(e.target.value)} 
+                            style={{ padding: '6px 30px 6px 12px', height: '36px', width: '100%' }} 
+                        />                  
                      </div>
                     <div style={{ flex: '1 1 140px' }}>
-                                <input 
-                                    type={toDate ? 'date' : 'text'} 
-                                    placeholder="Đến ngày..." 
-                                    className="form-input" 
-                                    value={toDate} 
-                                    onFocus={(e) => e.target.type = 'date'} 
-                                    onBlur={(e) => { if (!e.target.value) e.target.type = 'text'; }}
-                                    onChange={(e) => setToDate(e.target.value)} 
-                                    style={{ padding: '6px 30px 6px 12px', height: '36px', width: '100%' }} 
-                                />
+                        <input 
+                            type={toDate ? 'date' : 'text'} 
+                            placeholder="Đến ngày..." 
+                            className="form-input" 
+                            value={toDate} 
+                            onFocus={(e) => e.target.type = 'date'} 
+                            onBlur={(e) => { if (!e.target.value) e.target.type = 'text'; }}
+                            onChange={(e) => setToDate(e.target.value)} 
+                            style={{ padding: '6px 30px 6px 12px', height: '36px', width: '100%' }} 
+                        />
                     </div>
                     <div style={{ flex: '1 1 120px' }}>
                         <input type="text" className="form-input" placeholder="ID người phụ trách" value={leaderId} onChange={(e) => setLeaderId(e.target.value)} />
@@ -150,13 +164,25 @@ function EventList() {
                             <>
                                 <div className="event-grid">
                                     {currentOfficialEvents.map(event => (
-                                        <div key={event.id} className="event-card" onClick={() => handleCardClick(event.id)} style={{ cursor: 'pointer' }}>
+                                        <div 
+                                            key={event.id} 
+                                            className="event-card" 
+                                            onClick={() => handleCardClick(event.id)} 
+                                            style={{ 
+                                                cursor: 'pointer',
+                                                opacity: (event.status === 'Đã hủy' || event.status === 'Đã kết thúc') ? 0.7 : 1
+                                            }}
+                                        >
                                             <div className="event-card-header">
-                                                <span className={`status-badge ${event.status === 'Đã hủy' ? 'status-inactive' : 'status-active'}`}>{event.status}</span>
+                                                <span className={`status-badge ${event.status === 'Đã hủy' ? 'status-inactive' : event.status === 'Đã kết thúc' ? 'status-draft' : 'status-active'}`}>
+                                                    {event.status}
+                                                </span>
                                             </div>
-                                            <h2 className="event-title">{event.title}</h2>
-                                            <p className="event-detail-row">📍 {event.location}</p>
-                                            <p className="event-detail-row">🕒 {new Date(event.start_date).toLocaleDateString('vi-VN')}</p>
+                                            <h2 className="event-title" style={{ textDecoration: event.status === 'Đã hủy' }}>
+                                                {event.title}
+                                            </h2>
+                                            <p className="event-detail-row">{event.location}</p>
+                                            <p className="event-detail-row">{new Date(event.start_date).toLocaleDateString('vi-VN')} {new Date(event.start_date).toLocaleTimeString('vi-VN', { hour: '2-digit', minute: '2-digit' })}</p>
                                         </div>
                                     ))}
                                 </div>
@@ -183,8 +209,8 @@ function EventList() {
                                     {currentDraftEvents.map(event => (
                                         <div key={event.id} className="event-card" onClick={() => handleCardClick(event.id)} style={{ cursor: 'pointer' }}>
                                             <h2 className="event-title">{event.title}</h2>
-                                            <p className="event-detail-row">📍 {event.location}</p>
-                                            <p className="event-detail-row">🕒 {new Date(event.start_date).toLocaleDateString('vi-VN')}</p>
+                                            <p className="event-detail-row"> {event.location}</p>
+                                            <p className="event-detail-row"> {new Date(event.start_date).toLocaleDateString('vi-VN')}</p>
                                         </div>
                                     ))}
                                 </div>

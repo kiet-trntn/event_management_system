@@ -1,10 +1,10 @@
 import React, { useState, useEffect } from 'react';
-import { useNavigate, useParams, useSearchParams } from 'react-router-dom';
+import { useNavigate, useParams, useSearchParams } from 'react-router-dom'; 
 import Swal from 'sweetalert2';
 
 function AddTask() {
     const { eventId: urlEventId } = useParams(); 
-    const [searchParams] = useSearchParams();
+    const [searchParams] = useSearchParams(); 
     const eventIdFromQuery = searchParams.get('event_id');
     const navigate = useNavigate();
 
@@ -16,47 +16,44 @@ function AddTask() {
     const [description, setDescription] = useState('');
     const [assignedTo, setAssignedTo] = useState('');
     const [priority, setPriority] = useState('medium');
-    const [taskType, setTaskType] = useState('preparation'); // Thêm task_type
+    const [taskType, setTaskType] = useState('preparation');
     const [dueDate, setDueDate] = useState('');
-    
     const [eventsList, setEventsList] = useState([]);
     const [membersList, setMembersList] = useState([]);
     const [loading, setLoading] = useState(false);
 
-   useEffect(() => {
-    document.title = "Thêm công việc mới | TaskFlow";
-    const fetchEvents = async () => {
-        try {
-            const response = await fetch('http://localhost:5000/api/events', {
-                headers: { 'Authorization': `Bearer ${localStorage.getItem('my_token')}` }
-            });
-            const data = await response.json();
-            
-            if (response.ok) {
-                const list = data.events || data || [];
-                setEventsList(list);
+    useEffect(() => {
+        document.title = "Thêm công việc mới | TaskFlow";
+        const fetchEvents = async () => {
+            try {
+                const response = await fetch('http://localhost:5000/api/events', {
+                    headers: { 'Authorization': `Bearer ${localStorage.getItem('my_token')}` }
+                });
+                const data = await response.json();
+                if (response.ok) {
+                    const list = data.events || data || [];
+                    setEventsList(list);
 
-                if (selectedEventId) {
-                    const currentEvent = list.find(ev => String(ev.id) === String(selectedEventId));
-                    
-                    if (currentEvent && (currentEvent.status === 'Đã kết thúc' || currentEvent.status === 'Đã hủy')) {
-                        Swal.fire({
-                            title: 'Cảnh báo!',
-                            text: 'Sự kiện này đã kết thúc hoặc bị hủy, không thể tạo thêm công việc mới.',
-                            icon: 'warning',
-                            confirmButtonText: 'Quay lại'
-                        }).then(() => {
-                            navigate(-1); 
-                        });
+                    // Chặn truy cập trực tiếp bằng URL parameter/query nếu sự kiện đã đóng/hủy
+                    if (selectedEventId) {
+                        const currentEvent = list.find(ev => String(ev.id) === String(selectedEventId));
+                        if (currentEvent && (currentEvent.status === 'Đã kết thúc' || currentEvent.status === 'Đã hủy')) {
+                            Swal.fire({
+                                title: 'Không hợp lệ!',
+                                text: 'Sự kiện này đã kết thúc hoặc bị hủy, không thể tạo thêm công việc mới.',
+                                icon: 'warning',
+                                confirmButtonColor: '#4b5563',
+                                confirmButtonText: 'Quay lại'
+                            }).then(() => {
+                                navigate(-1);
+                            });
+                        }
                     }
                 }
-            }
-        } catch (error) { 
-            console.error(error); 
-        }
-    };
-    fetchEvents();
-}, [selectedEventId, navigate]); 
+            } catch (error) { console.error(error); }
+        };
+        fetchEvents();
+    }, [selectedEventId, navigate]);
 
     const fetchEventMembers = async (id = selectedEventId) => {
         if (!id) {
@@ -69,7 +66,9 @@ function AddTask() {
                 headers: { 'Authorization': `Bearer ${localStorage.getItem('my_token')}` }
             });
             const data = await response.json();
-            if (response.ok) setMembersList(data.members || []);
+            if (response.ok) {
+                setMembersList(data.members || []);
+            }
         } catch (error) { console.error(error); }
     };
 
@@ -80,7 +79,7 @@ function AddTask() {
 
     const handleSubmit = async (e) => {
         e.preventDefault();
-        if (!eventId || !title || !taskType) return Swal.fire('Lỗi', 'Vui lòng điền đủ trường bắt buộc!', 'warning');
+        if (!eventId || !title) return Swal.fire('Lỗi', 'Vui lòng điền đủ trường bắt buộc!', 'warning');
 
         setLoading(true);
         try {
@@ -90,16 +89,7 @@ function AddTask() {
                     'Content-Type': 'application/json',
                     'Authorization': `Bearer ${localStorage.getItem('my_token')}` 
                 },
-                // Bổ sung task_type vào body
-                body: JSON.stringify({ 
-                    event_id: eventId, 
-                    title, 
-                    description, 
-                    assigned_to: assignedTo || null, 
-                    priority, 
-                    task_type: taskType, 
-                    due_date: dueDate || null 
-                })
+                body: JSON.stringify({ event_id: eventId, title, description, assigned_to: assignedTo || null, priority, task_type: taskType, due_date: dueDate || null })
             });
 
             if (response.ok) {
@@ -113,6 +103,9 @@ function AddTask() {
         } catch (error) { Swal.fire('Lỗi', 'Lỗi hệ thống', 'error'); }
         finally { setLoading(false); }
     };
+
+    // 🛑 LOGIC THÊM: Thực hiện lọc danh sách, loại bỏ các sự kiện đã hủy hoặc kết thúc trước khi render vào Dropdown
+    const activeEvents = eventsList.filter(ev => ev.status !== 'Đã kết thúc' && ev.status !== 'Đã hủy');
 
     return (
         <div className="page-container event-page">
@@ -132,13 +125,24 @@ function AddTask() {
                             <div className="form-group">
                                 <label className="form-label">Sự kiện <span className="text-error">*</span></label>
                                 {isEventLocked ? (
-                                    <div className="form-input" style={{ display: 'flex', alignItems: 'center', minHeight: '44px', backgroundColor: '#e5e7eb', color: '#6b7280', cursor: 'not-allowed' }}>
+                                    <div
+                                        className="form-input"
+                                        style={{
+                                            display: 'flex',
+                                            alignItems: 'center',
+                                            minHeight: '44px',
+                                            backgroundColor: '#e5e7eb',
+                                            color: '#6b7280',
+                                            cursor: 'not-allowed'
+                                        }}
+                                    >
                                         {eventsList.find(ev => String(ev.id) === String(eventId))?.title || 'Đang tải...'}
                                     </div>
                                 ) : (
-                                    <select className="form-input" value={eventId} onChange={(e) => setEventId(e.target.value)}>
+                                    <select className="form-input" value={eventId} onChange={(e) => { setEventId(e.target.value); fetchEventMembers(e.target.value); }}>
                                         <option value="">Chọn sự kiện</option>
-                                        {eventsList.map(ev => <option key={ev.id} value={ev.id}>{ev.title}</option>)}
+                                        {/* 🛑 THAY ĐỔI: Sử dụng mảng activeEvents đã lọc thay vì eventsList gốc */}
+                                        {activeEvents.map(ev => <option key={ev.id} value={ev.id}>{ev.title}</option>)}
                                     </select>
                                 )}
                             </div>
@@ -148,7 +152,7 @@ function AddTask() {
                             </div>
                             <div className="form-group">
                                 <label className="form-label">Mô tả chi tiết</label>
-                                <textarea className="form-input" rows="4" value={description} style={{ resize: 'vertical' }} onChange={(e) => setDescription(e.target.value)} />
+                                <textarea className="form-input" rows="4" value={description} onChange={(e) => setDescription(e.target.value)} style={{ resize: 'vertical' }} />
                             </div>
                         </div>
                         <div>
@@ -170,9 +174,7 @@ function AddTask() {
                             <div className="form-group">
                                 <label className="form-label">Mức độ ưu tiên</label>
                                 <select className="form-input" value={priority} onChange={(e) => setPriority(e.target.value)}>
-                                    <option value="low">Thấp</option>
-                                    <option value="medium">Trung bình</option>
-                                    <option value="high">Cao</option>
+                                    <option value="low">Thấp</option><option value="medium">Trung bình</option><option value="high">Cao</option>
                                 </select>
                             </div>
                             <div className="form-group">

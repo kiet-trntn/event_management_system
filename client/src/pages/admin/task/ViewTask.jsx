@@ -7,7 +7,7 @@ function ViewTask() {
     const navigate = useNavigate();
     
     const [task, setTask] = useState(null);
-    const [taskHistory, setTaskHistory] = useState([]);
+    const [taskHistory, setTaskHistory] = useState([]); 
     const [loading, setLoading] = useState(true);
 
     const fetchTaskDetail = useCallback(async () => {
@@ -116,6 +116,9 @@ function ViewTask() {
     const statusStyle = getStatusStyle(task.status);
     const prioStyle = getPriorityStyle(task.priority);
 
+    // 🛑 LOGIC THÊM: Kiểm tra sự kiện cha đã đóng hoặc hủy chưa
+    const isEventClosedOrCanceled = task.event_status === 'Đã kết thúc' || task.event_status === 'Đã hủy';
+
     return (
         <div className="page-container task-page" style={{ maxWidth: '1000px', margin: '0 auto' }}>
             
@@ -191,20 +194,26 @@ function ViewTask() {
                             </svg>
                             Quản lý File
                         </button>
-                        <button 
-                            className="btn-primary" 
-                            style={{ backgroundColor: '#6B7280', borderColor: '#6B7280', color: '#fff' }} 
-                            onClick={handleDelete}
-                        >
-                            Xóa
-                        </button>
-                        <button 
-                            className="btn-primary" 
-                            style={{ backgroundColor: '#3B82F6', borderColor: '#3B82F6', color: '#fff' }} 
-                            onClick={() => navigate(`/admin/tasks/edit/${task.id}`)}
-                        >
-                            Sửa
-                        </button>    
+                        
+                        {/* 🛑 CHẶN THAO TÁC: Chỉ hiện nút Xóa / Sửa cho Admin nếu sự kiện chưa bị hủy/kết thúc */}
+                        {!isEventClosedOrCanceled && (
+                            <>
+                                <button 
+                                    className="btn-primary" 
+                                    style={{ backgroundColor: '#6B7280', borderColor: '#6B7280', color: '#fff' }} 
+                                    onClick={handleDelete}
+                                >
+                                    Xóa
+                                </button>
+                                <button 
+                                    className="btn-primary" 
+                                    style={{ backgroundColor: '#3B82F6', borderColor: '#3B82F6', color: '#fff' }} 
+                                    onClick={() => navigate(`/admin/tasks/edit/${task.id}`)}
+                                >
+                                    Sửa
+                                </button>    
+                            </>
+                        )}
                     </div>
                 </div>
 
