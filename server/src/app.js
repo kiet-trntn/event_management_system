@@ -16,6 +16,7 @@ const reportRoutes = require("./routes/reportRoutes");
 const calendarRoutes = require("./routes/calendarRoutes");
 const friendRoutes = require("./routes/friendRoutes");
 const timelineRoutes = require("./routes/timelineRoutes");
+const eventRegistrationRoutes = require("./routes/eventRegistrationRoutes");
 
 const app = express(); // Tạo ra một ứng dụng server
 
@@ -43,6 +44,8 @@ app.use("/api/reports", reportRoutes); // Gắn tiền tố "/api/reports" cho c
 app.use("/api/calendar", calendarRoutes);
 app.use("/api/friends", friendRoutes);
 app.use("/api/timelines", timelineRoutes);
+app.use("/api", eventRegistrationRoutes);
+
 // Error Handler
 app.use((err, req, res, next) => {
 
