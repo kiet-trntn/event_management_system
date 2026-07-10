@@ -166,13 +166,13 @@ function EditTask() {
                                 <label className="form-label">Phân công cho</label>
                                 <select className="form-input" value={assignedTo} onChange={(e) => setAssignedTo(e.target.value)}>
                                     <option value="">-- Chưa giao cho ai --</option>
-                                    {membersList.map(member => <option key={member.id} value={member.id}>#{member.id} - {member.full_name} ({translateRole(member.role_in_event)})</option>)}
+                                    {membersList.map(m => <option key={m.user_id} value={m.user_id}>{m.user_id}.{m.full_name}</option>)}
                                 </select>
                             </div>
                             <div className="form-group">
                                 <label className="form-label">Mức độ ưu tiên</label>
                                 <select className="form-input" value={priority} onChange={(e) => setPriority(e.target.value)}>
-                                    <option value="low">🟢 Thấp</option><option value="medium">🟠 Trung bình</option><option value="high">🔴 Cao</option>
+                                    <option value="low">Thấp</option><option value="medium">Trung bình</option><option value="high">Cao</option>
                                 </select>
                             </div>
                             <div className="form-group">

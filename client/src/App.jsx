@@ -19,6 +19,12 @@ import EditEvent from './pages/admin/event/EditEvent';
 
 import EventMembers from './pages/admin/eventmember/EventMembers';
 
+import TimeLineList from './pages/admin/timeline/TimelineList';
+import AddTimeline from './pages/admin/timeline/AddTimeline';
+import EditTimeline from './pages/admin/timeline/EditTimeline';
+
+
+
 import TaskList from './pages/admin/task/TaskList';
 import AddTask from './pages/admin/task/AddTask';
 import ViewTask from './pages/admin/task/ViewTask';
@@ -68,6 +74,9 @@ function App() {
           <Route path="events/view/:id" element={<ViewEvent />} />
           <Route path="events/edit/:id" element={<EditEvent />} />
           <Route path="events/:eventId/members" element={<EventMembers />} />
+          <Route path="events/:eventId/timeline" element={<TimeLineList />} />  
+          <Route path="timelines/:timelineId/items/add" element={<AddTimeline />} />
+          <Route path="timelines/items/edit/:itemId" element={<EditTimeline />} />
           <Route path="tasks" element={<TaskList />} />
           <Route path="tasks/add" element={<AddTask />} />
           <Route path="tasks/view/:id" element={<ViewTask />} />
@@ -98,6 +107,8 @@ function App() {
           <Route path="members/view/:id" element={<ViewMember />} />
           <Route path="trash" element={<Trash />} />
           <Route path="messages" element={<Messages />} />
+          <Route path="timelines/:timelineId/items/add" element={<AddTimeline />} />
+          <Route path="timelines/items/edit/:itemId" element={<EditTimeline />} />
         </Route>
 
         <Route path="*" element={<h2>404 - Trang không tồn tại</h2>} />

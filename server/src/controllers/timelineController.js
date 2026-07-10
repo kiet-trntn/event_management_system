@@ -27,23 +27,14 @@ const isValidId = (id) => {
 const getEventById = async (eventId) => {
     const [events] = await db.query(
         `
-        SELECT
-            id,
-            title,
-            status,
-            leader_id,
-            deleted_at
+        SELECT id, title, status, leader_id, deleted_at
         FROM events
-        WHERE id = ?
-        AND deleted_at IS NULL
+        WHERE id = ? AND deleted_at IS NULL
         LIMIT 1
         `,
         [Number(eventId)]
     );
-
-    return events.length > 0
-        ? events[0]
-        : null;
+    return events.length > 0 ? events[0] : null;
 };
 
 /*
@@ -54,35 +45,17 @@ const getEventById = async (eventId) => {
 const getTimelineContext = async (timelineId) => {
     const [timelines] = await db.query(
         `
-        SELECT
-            et.id,
-            et.event_id,
-            et.title,
-            et.description,
-            et.created_by,
-            et.created_at,
-            et.updated_at,
-
-            e.title AS event_title,
-            e.status AS event_status,
-            e.leader_id
-
+        SELECT 
+            et.id, et.event_id, et.title, et.description, et.created_by, et.created_at, et.updated_at,
+            e.title AS event_title, e.status AS event_status, e.leader_id
         FROM event_timelines et
-
-        INNER JOIN events e
-            ON et.event_id = e.id
-
-        WHERE et.id = ?
-        AND e.deleted_at IS NULL
-
+        INNER JOIN events e ON et.event_id = e.id
+        WHERE et.id = ? AND e.deleted_at IS NULL
         LIMIT 1
         `,
         [Number(timelineId)]
     );
-
-    return timelines.length > 0
-        ? timelines[0]
-        : null;
+    return timelines.length > 0 ? timelines[0] : null;
 };
 
 /*
@@ -91,1055 +64,369 @@ const getTimelineContext = async (timelineId) => {
 |--------------------------------------------------------------------------
 */
 const canManageTimeline = (req, event) => {
-    const isAdmin =
-        req.user.role === "admin";
-
-    const isLeader =
-        Number(req.user.id) === Number(event.leader_id);
-
+    const isAdmin = req.user.role === "admin";
+    const isLeader = Number(req.user.id) === Number(event.leader_id);
     return isAdmin || isLeader;
 };
 
 /*
 |--------------------------------------------------------------------------
-| Tạo timeline cho sự kiện
+| 1. API Tạo timeline cho sự kiện (Chặn nếu Đóng/Hủy)
 |--------------------------------------------------------------------------
 */
 const createTimeline = async (req, res) => {
     try {
         const { eventId } = req.params;
+        const { title, description } = req.body;
 
-        const {
-            title,
-            description
-        } = req.body;
-
-        if (!isValidId(eventId)) {
-            return res.status(400).json({
-                message: "Mã sự kiện không hợp lệ"
-            });
-        }
-
-        if (!title || !title.trim()) {
-            return res.status(400).json({
-                message: "Tiêu đề timeline không được để trống"
-            });
-        }
+        if (!isValidId(eventId)) return res.status(400).json({ message: "Mã sự kiện không hợp lệ" });
+        if (!title || !title.trim()) return res.status(400).json({ message: "Tiêu đề không được để trống" });
 
         const event = await getEventById(eventId);
+        if (!event) return res.status(404).json({ message: "Không tìm thấy sự kiện" });
 
-        if (!event) {
-            return res.status(404).json({
-                message: "Không tìm thấy sự kiện"
-            });
+        // Khóa tính năng tạo nếu sự kiện đã đóng/hủy
+        if (event.status === "Đã kết thúc" || event.status === "Đã hủy") {
+            return res.status(400).json({ message: "Không thể tạo lịch trình cho sự kiện đã kết thúc hoặc đã hủy" });
         }
 
-        const isAdmin =
-            req.user.role === "admin";
+        const isAdmin = req.user.role === "admin";
+        const isLeader = Number(req.user.id) === Number(event.leader_id);
 
-        const isLeader =
-            Number(req.user.id) === Number(event.leader_id);
-
-        if (!isAdmin && !isLeader) {
-            return res.status(403).json({
-                message: "Bạn không có quyền tạo timeline cho sự kiện này"
-            });
-        }
-
-        // Leader chưa được quản lý sự kiện Nháp
+        if (!isAdmin && !isLeader) return res.status(403).json({ message: "Bạn không có quyền tạo timeline" });
         if (!isAdmin && event.status === "Nháp") {
-            return res.status(403).json({
-                message: "Leader không thể tạo timeline khi sự kiện đang ở trạng thái Nháp"
-            });
+            return res.status(403).json({ message: "Leader không thể tạo timeline khi sự kiện ở trạng thái Nháp" });
         }
 
-        // Kiểm tra sự kiện đã có timeline chưa
-        const [existingTimelines] = await db.query(
-            `
-            SELECT id
-            FROM event_timelines
-            WHERE event_id = ?
-            LIMIT 1
-            `,
-            [Number(eventId)]
-        );
-
-        if (existingTimelines.length > 0) {
-            return res.status(400).json({
-                message: "Sự kiện này đã có timeline"
-            });
-        }
+        const [existing] = await db.query(`SELECT id FROM event_timelines WHERE event_id = ? LIMIT 1`, [Number(eventId)]);
+        if (existing.length > 0) return res.status(400).json({ message: "Sự kiện này đã có lịch trình" });
 
         const [result] = await db.query(
-            `
-            INSERT INTO event_timelines (
-                event_id,
-                title,
-                description,
-                created_by
-            )
-            VALUES (?, ?, ?, ?)
-            `,
-            [
-                Number(eventId),
-                title.trim(),
-                description?.trim() || null,
-                req.user.id
-            ]
+            `INSERT INTO event_timelines (event_id, title, description, created_by) VALUES (?, ?, ?, ?)`,
+            [Number(eventId), title.trim(), description?.trim() || null, req.user.id]
         );
 
         return res.status(201).json({
             message: "Tạo timeline thành công",
-            timeline: {
-                id: result.insertId,
-                event_id: Number(eventId),
-                title: title.trim(),
-                description: description?.trim() || null,
-                created_by: req.user.id
-            }
+            timeline: { id: result.insertId, event_id: Number(eventId), title: title.trim() }
         });
-
-    } catch (error) {
-        return handleServerError(res, error);
-    }
+    } catch (error) { return handleServerError(res, error); }
 };
 
 /*
 |--------------------------------------------------------------------------
-| Xem timeline của sự kiện
+| 2. API Xem timeline của sự kiện
 |--------------------------------------------------------------------------
 */
 const getEventTimeline = async (req, res) => {
     try {
         const { eventId } = req.params;
-
-        if (!isValidId(eventId)) {
-            return res.status(400).json({
-                message: "Mã sự kiện không hợp lệ"
-            });
-        }
+        if (!isValidId(eventId)) return res.status(400).json({ message: "Mã sự kiện không hợp lệ" });
 
         const event = await getEventById(eventId);
+        if (!event) return res.status(404).json({ message: "Không tìm thấy sự kiện" });
 
-        if (!event) {
-            return res.status(404).json({
-                message: "Không tìm thấy sự kiện"
-            });
-        }
+        const isAdmin = req.user.role === "admin";
+        const isLeader = Number(req.user.id) === Number(event.leader_id);
 
-        const isAdmin =
-            req.user.role === "admin";
-
-        const isLeader =
-            Number(req.user.id) === Number(event.leader_id);
-
-        // Sự kiện Nháp chỉ Admin được xem
         if (!isAdmin && event.status === "Nháp") {
-            return res.status(403).json({
-                message: "Bạn không có quyền xem timeline của sự kiện Nháp"
-            });
+            return res.status(403).json({ message: "Bạn không có quyền xem timeline của sự kiện Nháp" });
         }
 
-        // Employee phải là thành viên sự kiện
         if (!isAdmin && !isLeader) {
             const [members] = await db.query(
-                `
-                SELECT user_id
-                FROM event_members
-                WHERE event_id = ?
-                AND user_id = ?
-                LIMIT 1
-                `,
-                [
-                    Number(eventId),
-                    req.user.id
-                ]
+                `SELECT user_id FROM event_members WHERE event_id = ? AND user_id = ? LIMIT 1`,
+                [Number(eventId), req.user.id]
             );
-
-            if (members.length === 0) {
-                return res.status(403).json({
-                    message: "Bạn không có quyền xem timeline của sự kiện này"
-                });
-            }
+            if (members.length === 0) return res.status(403).json({ message: "Bạn không phải thành viên sự kiện" });
         }
 
         const [timelines] = await db.query(
             `
-            SELECT
-                et.id,
-                et.event_id,
-                et.title,
-                et.description,
-                et.created_by,
-                et.created_at,
-                et.updated_at,
-
-                e.title AS event_title,
-                e.status AS event_status,
-
-                u.full_name AS created_by_name
-
+            SELECT et.*, e.title AS event_title, e.status AS event_status, u.full_name AS created_by_name
             FROM event_timelines et
-
-            INNER JOIN events e
-                ON et.event_id = e.id
-
-            INNER JOIN users u
-                ON et.created_by = u.id
-
-            WHERE et.event_id = ?
-            AND e.deleted_at IS NULL
-
-            LIMIT 1
+            INNER JOIN events e ON et.event_id = e.id
+            INNER JOIN users u ON et.created_by = u.id
+            WHERE et.event_id = ? AND e.deleted_at IS NULL LIMIT 1
             `,
             [Number(eventId)]
         );
 
-        if (timelines.length === 0) {
-            return res.status(404).json({
-                message: "Sự kiện chưa có timeline"
-            });
-        }
-
+        if (timelines.length === 0) return res.status(404).json({ message: "Sự kiện chưa có timeline" });
         const timeline = timelines[0];
 
         const [items] = await db.query(
             `
-            SELECT
-                ti.id,
-                ti.timeline_id,
-                ti.task_id,
-                ti.title,
-                ti.description,
-                ti.phase,
-                ti.start_time,
-                ti.end_time,
-                ti.order_number,
-                ti.created_at,
-                ti.updated_at,
-
-                t.title AS task_title,
-                t.status AS task_status,
-                t.priority AS task_priority,
-                t.task_type,
-                t.assigned_to,
-
-                assigned_user.full_name AS assigned_name
-
+            SELECT ti.*, t.title AS task_title, t.status AS task_status, t.task_type, assigned_user.full_name AS assigned_name
             FROM timeline_items ti
-
-            LEFT JOIN tasks t
-                ON ti.task_id = t.id
-                AND t.is_deleted = FALSE
-
-            LEFT JOIN users assigned_user
-                ON t.assigned_to = assigned_user.id
-
+            LEFT JOIN tasks t ON ti.task_id = t.id AND t.is_deleted = FALSE
+            LEFT JOIN users assigned_user ON t.assigned_to = assigned_user.id
             WHERE ti.timeline_id = ?
-
-            ORDER BY
-                ti.start_time ASC,
-                ti.order_number ASC,
-                ti.id ASC
+            ORDER BY ti.start_time ASC, ti.order_number ASC, ti.id ASC
             `,
             [timeline.id]
         );
 
-        return res.status(200).json({
-            timeline,
-            total_items: items.length,
-            items
-        });
-
-    } catch (error) {
-        return handleServerError(res, error);
-    }
+        return res.status(200).json({ timeline, total_items: items.length, items });
+    } catch (error) { return handleServerError(res, error); }
 };
 
 /*
 |--------------------------------------------------------------------------
-| Cập nhật thông tin timeline
+| 3. API Cập nhật thông tin timeline (Khóa khi Đóng/Hủy)
 |--------------------------------------------------------------------------
 */
 const updateTimeline = async (req, res) => {
     try {
         const { id } = req.params;
+        const { title, description } = req.body;
 
-        const {
-            title,
-            description
-        } = req.body;
-
-        if (!isValidId(id)) {
-            return res.status(400).json({
-                message: "Mã timeline không hợp lệ"
-            });
-        }
-
-        if (!title || !title.trim()) {
-            return res.status(400).json({
-                message: "Tiêu đề timeline không được để trống"
-            });
-        }
-
+        if (!isValidId(id)) return res.status(400).json({ message: "Mã lịch trình không hợp lệ" });
         const timeline = await getTimelineContext(id);
+        if (!timeline) return res.status(404).json({ message: "Không tìm thấy lịch trình" });
 
-        if (!timeline) {
-            return res.status(404).json({
-                message: "Không tìm thấy timeline"
-            });
+        if (timeline.event_status === "Đã kết thúc" || timeline.event_status === "Đã hủy") {
+            return res.status(403).json({ message: "Sự kiện đã kết thúc hoặc bị hủy, không thể sửa lịch trình!" });
         }
 
-        if (!canManageTimeline(req, timeline)) {
-            return res.status(403).json({
-                message: "Bạn không có quyền cập nhật timeline này"
-            });
-        }
-
-        if (
-            req.user.role !== "admin" &&
-            timeline.event_status === "Nháp"
-        ) {
-            return res.status(403).json({
-                message: "Leader không thể cập nhật timeline của sự kiện Nháp"
-            });
-        }
+        if (!canManageTimeline(req, timeline)) return res.status(403).json({ message: "Bạn không có quyền sửa" });
 
         await db.query(
-            `
-            UPDATE event_timelines
-            SET
-                title = ?,
-                description = ?,
-                updated_at = NOW()
-            WHERE id = ?
-            `,
-            [
-                title.trim(),
-                description?.trim() || null,
-                Number(id)
-            ]
+            `UPDATE event_timelines SET title = ?, description = ?, updated_at = NOW() WHERE id = ?`,
+            [title.trim(), description?.trim() || null, Number(id)]
         );
-
-        return res.status(200).json({
-            message: "Cập nhật timeline thành công"
-        });
-
-    } catch (error) {
-        return handleServerError(res, error);
-    }
+        return res.status(200).json({ message: "Cập nhật timeline thành công" });
+    } catch (error) { return handleServerError(res, error); }
 };
 
 /*
 |--------------------------------------------------------------------------
-| Xóa timeline
+| 4. API Xóa toàn bộ timeline (Khóa khi Đóng/Hủy)
 |--------------------------------------------------------------------------
 */
 const deleteTimeline = async (req, res) => {
     try {
         const { id } = req.params;
-
-        if (!isValidId(id)) {
-            return res.status(400).json({
-                message: "Mã timeline không hợp lệ"
-            });
-        }
-
         const timeline = await getTimelineContext(id);
+        if (!timeline) return res.status(404).json({ message: "Không tìm thấy lịch trình" });
 
-        if (!timeline) {
-            return res.status(404).json({
-                message: "Không tìm thấy timeline"
-            });
+        if (timeline.event_status === "Đã kết thúc" || timeline.event_status === "Đã hủy") {
+            return res.status(403).json({ message: "Sự kiện đã đóng, không thể xóa lịch trình!" });
         }
 
-        if (!canManageTimeline(req, timeline)) {
-            return res.status(403).json({
-                message: "Bạn không có quyền xóa timeline này"
-            });
-        }
+        if (!canManageTimeline(req, timeline)) return res.status(403).json({ message: "Quyền hạn từ chối" });
 
-        if (
-            req.user.role !== "admin" &&
-            timeline.event_status === "Nháp"
-        ) {
-            return res.status(403).json({
-                message: "Leader không thể xóa timeline của sự kiện Nháp"
-            });
-        }
-
-        /*
-         * timeline_items tự động bị xóa
-         * do ON DELETE CASCADE.
-         */
-        await db.query(
-            `
-            DELETE FROM event_timelines
-            WHERE id = ?
-            `,
-            [Number(id)]
-        );
-
-        return res.status(200).json({
-            message: "Xóa timeline thành công"
-        });
-
-    } catch (error) {
-        return handleServerError(res, error);
-    }
+        await db.query(`DELETE FROM event_timelines WHERE id = ?`, [Number(id)]);
+        return res.status(200).json({ message: "Xóa timeline thành công" });
+    } catch (error) { return handleServerError(res, error); }
 };
 
 /*
 |--------------------------------------------------------------------------
-| Thêm mốc vào timeline
+| 5. API Thêm mốc thời gian con (Khóa khi Đóng/Hủy + Ràng buộc Task sự kiện)
 |--------------------------------------------------------------------------
 */
 const addTimelineItem = async (req, res) => {
     try {
         const { timelineId } = req.params;
-
-        const {
-            task_id,
-            title,
-            description,
-            phase,
-            start_time,
-            end_time,
-            order_number
-        } = req.body;
-
-        if (!isValidId(timelineId)) {
-            return res.status(400).json({
-                message: "Mã timeline không hợp lệ"
-            });
-        }
-
-        if (!start_time || !end_time) {
-            return res.status(400).json({
-                message: "Vui lòng nhập thời gian bắt đầu và kết thúc"
-            });
-        }
-
-        const startDate = new Date(start_time);
-        const endDate = new Date(end_time);
-
-        if (
-            Number.isNaN(startDate.getTime()) ||
-            Number.isNaN(endDate.getTime())
-        ) {
-            return res.status(400).json({
-                message: "Thời gian timeline không hợp lệ"
-            });
-        }
-
-        if (startDate >= endDate) {
-            return res.status(400).json({
-                message: "Thời gian bắt đầu phải nhỏ hơn thời gian kết thúc"
-            });
-        }
-
-        if (
-            order_number !== undefined &&
-            (
-                !Number.isInteger(Number(order_number)) ||
-                Number(order_number) < 0
-            )
-        ) {
-            return res.status(400).json({
-                message: "Thứ tự timeline không hợp lệ"
-            });
-        }
+        const { task_id, title, description, phase, start_time, end_time, order_number } = req.body;
 
         const timeline = await getTimelineContext(timelineId);
+        if (!timeline) return res.status(404).json({ message: "Không tìm thấy timeline cha" });
 
-        if (!timeline) {
-            return res.status(404).json({
-                message: "Không tìm thấy timeline"
-            });
+        if (timeline.event_status === "Đã kết thúc" || timeline.event_status === "Đã hủy") {
+            return res.status(403).json({ message: "Sự kiện đã khép lại, không thể thêm mốc thời gian mới!" });
         }
 
-        if (!canManageTimeline(req, timeline)) {
-            return res.status(403).json({
-                message: "Bạn không có quyền thêm mốc timeline"
-            });
-        }
-
-        if (
-            req.user.role !== "admin" &&
-            timeline.event_status === "Nháp"
-        ) {
-            return res.status(403).json({
-                message: "Leader không thể thêm timeline khi sự kiện đang ở trạng thái Nháp"
-            });
-        }
+        if (!canManageTimeline(req, timeline)) return res.status(403).json({ message: "Bạn không có quyền quản lý" });
 
         let linkedTask = null;
-
-        // Kiểm tra task được liên kết
         if (task_id) {
-            if (!isValidId(task_id)) {
-                return res.status(400).json({
-                    message: "Mã công việc không hợp lệ"
-                });
-            }
-
             const [tasks] = await db.query(
-                `
-                SELECT
-                    id,
-                    event_id,
-                    title,
-                    description,
-                    task_type,
-                    status
-                FROM tasks
-                WHERE id = ?
-                AND event_id = ?
-                AND is_deleted = FALSE
-                LIMIT 1
-                `,
-                [
-                    Number(task_id),
-                    timeline.event_id
-                ]
+                `SELECT id, event_id, title, description, task_type FROM tasks WHERE id = ? AND event_id = ? AND is_deleted = FALSE LIMIT 1`,
+                [Number(task_id), timeline.event_id]
             );
-
-            if (tasks.length === 0) {
-                return res.status(400).json({
-                    message: "Công việc không tồn tại hoặc không thuộc sự kiện này"
-                });
-            }
-
+            if (tasks.length === 0) return res.status(400).json({ message: "Công việc không tồn tại hoặc không thuộc sự kiện này phụ trách!" });
             linkedTask = tasks[0];
         }
 
-        const itemTitle =
-            title?.trim() ||
-            linkedTask?.title;
+        const itemTitle = title?.trim() || linkedTask?.title;
+        const itemPhase = phase || linkedTask?.task_type;
 
-        if (!itemTitle) {
-            return res.status(400).json({
-                message: "Tiêu đề mốc timeline không được để trống"
-            });
-        }
-
-        const itemPhase =
-            phase ||
-            linkedTask?.task_type;
-
-        if (
-            !itemPhase ||
-            !VALID_PHASES.includes(itemPhase)
-        ) {
-            return res.status(400).json({
-                message: "Giai đoạn timeline không hợp lệ"
-            });
-        }
-
-        // Nếu có liên kết task thì phase phải giống task_type
-        if (
-            linkedTask &&
-            itemPhase !== linkedTask.task_type
-        ) {
-            return res.status(400).json({
-                message: "Giai đoạn timeline phải giống loại của công việc được liên kết"
-            });
+        if (!itemTitle) return res.status(400).json({ message: "Tiêu đề không được để trống" });
+        if (!VALID_PHASES.includes(itemPhase)) return res.status(400).json({ message: "Giai đoạn không hợp lệ" });
+        if (linkedTask && itemPhase !== linkedTask.task_type) {
+            return res.status(400).json({ message: "Giai đoạn lịch trình phải trùng khớp với Giai đoạn của Công việc!" });
         }
 
         const [result] = await db.query(
-            `
-            INSERT INTO timeline_items (
-                timeline_id,
-                task_id,
-                title,
-                description,
-                phase,
-                start_time,
-                end_time,
-                order_number
-            )
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?)
-            `,
-            [
-                Number(timelineId),
-                linkedTask ? linkedTask.id : null,
-                itemTitle,
-                description?.trim() ||
-                    linkedTask?.description ||
-                    null,
-                itemPhase,
-                start_time,
-                end_time,
-                Number(order_number) || 0
-            ]
+            `INSERT INTO timeline_items (timeline_id, task_id, title, description, phase, start_time, end_time, order_number) VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
+            [Number(timelineId), linkedTask ? linkedTask.id : null, itemTitle, description?.trim() || linkedTask?.description || null, itemPhase, start_time, end_time, Number(order_number) || 0]
         );
 
-        return res.status(201).json({
-            message: "Thêm mốc timeline thành công",
-            item: {
-                id: result.insertId,
-                timeline_id: Number(timelineId),
-                task_id: linkedTask
-                    ? linkedTask.id
-                    : null,
-                title: itemTitle,
-                phase: itemPhase,
-                start_time,
-                end_time,
-                order_number: Number(order_number) || 0
-            }
-        });
-
-    } catch (error) {
-        return handleServerError(res, error);
-    }
+        return res.status(201).json({ message: "Thêm mốc thành công", id: result.insertId });
+    } catch (error) { return handleServerError(res, error); }
 };
 
 /*
 |--------------------------------------------------------------------------
-| Cập nhật mốc timeline
+| 6. API Cập nhật mốc thời gian con (Khóa khi Đóng/Hủy)
 |--------------------------------------------------------------------------
 */
 const updateTimelineItem = async (req, res) => {
     try {
         const { itemId } = req.params;
-
-        const {
-            task_id,
-            title,
-            description,
-            phase,
-            start_time,
-            end_time,
-            order_number
-        } = req.body;
-
-        if (!isValidId(itemId)) {
-            return res.status(400).json({
-                message: "Mã mốc timeline không hợp lệ"
-            });
-        }
+        const { task_id, title, description, phase, start_time, end_time, order_number } = req.body;
 
         const [items] = await db.query(
             `
-            SELECT
-                ti.*,
-
-                et.event_id,
-
-                e.status AS event_status,
-                e.leader_id
-
+            SELECT ti.*, et.event_id, e.status AS event_status, e.leader_id 
             FROM timeline_items ti
-
-            INNER JOIN event_timelines et
-                ON ti.timeline_id = et.id
-
-            INNER JOIN events e
-                ON et.event_id = e.id
-
-            WHERE ti.id = ?
-            AND e.deleted_at IS NULL
-
-            LIMIT 1
+            INNER JOIN event_timelines et ON ti.timeline_id = et.id
+            INNER JOIN events e ON et.event_id = e.id
+            WHERE ti.id = ? AND e.deleted_at IS NULL LIMIT 1
             `,
             [Number(itemId)]
         );
-
-        if (items.length === 0) {
-            return res.status(404).json({
-                message: "Không tìm thấy mốc timeline"
-            });
-        }
-
+        if (items.length === 0) return res.status(404).json({ message: "Không tìm thấy mốc" });
         const item = items[0];
 
-        if (!canManageTimeline(req, item)) {
-            return res.status(403).json({
-                message: "Bạn không có quyền cập nhật mốc timeline này"
-            });
+        if (item.event_status === "Đã kết thúc" || item.event_status === "Đã hủy") {
+            return res.status(403).json({ message: "Sự kiện đã đóng băng dữ liệu, cấm chỉnh sửa mốc thời gian!" });
         }
 
-        if (
-            req.user.role !== "admin" &&
-            item.event_status === "Nháp"
-        ) {
-            return res.status(403).json({
-                message: "Leader không thể cập nhật timeline của sự kiện Nháp"
-            });
-        }
+        if (!canManageTimeline(req, item)) return res.status(403).json({ message: "Quyền hạn bị từ chối" });
 
-        let newTaskId;
-
-        if (task_id === undefined) {
-            newTaskId = item.task_id;
-        } else if (
-            task_id === null ||
-            task_id === ""
-        ) {
-            newTaskId = null;
-        } else {
-            if (!isValidId(task_id)) {
-                return res.status(400).json({
-                    message: "Mã công việc không hợp lệ"
-                });
-            }
-
-            newTaskId = Number(task_id);
-        }
-
+        let newTaskId = task_id === undefined ? item.task_id : (task_id === null || task_id === "" ? null : Number(task_id));
         let linkedTask = null;
-
         if (newTaskId) {
             const [tasks] = await db.query(
-                `
-                SELECT
-                    id,
-                    event_id,
-                    title,
-                    description,
-                    task_type
-                FROM tasks
-                WHERE id = ?
-                AND event_id = ?
-                AND is_deleted = FALSE
-                LIMIT 1
-                `,
-                [
-                    newTaskId,
-                    item.event_id
-                ]
+                `SELECT id, event_id, title, task_type FROM tasks WHERE id = ? AND event_id = ? AND is_deleted = FALSE LIMIT 1`,
+                [newTaskId, item.event_id]
             );
-
-            if (tasks.length === 0) {
-                return res.status(400).json({
-                    message: "Công việc không tồn tại hoặc không thuộc sự kiện này"
-                });
-            }
-
+            if (tasks.length === 0) return res.status(400).json({ message: "Công việc không thuộc sự kiện phụ trách" });
             linkedTask = tasks[0];
         }
 
-        const newTitle =
-            title === undefined
-                ? item.title
-                : title.trim();
+        const newTitle = title === undefined ? item.title : title.trim();
+        let newPhase = phase === undefined ? item.phase : phase;
+        if (task_id !== undefined && linkedTask && phase === undefined) newPhase = linkedTask.task_type;
 
-        if (!newTitle) {
-            return res.status(400).json({
-                message: "Tiêu đề mốc timeline không được để trống"
-            });
+        if (linkedTask && newPhase !== linkedTask.task_type) {
+            return res.status(400).json({ message: "Giai đoạn mốc giờ và giai đoạn công việc không đồng bộ!" });
         }
-
-        let newPhase =
-            phase === undefined
-                ? item.phase
-                : phase;
-
-        // Khi đổi sang task khác và không gửi phase
-        if (
-            task_id !== undefined &&
-            linkedTask &&
-            phase === undefined
-        ) {
-            newPhase = linkedTask.task_type;
-        }
-
-        if (!VALID_PHASES.includes(newPhase)) {
-            return res.status(400).json({
-                message: "Giai đoạn timeline không hợp lệ"
-            });
-        }
-
-        if (
-            linkedTask &&
-            newPhase !== linkedTask.task_type
-        ) {
-            return res.status(400).json({
-                message: "Giai đoạn timeline phải giống loại của công việc được liên kết"
-            });
-        }
-
-        const newStartTime =
-            start_time === undefined
-                ? item.start_time
-                : start_time;
-
-        const newEndTime =
-            end_time === undefined
-                ? item.end_time
-                : end_time;
-
-        const startDate = new Date(newStartTime);
-        const endDate = new Date(newEndTime);
-
-        if (
-            Number.isNaN(startDate.getTime()) ||
-            Number.isNaN(endDate.getTime())
-        ) {
-            return res.status(400).json({
-                message: "Thời gian timeline không hợp lệ"
-            });
-        }
-
-        if (startDate >= endDate) {
-            return res.status(400).json({
-                message: "Thời gian bắt đầu phải nhỏ hơn thời gian kết thúc"
-            });
-        }
-
-        const newOrderNumber =
-            order_number === undefined
-                ? item.order_number
-                : Number(order_number);
-
-        if (
-            !Number.isInteger(newOrderNumber) ||
-            newOrderNumber < 0
-        ) {
-            return res.status(400).json({
-                message: "Thứ tự timeline không hợp lệ"
-            });
-        }
-
-        const newDescription =
-            description === undefined
-                ? item.description
-                : description?.trim() || null;
 
         await db.query(
-            `
-            UPDATE timeline_items
-            SET
-                task_id = ?,
-                title = ?,
-                description = ?,
-                phase = ?,
-                start_time = ?,
-                end_time = ?,
-                order_number = ?,
-                updated_at = NOW()
-            WHERE id = ?
-            `,
-            [
-                newTaskId,
-                newTitle,
-                newDescription,
-                newPhase,
-                newStartTime,
-                newEndTime,
-                newOrderNumber,
-                Number(itemId)
-            ]
+            `UPDATE timeline_items SET task_id = ?, title = ?, description = ?, phase = ?, start_time = ?, end_time = ?, order_number = ?, updated_at = NOW() WHERE id = ?`,
+            [newTaskId, newTitle, description === undefined ? item.description : description, newPhase, start_time || item.start_time, end_time || item.end_time, order_number === undefined ? item.order_number : Number(order_number), Number(itemId)]
         );
-
-        return res.status(200).json({
-            message: "Cập nhật mốc timeline thành công"
-        });
-
-    } catch (error) {
-        return handleServerError(res, error);
-    }
+        return res.status(200).json({ message: "Cập nhật mốc thành công" });
+    } catch (error) { return handleServerError(res, error); }
 };
 
 /*
 |--------------------------------------------------------------------------
-| Xóa mốc timeline
+| 7. API Xóa mốc thời gian con (Khóa khi Đóng/Hủy)
 |--------------------------------------------------------------------------
 */
 const deleteTimelineItem = async (req, res) => {
     try {
         const { itemId } = req.params;
-
-        if (!isValidId(itemId)) {
-            return res.status(400).json({
-                message: "Mã mốc timeline không hợp lệ"
-            });
-        }
-
         const [items] = await db.query(
             `
-            SELECT
-                ti.id,
-                ti.title,
-
-                e.status AS event_status,
-                e.leader_id
-
+            SELECT ti.id, e.status AS event_status, e.leader_id 
             FROM timeline_items ti
-
-            INNER JOIN event_timelines et
-                ON ti.timeline_id = et.id
-
-            INNER JOIN events e
-                ON et.event_id = e.id
-
-            WHERE ti.id = ?
-            AND e.deleted_at IS NULL
-
-            LIMIT 1
+            INNER JOIN event_timelines et ON ti.timeline_id = et.id
+            INNER JOIN events e ON et.event_id = e.id
+            WHERE ti.id = ? AND e.deleted_at IS NULL LIMIT 1
             `,
             [Number(itemId)]
         );
-
-        if (items.length === 0) {
-            return res.status(404).json({
-                message: "Không tìm thấy mốc timeline"
-            });
-        }
-
+        if (items.length === 0) return res.status(404).json({ message: "Mốc thời gian không tồn tại" });
         const item = items[0];
 
-        if (!canManageTimeline(req, item)) {
-            return res.status(403).json({
-                message: "Bạn không có quyền xóa mốc timeline này"
-            });
+        if (item.event_status === "Đã kết thúc" || item.event_status === "Đã hủy") {
+            return res.status(403).json({ message: "Sự kiện đóng cứng, cấm xóa!" });
         }
 
-        if (
-            req.user.role !== "admin" &&
-            item.event_status === "Nháp"
-        ) {
-            return res.status(403).json({
-                message: "Leader không thể xóa timeline của sự kiện Nháp"
-            });
-        }
+        if (!canManageTimeline(req, item)) return res.status(403).json({ message: "Không có quyền" });
 
-        await db.query(
-            `
-            DELETE FROM timeline_items
-            WHERE id = ?
-            `,
-            [Number(itemId)]
-        );
-
-        return res.status(200).json({
-            message: "Xóa mốc timeline thành công"
-        });
-
-    } catch (error) {
-        return handleServerError(res, error);
-    }
+        await db.query(`DELETE FROM timeline_items WHERE id = ?`, [Number(itemId)]);
+        return res.status(200).json({ message: "Xóa mốc lịch trình thành công" });
+    } catch (error) { return handleServerError(res, error); }
 };
 
 /*
 |--------------------------------------------------------------------------
-| Sắp xếp lại các mốc
+| 8. API Sắp xếp lại thứ tự (Khóa khi Đóng/Hủy)
 |--------------------------------------------------------------------------
 */
 const reorderTimelineItems = async (req, res) => {
     let connection;
-
     try {
         const { timelineId } = req.params;
         const { items } = req.body;
 
-        if (!isValidId(timelineId)) {
-            return res.status(400).json({
-                message: "Mã timeline không hợp lệ"
-            });
-        }
-
-        if (
-            !Array.isArray(items) ||
-            items.length === 0
-        ) {
-            return res.status(400).json({
-                message: "Danh sách sắp xếp không hợp lệ"
-            });
-        }
-
-        for (const item of items) {
-            if (
-                !isValidId(item.id) ||
-                !Number.isInteger(Number(item.order_number)) ||
-                Number(item.order_number) < 0
-            ) {
-                return res.status(400).json({
-                    message: "Dữ liệu sắp xếp timeline không hợp lệ"
-                });
-            }
-        }
-
         const timeline = await getTimelineContext(timelineId);
+        if (!timeline) return res.status(404).json({ message: "Không tìm thấy timeline" });
 
-        if (!timeline) {
-            return res.status(404).json({
-                message: "Không tìm thấy timeline"
-            });
+        if (timeline.event_status === "Đã kết thúc" || timeline.event_status === "Đã hủy") {
+            return res.status(403).json({ message: "Lịch trình đã đóng băng cấu trúc sắp xếp!" });
         }
 
-        if (!canManageTimeline(req, timeline)) {
-            return res.status(403).json({
-                message: "Bạn không có quyền sắp xếp timeline này"
-            });
-        }
-
-        const ids = items.map(item => Number(item.id));
-
-        const placeholders = ids
-            .map(() => "?")
-            .join(", ");
-
-        const [existingItems] = await db.query(
-            `
-            SELECT id
-            FROM timeline_items
-            WHERE timeline_id = ?
-            AND id IN (${placeholders})
-            `,
-            [
-                Number(timelineId),
-                ...ids
-            ]
-        );
-
-        if (existingItems.length !== ids.length) {
-            return res.status(400).json({
-                message: "Có mốc không thuộc timeline này"
-            });
-        }
+        if (!canManageTimeline(req, timeline)) return res.status(403).json({ message: "Không có quyền" });
 
         connection = await db.getConnection();
-
         await connection.beginTransaction();
-
         for (const item of items) {
             await connection.query(
-                `
-                UPDATE timeline_items
-                SET
-                    order_number = ?,
-                    updated_at = NOW()
-                WHERE id = ?
-                AND timeline_id = ?
-                `,
-                [
-                    Number(item.order_number),
-                    Number(item.id),
-                    Number(timelineId)
-                ]
+                `UPDATE timeline_items SET order_number = ?, updated_at = NOW() WHERE id = ? AND timeline_id = ?`,
+                [Number(item.order_number), Number(item.id), Number(timelineId)]
             );
         }
-
         await connection.commit();
-
-        return res.status(200).json({
-            message: "Sắp xếp timeline thành công"
-        });
-
+        return res.status(200).json({ message: "Sắp xếp thành công" });
     } catch (error) {
-        if (connection) {
-            await connection.rollback();
-        }
-
+        if (connection) await connection.rollback();
         return handleServerError(res, error);
+    } finally { if (connection) connection.release(); }
+};
 
-    } finally {
-        if (connection) {
-            connection.release();
-        }
-    }
+/*
+|--------------------------------------------------------------------------
+| ⚙️ THÊM MỚI: API Lấy ngữ cảnh cha (Fix triệt để lỗi 404 trang Add)
+|--------------------------------------------------------------------------
+*/
+const getTimelineContextRoute = async (req, res) => {
+    try {
+        const { timelineId } = req.params;
+        const context = await getTimelineContext(timelineId);
+        if (!context) return res.status(404).json({ message: "Không tìm thấy lịch trình" });
+        return res.status(200).json(context);
+    } catch (error) { return handleServerError(res, error); }
+};
+
+/*
+|--------------------------------------------------------------------------
+| ⚙️ THÊM MỚI: API Lấy 1 mốc thời gian cụ thể (Fix triệt để lỗi 404 trang Edit)
+|--------------------------------------------------------------------------
+*/
+const getTimelineItemRoute = async (req, res) => {
+    try {
+        const { itemId } = req.params;
+        const [items] = await db.query(
+            `
+            SELECT ti.*, et.event_id, e.status AS event_status 
+            FROM timeline_items ti
+            INNER JOIN event_timelines et ON ti.timeline_id = et.id
+            INNER JOIN events e ON et.event_id = e.id
+            WHERE ti.id = ? AND e.deleted_at IS NULL LIMIT 1
+            `,
+            [Number(itemId)]
+        );
+        if (items.length === 0) return res.status(404).json({ message: "Không có mốc lịch trình này" });
+        return res.status(200).json(items[0]);
+    } catch (error) { return handleServerError(res, error); }
 };
 
 module.exports = {
@@ -1150,5 +437,7 @@ module.exports = {
     addTimelineItem,
     updateTimelineItem,
     deleteTimelineItem,
-    reorderTimelineItems
+    reorderTimelineItems,
+    getTimelineContextRoute, // Export
+    getTimelineItemRoute     // Export
 };

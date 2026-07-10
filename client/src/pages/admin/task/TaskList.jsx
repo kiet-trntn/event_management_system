@@ -114,9 +114,9 @@ function TaskList() {
     };
 
     const getTaskTypeLabel = (type) => {
-        if(type === 'preparation') return '🔵 Chuẩn bị';
-        if(type === 'during_event') return '🟠 Diễn ra';
-        if(type === 'post_event') return '🟢 Kết thúc';
+        if(type === 'preparation') return 'Chuẩn bị';
+        if(type === 'during_event') return 'Diễn ra';
+        if(type === 'post_event') return 'Kết thúc';
         return type || 'Khác';
     };
 

@@ -11,8 +11,20 @@ const {
     addTimelineItem,
     updateTimelineItem,
     deleteTimelineItem,
-    reorderTimelineItems
+    reorderTimelineItems,
+    getTimelineContextRoute, 
+    getTimelineItemRoute
 } = require("../controllers/timelineController");
+
+router.get(
+    "/context/:timelineId", 
+    authMiddleware, 
+    getTimelineContextRoute
+); 
+router.get("/items/:itemId", 
+    authMiddleware,
+    getTimelineItemRoute
+);
 
 // Tạo timeline cho một sự kiện
 router.post(

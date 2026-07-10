@@ -299,29 +299,41 @@ function TaskDetail() {
                     </div>
                     
                     <div className="task-info-grid" style={{ marginBottom: '24px' }}>
-                        <div className="task-grid-item">
-                            <span className="task-grid-label">Giai đoạn:</span>
-                            <span className="badge-assignee" style={{ backgroundColor: '#e2e8f0', color: '#475569' }}>{translateTaskType(task.task_type)}</span>
-                        </div>
-                        <div className="task-grid-item">
-                            <span className="task-grid-label">Người giao:</span>
-                            <span className="badge-creator">{task.created_by_name || 'Hệ thống'}</span>
-                        </div>
-                        <div className="task-grid-item">
-                            <span className="task-grid-label">Người thực hiện:</span>
-                            <span className="badge-assignee">{task.assigned_name || 'Chưa phân công'}</span>
-                        </div>
-                        <div className="task-grid-item">
-                            <span className="task-grid-label">Độ ưu tiên:</span>
-                            {task.priority === 'high' ? <span className="badge-priority-high">Cao</span> : task.priority === 'medium' ? <span className="badge-priority-medium">Trung bình</span> : <span className="badge-priority-low">Thấp</span>}
-                        </div>
-                        <div className="task-grid-item">
-                            <span className="task-grid-label">Hạn chót:</span>
-                            <span className={task.due_date ? "badge-priority-high" : "badge-deadline-empty"}>
-                                {task.due_date ? new Date(task.due_date).toLocaleDateString('vi-VN') : 'Không có'}
-                            </span>
-                        </div>
-                    </div>
+    <div className="task-grid-item">
+        <span className="task-grid-label">Giai đoạn:</span>
+        <span style={{ color: '#0f172a', fontWeight: '500' }}>
+            {translateTaskType(task.task_type)}
+        </span>
+    </div>
+    
+    <div className="task-grid-item">
+        <span className="task-grid-label">Người giao:</span>
+        <span style={{ color: '#0f172a', fontWeight: '500' }}>
+            {task.created_by_name || 'Hệ thống'}
+        </span>
+    </div>
+    
+    <div className="task-grid-item">
+        <span className="task-grid-label">Người thực hiện:</span>
+        <span style={{ color: '#0f172a', fontWeight: '500' }}>
+            {task.assigned_name || 'Chưa phân công'}
+        </span>
+    </div>
+    
+    <div className="task-grid-item">
+        <span className="task-grid-label">Độ ưu tiên:</span>
+        <span style={{ color: '#0f172a', fontWeight: '500' }}>
+            {task.priority === 'high' ? 'Cao' : task.priority === 'medium' ? 'Trung bình' : 'Thấp'}
+        </span>
+    </div>
+    
+    <div className="task-grid-item">
+        <span className="task-grid-label">Hạn chót:</span>
+        <span style={{ color: '#ef4444', fontWeight: '600' }}>
+            {task.due_date ? new Date(task.due_date).toLocaleDateString('vi-VN') : 'Không có'}
+        </span>
+    </div>
+</div>
 
                     <div style={{ marginBottom: '24px' }}>
                         <h4 className="task-desc-title" style={{ marginBottom: '8px' }}>Mô tả chi tiết</h4>
