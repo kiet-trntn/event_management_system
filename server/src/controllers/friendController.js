@@ -1,5 +1,6 @@
 const db = require("../config/db");
 const handleServerError = require("../utils/handleServerError");
+const createNotification = require("../utils/createNotification");
 
 const VALID_FRIENDSHIP_STATUSES = [
     "pending",
@@ -142,6 +143,14 @@ const sendFriendRequest = async (req, res) => {
                     ]
                 );
 
+                await createNotification({
+                    user_id: receiverId,
+                    title: "Lời mời kết bạn mới",
+                    content: `${req.user.full_name} đã gửi lại cho bạn lời mời kết bạn`,
+                    type: "friend_request",
+                    related_id: friendship.id
+                });
+
                 return res.status(200).json({
                     message: "Gửi lại lời mời kết bạn thành công",
                     friendship: {
@@ -170,6 +179,14 @@ const sendFriendRequest = async (req, res) => {
                 receiverId
             ]
         );
+
+        await createNotification({
+            user_id: receiverId,
+            title: "Lời mời kết bạn mới",
+            content: `${req.user.full_name} đã gửi cho bạn lời mời kết bạn`,
+            type: "friend_request",
+            related_id: result.insertId
+        });
 
         return res.status(201).json({
             message: "Gửi lời mời kết bạn thành công",
@@ -354,6 +371,14 @@ const acceptFriendRequest = async (req, res) => {
             [friendshipId]
         );
 
+        await createNotification({
+            user_id: friendship.requester_id,
+            title: "Lời mời kết bạn đã được chấp nhận",
+            content: `${req.user.full_name} đã chấp nhận lời mời kết bạn của bạn`,
+            type: "friend_request",
+            related_id: friendshipId
+        });
+
         return res.status(200).json({
             message: "Chấp nhận lời mời kết bạn thành công",
             friendship: {
@@ -439,6 +464,14 @@ const rejectFriendRequest = async (req, res) => {
             `,
             [friendshipId]
         );
+
+        await createNotification({
+            user_id: friendship.requester_id,
+            title: "Lời mời kết bạn bị từ chối",
+            content: `${req.user.full_name} đã từ chối lời mời kết bạn của bạn`,
+            type: "friend_request",
+            related_id: friendshipId
+        });
 
         return res.status(200).json({
             message: "Từ chối lời mời kết bạn thành công"
@@ -598,6 +631,14 @@ const removeFriend = async (req, res) => {
             `,
             [friendships[0].id]
         );
+
+        await createNotification({
+            user_id: friendUserId,
+            title: "Quan hệ bạn bè đã kết thúc",
+            content: `${req.user.full_name} đã hủy kết bạn với bạn`,
+            type: "friend_request",
+            related_id: friendships[0].id
+        });
 
         return res.status(200).json({
             message: "Hủy kết bạn thành công"
