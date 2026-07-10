@@ -66,16 +66,18 @@ const sendDirectMessage = async (req, res) => {
             });
         }
 
-        // Kiểm tra hai người đã kết bạn chưa
-        const areFriends = await checkFriendship(
-            req.user.id,
-            receiver_id
-        );
+        // Admin được nhắn tin với mọi thành viên mà không cần kết bạn
+        if (req.user.role !== "admin") {
+            const areFriends = await checkFriendship(
+                req.user.id,
+                receiver_id
+            );
 
-        if (!areFriends) {
-            return res.status(403).json({
-                message: "Bạn phải kết bạn với người này trước khi nhắn tin"
-            });
+            if (!areFriends) {
+                return res.status(403).json({
+                    message: "Bạn phải kết bạn với người này trước khi nhắn tin"
+                });
+            }
         }
 
         // Lưu tin nhắn
@@ -182,15 +184,18 @@ const getConversationWithUser = async (req, res) => {
 
         const otherUser = users[0];
 
-        const areFriends = await checkFriendship(
-            req.user.id,
-            userId
-        );
+        // Admin được mở cuộc trò chuyện với mọi thành viên
+        if (req.user.role !== "admin") {
+            const areFriends = await checkFriendship(
+                req.user.id,
+                userId
+            );
 
-        if (!areFriends) {
-            return res.status(403).json({
-                message: "Bạn phải kết bạn với người này trước khi xem cuộc trò chuyện"
-            });
+            if (!areFriends) {
+                return res.status(403).json({
+                    message: "Bạn phải kết bạn với người này trước khi xem cuộc trò chuyện"
+                });
+            }
         }
 
         const [messages] = await db.query(
@@ -273,8 +278,7 @@ const getConversationWithUser = async (req, res) => {
 // Xem danh sách cuộc trò chuyện
 const getMyConversations = async (req, res) => {
     try {
-        const [conversations] = await db.query(
-            `
+        let sql = `
             SELECT
                 other_user.id AS user_id,
                 other_user.full_name,
@@ -315,36 +319,51 @@ const getMyConversations = async (req, res) => {
                 )
 
             WHERE other_user.id <> ?
+        `;
 
-            AND EXISTS (
-                SELECT 1
-                FROM friendships f
+        const params = [
+            req.user.id,
+            req.user.id,
+            req.user.id,
+            req.user.id
+        ];
 
-                WHERE f.status = 'accepted'
+        // Employee/Leader chỉ hiện cuộc trò chuyện với bạn bè
+        if (req.user.role !== "admin") {
+            sql += `
+                AND EXISTS (
+                    SELECT 1
+                    FROM friendships f
 
-                AND (
-                    (
-                        f.requester_id = ?
-                        AND f.receiver_id = other_user.id
-                    )
-                    OR
-                    (
-                        f.requester_id = other_user.id
-                        AND f.receiver_id = ?
+                    WHERE f.status = 'accepted'
+
+                    AND (
+                        (
+                            f.requester_id = ?
+                            AND f.receiver_id = other_user.id
+                        )
+                        OR
+                        (
+                            f.requester_id = other_user.id
+                            AND f.receiver_id = ?
+                        )
                     )
                 )
-            )
+            `;
 
-            ORDER BY last_msg.created_at DESC
-            `,
-            [
-                req.user.id,
-                req.user.id,
-                req.user.id,
-                req.user.id,
+            params.push(
                 req.user.id,
                 req.user.id
-            ]
+            );
+        }
+
+        sql += `
+            ORDER BY last_msg.created_at DESC
+        `;
+
+        const [conversations] = await db.query(
+            sql,
+            params
         );
 
         return res.status(200).json({
@@ -429,42 +448,69 @@ const getChatUsers = async (req, res) => {
     try {
         const { search } = req.query;
 
-        let sql = `
-            SELECT
-                u.id,
-                u.full_name,
-                u.email,
-                u.role,
-                u.status,
+        let sql;
+        let params;
 
-                f.id AS friendship_id,
-                f.status AS friendship_status
+        // Admin xem được tất cả tài khoản đang hoạt động
+        if (req.user.role === "admin") {
+            sql = `
+                SELECT
+                    u.id,
+                    u.full_name,
+                    u.email,
+                    u.role,
+                    u.status,
 
-            FROM friendships f
+                    NULL AS friendship_id,
+                    'admin_access' AS friendship_status
 
-            INNER JOIN users u
-                ON u.id = CASE
-                    WHEN f.requester_id = ?
-                        THEN f.receiver_id
-                    ELSE f.requester_id
-                END
+                FROM users u
 
-            WHERE (
-                f.requester_id = ?
-                OR f.receiver_id = ?
-            )
+                WHERE u.id <> ?
+                AND u.status = 'active'
+            `;
 
-            AND f.status = 'accepted'
-            AND u.status = 'active'
-            AND u.id <> ?
-        `;
+            params = [req.user.id];
 
-        const params = [
-            req.user.id,
-            req.user.id,
-            req.user.id,
-            req.user.id
-        ];
+        } else {
+            // Employee/Leader chỉ thấy những người đã kết bạn
+            sql = `
+                SELECT
+                    u.id,
+                    u.full_name,
+                    u.email,
+                    u.role,
+                    u.status,
+
+                    f.id AS friendship_id,
+                    f.status AS friendship_status
+
+                FROM friendships f
+
+                INNER JOIN users u
+                    ON u.id = CASE
+                        WHEN f.requester_id = ?
+                            THEN f.receiver_id
+                        ELSE f.requester_id
+                    END
+
+                WHERE (
+                    f.requester_id = ?
+                    OR f.receiver_id = ?
+                )
+
+                AND f.status = 'accepted'
+                AND u.status = 'active'
+                AND u.id <> ?
+            `;
+
+            params = [
+                req.user.id,
+                req.user.id,
+                req.user.id,
+                req.user.id
+            ];
+        }
 
         if (search && search.trim()) {
             const keyword = `%${search.trim()}%`;
