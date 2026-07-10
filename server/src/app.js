@@ -15,6 +15,7 @@ const directMessageRoutes = require("./routes/directMessageRoutes");
 const reportRoutes = require("./routes/reportRoutes");
 const calendarRoutes = require("./routes/calendarRoutes");
 const friendRoutes = require("./routes/friendRoutes");
+const timelineRoutes = require("./routes/timelineRoutes");
 
 const app = express(); // Tạo ra một ứng dụng server
 
@@ -41,7 +42,7 @@ app.use("/api/direct-messages", directMessageRoutes);
 app.use("/api/reports", reportRoutes); // Gắn tiền tố "/api/reports" cho các đường dẫn trong reportRoutes (Ví dụ: /api/reports/overview)
 app.use("/api/calendar", calendarRoutes);
 app.use("/api/friends", friendRoutes);
-
+app.use("/api/timelines", timelineRoutes);
 // Error Handler
 app.use((err, req, res, next) => {
 
