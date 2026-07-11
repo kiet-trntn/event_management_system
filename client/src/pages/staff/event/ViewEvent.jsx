@@ -68,7 +68,6 @@ function ViewEvent() {
         } catch (e) { console.error(e); }
     }, []);
 
-    // Tải mốc thời gian lịch trình
     const fetchTimelineData = useCallback(async () => {
         try {
             setLoadingTimeline(true);
@@ -196,7 +195,6 @@ function ViewEvent() {
         } catch (error) { Swal.fire('Lỗi', 'Lỗi mạng', 'error'); }
     };
 
-    // 🟢 THAO TÁC XÓA: Vẫn dùng Cảnh báo xác nhận (Swal) trước khi xóa
     const handleDeleteTimelineItem = async (itemId) => {
         const result = await Swal.fire({
             title: 'Xóa mốc lịch trình này?',
@@ -226,7 +224,7 @@ function ViewEvent() {
         setFilterTaskStatus(''); setFilterTaskPriority(''); setFilterTaskType(''); setFilterTaskFromDate(''); setFilterTaskToDate('');
     };
 
-      const getPriorityIcon = (priority) => {
+    const getPriorityIcon = (priority) => {
         switch(priority) {
             case 'high': return <span style={{ color: '#ef4444' }}>Cao</span>;
             case 'medium': return <span style={{ color: '#f59e0b' }}>Trung Bình</span>;
@@ -238,7 +236,7 @@ function ViewEvent() {
     const getSelectStyle = (status) => {
         const styles = {
             'pending': { color: '#64748b', backgroundColor: '#f1f5f9' },
-            'is_progress': { color: '#2563eb', backgroundColor: '#eff6ff' },
+            'in_progress': { color: '#2563eb', backgroundColor: '#eff6ff' },
             'submitted': { color: '#ea580c', backgroundColor: '#fff7ed' }, 
             'completed': { color: '#166534', backgroundColor: '#f0fdf4' },
             'cancelled': { color: '#dc2626', backgroundColor: '#fef2f2' }
@@ -313,6 +311,32 @@ function ViewEvent() {
                         {event.status}
                     </span>
                 </div>
+                {/* 🟢 NÚT ĐĂNG KÝ (NẰM BÊN PHẢI TIÊU ĐỀ) */}
+                {hasManagerRights && (
+                    <div style={{ display: 'flex', gap: '8px' }}>
+                        <button 
+                            type="button"
+                            className="btn-secondary" 
+                            style={{ display: 'flex', alignItems: 'center', gap: '6px', height: '36px', padding: '0 14px', fontSize: '13px', color: '#3b82f6', borderColor: '#bfdbfe', backgroundColor: '#eff6ff' }}
+                            onClick={() => {
+                                const link = `${window.location.origin}/public/events/${event.id}/register`;
+                                navigator.clipboard.writeText(link);
+                                Swal.fire({ toast: true, position: 'top-end', icon: 'success', title: 'Đã copy link đăng ký', showConfirmButton: false, timer: 1500 });
+                            }}
+                        >
+                            Copy link
+                        </button>
+
+                        <button 
+                            type="button"
+                            className="btn-secondary" 
+                            style={{ display: 'flex', alignItems: 'center', gap: '6px', height: '36px', padding: '0 14px', fontSize: '13px', color: '#334155' }}
+                            onClick={() => navigate(`/staff/events/${event.id}/registrations`)}
+                        >
+                            Danh sách khách
+                        </button>
+                    </div>
+                )}
             </div>
 
             <div style={{ display: 'flex', gap: '24px', flexWrap: 'wrap' }}>
@@ -329,11 +353,9 @@ function ViewEvent() {
                         </div>
                     </div>
 
-                    {/* KHỐI 2: TIMELINE TRỰC TIẾP (LEADER) */}
                     <div className="form-card large" style={{ maxWidth: '100%', margin: 0 }}>
                         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px' }}>
                             <h3 className="section-title" style={{ margin: 0 }}>Lịch trình diễn ra sự kiện (Timeline)</h3>
-                            {/* 🟢 BẤM THÊM: Sẽ nhảy sang trang dùng chung AddTimelineItem */}
                             {isLeader && isEditable && timeline && (
                                 <button className="btn-secondary" style={{ padding: '6px 12px', fontSize: '13px' }} onClick={() => navigate(`/staff/timelines/${timeline.id}/items/add`)}>
                                     + Thêm mốc thời gian
@@ -387,7 +409,6 @@ function ViewEvent() {
                                                     )}
                                                     {isLeader && isEditable && (
                                                         <div style={{ display: 'flex', gap: '10px', fontSize: '12px' }}>
-                                                            {/* 🟢 BẤM SỬA: Sẽ nhảy sang trang dùng chung EditTimelineItem */}
                                                             <span onClick={() => navigate(`/staff/timelines/items/edit/${item.id}`)} style={{ color: '#3b82f6', fontWeight: '600', cursor: 'pointer' }}>Sửa mốc</span>
                                                             <span onClick={() => handleDeleteTimelineItem(item.id)} style={{ color: '#ef4444', fontWeight: '600', cursor: 'pointer' }}>Xóa</span>
                                                         </div>

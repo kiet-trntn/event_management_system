@@ -60,9 +60,12 @@ function Login() {
             <div className="login-header">
                 {/* Icon Logo (Có thể thay bằng thẻ <img> nếu bạn có hình logo) */}
                 <div style={{ width: '40px', height: '40px', backgroundColor: '#2563EB', borderRadius: '8px', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#ffffff' }}>
-                    <svg width="24" height="24" fill="none" stroke="currentColor" strokeWidth="2.5" viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
-                    </svg>
+                   <img 
+                    src="/favicon.svg" 
+                    alt="Logo TaskFlow"
+                    className="login-logo" 
+                    style={{ objectFit: 'cover' }} 
+                />
                 </div>
                 <h1 className="login-title" style={{ margin: 0, fontSize: '32px', color: '#2563EB', fontWeight: '900', letterSpacing: '1px' }}>
                     TASKFLOW

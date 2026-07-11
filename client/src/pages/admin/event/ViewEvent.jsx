@@ -143,15 +143,44 @@ function ViewEventAdmin() {
 
     return (
         <div className="page-container event-page">
-            <div className="page-header-form">
-                <button type="button" className="btn-back" onClick={() => navigate('/admin/events')}>
+            <div className="page-header-form" style={{ display: 'flex', flexDirection: 'column', gap: '12px', marginBottom: '24px' }}>
+            <div>
+                <button type="button" className="btn-back" onClick={() => navigate('/admin/events')} style={{ margin: 0 }}>
                     <svg width="18" height="18" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth="2">
                         <path strokeLinecap="round" strokeLinejoin="round" d="M10 19l-7-7m0 0l7-7m-7 7h18"></path>
                     </svg>
                     Quay lại
                 </button>
-                <h3>Chi tiết sự kiện (Quản trị viên)</h3>
             </div>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '16px' }}>
+                <h3 style={{ margin: 0 }}>Chi tiết sự kiện (Quản trị viên)</h3>
+
+                <div style={{ display: 'flex', gap: '8px' }}>
+                    <button 
+                        type="button"
+                        className="btn-secondary" 
+                        style={{ display: 'flex', alignItems: 'center', gap: '6px', height: '36px', padding: '0 14px', fontSize: '13px', color: '#3b82f6', borderColor: '#bfdbfe', backgroundColor: '#eff6ff' }}
+                        onClick={() => {
+                            const link = `${window.location.origin}/public/events/${event.id}/register`;
+                            navigator.clipboard.writeText(link);
+                            Swal.fire({ toast: true, position: 'top-end', icon: 'success', title: 'Đã copy link đăng ký', showConfirmButton: false, timer: 1500 });
+                        }}
+                    >
+                        🔗 Copy link
+                    </button>
+
+                    <button 
+                        type="button"
+                        className="btn-secondary" 
+                        style={{ display: 'flex', alignItems: 'center', gap: '6px', height: '36px', padding: '0 14px', fontSize: '13px', color: '#334155' }}
+                        onClick={() => navigate(`/admin/events/${event.id}/registrations`)}
+                    >
+                        📋 Danh sách khách
+                    </button>
+                </div>
+            </div>
+            
+        </div>
 
             <div className="form-card large">
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '24px' }}>
@@ -197,11 +226,11 @@ function ViewEventAdmin() {
                     </p>
                 </div>
 
-                {/* 🟢 THANH THAO TÁC NÚT BẤM (GỌN GÀNG TRÊN 1 HÀNG) */}
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', width: '100%', marginTop: '24px', paddingTop: '20px', borderTop: '1px solid #e2e8f0' }}>
+                {/* 🟢 THANH THAO TÁC NÚT BẤM */}
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', width: '100%', marginTop: '24px', paddingTop: '20px', borderTop: '1px solid #e2e8f0', flexWrap: 'wrap', gap: '16px' }}>
                     
                     {/* KHỐI TRÁI: ĐIỀU HƯỚNG QUẢN LÝ */}
-                    <div style={{ display: 'flex', gap: '8px' }}>
+                    <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
                         <button 
                             type="button"
                             className="btn-secondary" 
@@ -225,10 +254,11 @@ function ViewEventAdmin() {
                             </svg>
                             Lịch trình
                         </button>
+
                     </div>
 
                     {/* KHỐI PHẢI: THAO TÁC SỰ KIỆN */}
-                    <div style={{ display: 'flex', gap: '8px' }}>
+                    <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
                         {event.status === 'Nháp' && (
                             <button type="button" className="btn-primary" style={{ backgroundColor: '#3B82F6', borderColor: '#3B82F6', height: '36px', padding: '0 16px', fontSize: '13px', color: '#fff' }} onClick={() => navigate(`/admin/events/edit/${event.id}`)}>Sửa</button>
                         )}
@@ -246,7 +276,6 @@ function ViewEventAdmin() {
                         )}
                     </div>
                 </div>
-                
             </div>
         </div>
     );

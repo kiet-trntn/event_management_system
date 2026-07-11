@@ -23,7 +23,9 @@ import TimeLineList from './pages/admin/timeline/TimelineList';
 import AddTimeline from './pages/admin/timeline/AddTimeline';
 import EditTimeline from './pages/admin/timeline/EditTimeline';
 
-
+import RegisterEvent from './pages/public/RegisterEvent';
+import RegisterSuccess from './pages/public/RegisterSuccess';
+import RegistrationList from './pages/admin/registration/RegistrationList';
 
 import TaskList from './pages/admin/task/TaskList';
 import AddTask from './pages/admin/task/AddTask';
@@ -52,6 +54,9 @@ function App() {
   return (
     <BrowserRouter>
       <Routes> 
+        <Route path="/public/events/:eventId/register" element={<RegisterEvent />} />
+        <Route path="/public/events/:eventId/success" element={<RegisterSuccess />} />
+
         <Route path="/" element={<Navigate to="/login" replace />} />
         <Route path="/login" element={<Login />} />
         <Route 
@@ -84,6 +89,7 @@ function App() {
           <Route path="/admin/tasks/:id/attachments" element={<AttachmentList />} />
           <Route path="trash" element={<Trash />} />
           <Route path="messages" element={<Messages />} />
+          <Route path="events/:eventId/registrations" element={<RegistrationList />} />
         </Route>
 
         <Route 
@@ -109,6 +115,7 @@ function App() {
           <Route path="messages" element={<Messages />} />
           <Route path="timelines/:timelineId/items/add" element={<AddTimeline />} />
           <Route path="timelines/items/edit/:itemId" element={<EditTimeline />} />
+          <Route path="events/:eventId/registrations" element={<RegistrationList />} />
         </Route>
 
         <Route path="*" element={<h2>404 - Trang không tồn tại</h2>} />
