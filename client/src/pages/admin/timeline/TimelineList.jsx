@@ -88,9 +88,9 @@ function AdminEventTimeline() {
     };
 
     const formatPhase = (phase) => {
-        if (phase === 'preparation') return '🔵 Chuẩn bị';
-        if (phase === 'during_event') return '🟠 Diễn ra';
-        return '🟢 Kết thúc';
+        if (phase === 'preparation') return 'Chuẩn bị';
+        if (phase === 'during_event') return 'Diễn ra';
+        return 'Kết thúc';
     };
 
     if (loading) return <div className="text-center py-6">Đang tải dữ liệu lịch trình...</div>;

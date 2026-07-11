@@ -166,7 +166,7 @@ function ViewEventAdmin() {
                             Swal.fire({ toast: true, position: 'top-end', icon: 'success', title: 'Đã copy link đăng ký', showConfirmButton: false, timer: 1500 });
                         }}
                     >
-                        🔗 Copy link
+                        Copy link
                     </button>
 
                     <button 
@@ -175,7 +175,7 @@ function ViewEventAdmin() {
                         style={{ display: 'flex', alignItems: 'center', gap: '6px', height: '36px', padding: '0 14px', fontSize: '13px', color: '#334155' }}
                         onClick={() => navigate(`/admin/events/${event.id}/registrations`)}
                     >
-                        📋 Danh sách khách
+                        Danh sách khách
                     </button>
                 </div>
             </div>
