@@ -56,11 +56,7 @@ const getPublicEvent = async (req, res) => {
                     SELECT COUNT(*)
                     FROM event_registrations er
                     WHERE er.event_id = e.id
-                    AND er.status IN (
-                        'pending',
-                        'confirmed',
-                        'checked_in'
-                    )
+                    AND er.status = 'confirmed'
                 ) AS registered_count
 
             FROM events e
@@ -248,13 +244,33 @@ const registerForEvent = async (req, res) => {
                 ]
             );
 
-        if (existingRegistrations.length > 0) {
-            await connection.rollback();
+            if (existingRegistrations.length > 0) {
+                const existingRegistration = existingRegistrations[0];
 
-            return res.status(400).json({
-                message: "Email này đã đăng ký tham dự sự kiện"
-            });
-        }
+                if (existingRegistration.status === "cancelled") {
+                    await connection.query(
+                        `
+                        UPDATE event_registrations
+                        SET status = 'confirmed',
+                            registered_at = CURRENT_TIMESTAMP
+                        WHERE id = ?
+                        `,
+                        [existingRegistration.id]
+                    );
+
+                    await connection.commit();
+
+                    return res.status(200).json({
+                        message: "Đăng ký lại sự kiện thành công"
+                    });
+                }
+
+                await connection.rollback();
+
+                return res.status(400).json({
+                    message: "Email này đã đăng ký tham dự sự kiện"
+                });
+            }
 
         // Đếm số người đang giữ chỗ
         const [countRows] = await connection.query(
@@ -262,11 +278,7 @@ const registerForEvent = async (req, res) => {
             SELECT COUNT(*) AS total
             FROM event_registrations
             WHERE event_id = ?
-            AND status IN (
-                'pending',
-                'confirmed',
-                'checked_in'
-            )
+            AND status = 'confirmed'
             `,
             [Number(eventId)]
         );
@@ -393,11 +405,8 @@ const getEventRegistrations = async (req, res) => {
         } = req.query;
 
         const validStatuses = [
-            "pending",
             "confirmed",
-            "rejected",
-            "cancelled",
-            "checked_in"
+            "cancelled"
         ];
 
         if (!isValidId(eventId)) {
@@ -454,17 +463,9 @@ const getEventRegistrations = async (req, res) => {
                 er.organization,
                 er.note,
                 er.status,
-                er.registered_at,
-                er.processed_at,
-                er.checked_in_at,
-
-                er.processed_by,
-                processor.full_name AS processed_by_name
+                er.registered_at
 
             FROM event_registrations er
-
-            LEFT JOIN users processor
-                ON er.processed_by = processor.id
 
             WHERE er.event_id = ?
         `;
@@ -510,11 +511,8 @@ const getEventRegistrations = async (req, res) => {
             await db.query(sql, params);
 
         const summary = {
-            pending: 0,
             confirmed: 0,
-            rejected: 0,
-            cancelled: 0,
-            checked_in: 0
+            cancelled: 0
         };
 
         for (const registration of registrations) {
