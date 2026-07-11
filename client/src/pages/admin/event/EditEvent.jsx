@@ -14,10 +14,13 @@ function EditEvent() {
         start_date: '',
         end_date: '',
         max_members: '',
-        leader_id: '' 
+        leader_id: '',
+        max_attendees: '', 
+        registration_deadline: ''
     });
     
     const [users, setUsers] = useState([]);
+    
     const formatDateForInput = (dateString) => {
         if (!dateString) return '';
         const d = new Date(dateString);
@@ -35,7 +38,6 @@ function EditEvent() {
                 });
                 const usersData = await usersResponse.json();
                 if (usersResponse.ok) {
-                    // 🛑 Đã sửa: Kiểm tra an toàn để trích xuất đúng mảng users
                     if (usersData.users && Array.isArray(usersData.users)) {
                         setUsers(usersData.users);
                     } else if (Array.isArray(usersData)) {
@@ -58,7 +60,9 @@ function EditEvent() {
                         start_date: formatDateForInput(eventData.start_date),
                         end_date: formatDateForInput(eventData.end_date),
                         max_members: eventData.max_members || '',
-                        leader_id: eventData.leader_id || ''
+                        leader_id: eventData.leader_id || '',
+                        max_attendees: eventData.max_attendees || '',
+                        registration_deadline: eventData.registration_deadline ? formatDateForInput(eventData.registration_deadline) : ''
                     });
                 } else {
                     Swal.fire('Lỗi!', eventData.message || 'Không tìm thấy sự kiện', 'error')
@@ -88,6 +92,12 @@ function EditEvent() {
             return;
         }
 
+        const payload = {
+            ...formData,
+            max_attendees: formData.max_attendees ? Number(formData.max_attendees) : null,
+            registration_deadline: formData.registration_deadline || null
+        };
+
         try {
             const response = await fetch(`http://localhost:5000/api/events/${id}`, {
                 method: 'PUT',
@@ -95,7 +105,7 @@ function EditEvent() {
                     'Content-Type': 'application/json',
                     'Authorization': `Bearer ${localStorage.getItem('my_token')}`
                 },
-                body: JSON.stringify(formData)
+                body: JSON.stringify(payload)
             });
             
             const data = await response.json();
@@ -194,7 +204,7 @@ function EditEvent() {
 
                     <div style={{ display: 'flex', gap: '16px' }}>
                         <div className="form-group" style={{ flex: 1 }}>
-                            <label className="form-label">Số lượng tham gia tối đa</label>
+                            <label className="form-label">Số NV hỗ trợ tối đa</label>
                             <input 
                                 className="form-input" 
                                 type="number" 
@@ -220,6 +230,31 @@ function EditEvent() {
                                     </option>
                                 ))}
                             </select>
+                        </div>
+                    </div>
+
+                    {/* DÒNG: Số lượng khách & Hạn chót đăng ký (Hiển thị bình thường) */}
+                    <div style={{ display: 'flex', gap: '16px' }}>
+                        <div className="form-group" style={{ flex: 1 }}>
+                            <label className="form-label">Khách đăng ký tối đa <span style={{fontSize: '12px', color: '#64748b', fontWeight: 'normal'}}>(Tùy chọn)</span></label>
+                            <input 
+                                className="form-input" 
+                                type="number" 
+                                min="1"
+                                placeholder="Để trống nếu không giới hạn"
+                                value={formData.max_attendees}
+                                onChange={e => setFormData({...formData, max_attendees: e.target.value})} 
+                            />
+                        </div>
+                        
+                        <div className="form-group" style={{ flex: 1 }}>
+                            <label className="form-label">Hạn chót đóng Form đăng ký <span style={{fontSize: '12px', color: '#64748b', fontWeight: 'normal'}}>(Tùy chọn)</span></label>
+                            <input 
+                                className="form-input" 
+                                type="datetime-local" 
+                                value={formData.registration_deadline}
+                                onChange={e => setFormData({...formData, registration_deadline: e.target.value})}
+                            />
                         </div>
                     </div>
                     

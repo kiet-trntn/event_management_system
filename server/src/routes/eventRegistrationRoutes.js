@@ -8,6 +8,7 @@ const {
     getPublicEvent,
     registerForEvent,
     getEventRegistrations,
+    cancelRegistration
 } = require("../controllers/eventRegistrationController");
 
 /*
@@ -41,4 +42,9 @@ router.get(
     getEventRegistrations
 );
 
+router.patch(
+    "/events/:eventId/registrations/:registrationId/cancel",
+    authMiddleware, 
+    cancelRegistration
+);
 module.exports = router;

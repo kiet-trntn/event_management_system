@@ -28,7 +28,6 @@ function RegistrationList() {
             setLoading(true);
             const token = localStorage.getItem('my_token');
             
-            // Xây dựng URL có chứa search và status (nếu có)
             const queryParams = new URLSearchParams();
             if (debouncedSearch) queryParams.append('search', debouncedSearch);
             if (filterStatus) queryParams.append('status', filterStatus);
@@ -58,6 +57,52 @@ function RegistrationList() {
         document.title = "Danh sách khách đăng ký | TaskFlow";
         fetchRegistrations();
     }, [fetchRegistrations]);
+
+    // 🟢 HÀM MỚI: XỬ LÝ KHI BẤM NÚT "HỦY VÉ"
+    const handleCancelRegistration = async (registrationId, guestName) => {
+        const result = await Swal.fire({
+            title: `Hủy vé của ${guestName}?`,
+            text: "Thao tác này sẽ chuyển trạng thái của khách thành 'Đã hủy' và giải phóng 1 chỗ trống cho sự kiện.",
+            icon: 'warning',
+            showCancelButton: true,
+            confirmButtonColor: '#ef4444',
+            cancelButtonColor: '#94a3b8',
+            confirmButtonText: 'Đồng ý hủy',
+            cancelButtonText: 'Đóng'
+        });
+
+        if (result.isConfirmed) {
+            try {
+                const token = localStorage.getItem('my_token');
+                const response = await fetch(`http://localhost:5000/api/events/${eventId}/registrations/${registrationId}/cancel`, {
+                    method: 'PATCH', // Đảm bảo Backend dùng app.patch() hoặc router.patch()
+                    headers: { 
+                        'Authorization': `Bearer ${token}`,
+                        'Content-Type': 'application/json'
+                    }
+                });
+
+                const data = await response.json();
+
+                if (response.ok) {
+                    Swal.fire({
+                        toast: true,
+                        position: 'top-end',
+                        icon: 'success',
+                        title: 'Đã hủy vé thành công',
+                        showConfirmButton: false,
+                        timer: 1500
+                    });
+                    // Gọi lại API để cập nhật bảng danh sách
+                    fetchRegistrations();
+                } else {
+                    Swal.fire('Thất bại', data.message || 'Không thể hủy vé này', 'error');
+                }
+            } catch (error) {
+                Swal.fire('Lỗi mạng', 'Không thể kết nối đến máy chủ', 'error');
+            }
+        }
+    };
 
     const formatDateTime = (dateString) => {
         if (!dateString) return '';
@@ -125,7 +170,7 @@ function RegistrationList() {
                     </div>
                 ) : (
                     <div style={{ overflowX: 'auto' }}>
-                        <table className="data-table" style={{ minWidth: '950px' }}>
+                        <table className="data-table" style={{ minWidth: '1000px' }}>
                             <thead>
                                 <tr>
                                     <th style={{ width: '50px', textAlign: 'center' }}>STT</th>
@@ -134,7 +179,7 @@ function RegistrationList() {
                                     <th>Đơn vị / Tổ chức</th>
                                     <th>Ghi chú</th>
                                     <th style={{ textAlign: 'center' }}>Trạng thái</th>
-                                    <th style={{ textAlign: 'right' }}>Ngày đăng ký</th>
+                                    <th style={{ textAlign: 'center' }}>Thao tác</th>
                                 </tr>
                             </thead>
                             <tbody>
@@ -145,6 +190,7 @@ function RegistrationList() {
                                         </td>
                                         <td>
                                             <div style={{ fontWeight: '600', color: '#0f172a' }}>{reg.full_name}</div>
+                                            <div style={{ fontSize: '12px', color: '#64748b', marginTop: '4px' }}>{formatDateTime(reg.registered_at)}</div>
                                         </td>
                                         <td>
                                             <div style={{ fontSize: '13px', color: '#334155', marginBottom: '4px' }}>{reg.email}</div>
@@ -167,8 +213,38 @@ function RegistrationList() {
                                                 <span className="badge-pill badge-gray">Đã hủy</span>
                                             )}
                                         </td>
-                                        <td style={{ textAlign: 'right', fontSize: '13px', color: '#64748b' }}>
-                                            {formatDateTime(reg.registered_at)}
+                                        {/* 🟢 CỘT NÚT BẤM THAO TÁC */}
+                                        {/* 🟢 CỘT NÚT BẤM THAO TÁC */}
+                                        <td style={{ textAlign: 'center' }}>
+                                            {reg.status === 'confirmed' ? (
+                                                <button 
+                                                    onClick={() => handleCancelRegistration(reg.id, reg.full_name)}
+                                                    style={{ 
+                                                        backgroundColor: '#fef2f2', 
+                                                        border: '1px solid #fecaca', 
+                                                        color: '#ef4444', 
+                                                        fontWeight: '600', 
+                                                        fontSize: '12px', 
+                                                        padding: '6px 12px',
+                                                        borderRadius: '6px',
+                                                        cursor: 'pointer',
+                                                        transition: 'all 0.2s ease',
+                                                        boxShadow: '0 1px 2px rgba(0,0,0,0.05)'
+                                                    }}
+                                                    onMouseEnter={(e) => {
+                                                        e.currentTarget.style.backgroundColor = '#fee2e2';
+                                                        e.currentTarget.style.borderColor = '#f87171';
+                                                    }}
+                                                    onMouseLeave={(e) => {
+                                                        e.currentTarget.style.backgroundColor = '#fef2f2';
+                                                        e.currentTarget.style.borderColor = '#fecaca';
+                                                    }}
+                                                >
+                                                    Hủy vé
+                                                </button>
+                                            ) : (
+                                                <span style={{ fontSize: '13px', color: '#94a3b8' }}>-</span>
+                                            )}
                                         </td>
                                     </tr>
                                 ))}

@@ -210,12 +210,21 @@ function ViewEventAdmin() {
                         <p className="font-semibold" style={{ margin: 0, color: '#1e293b' }}>{new Date(event.end_date).toLocaleString('vi-VN')}</p>
                     </div>
                     <div>
-                        <p className="text-secondary mb-1" style={{ fontSize: '13px', fontWeight: '500' }}>Số lượng tối đa</p>
+                        <p className="text-secondary mb-1" style={{ fontSize: '13px', fontWeight: '500' }}>NV hỗ trợ tối đa</p>
                         <p className="font-semibold" style={{ margin: 0, color: '#1e293b' }}>{event.max_members} người</p>
                     </div>
                     <div>
                         <p className="text-secondary mb-1" style={{ fontSize: '13px', fontWeight: '500' }}>Người tạo sự kiện</p>
                         <p className="font-semibold" style={{ margin: 0, color: '#1e293b' }}>{event.created_by_name || 'Hệ thống Admin'}</p>
+                    </div>
+                    {/* --- 2 Ô MỚI THÊM VÀO DƯỚI CÙNG --- */}
+                    <div>
+                        <p className="text-secondary mb-1" style={{ fontSize: '13px', fontWeight: '500' }}>Khách đăng ký tối đa</p>
+                        <p className="font-semibold" style={{ margin: 0, color: '#1e293b' }}>{event.max_attendees ? `${event.max_attendees} người` : 'Không giới hạn'}</p>
+                    </div>
+                    <div>
+                        <p className="text-secondary mb-1" style={{ fontSize: '13px', fontWeight: '500' }}>Hạn chót đóng Form</p>
+                        <p className="font-semibold" style={{ margin: 0, color: '#1e293b' }}>{event.registration_deadline ? new Date(event.registration_deadline).toLocaleString('vi-VN') : 'Không giới hạn'}</p>
                     </div>
                 </div>
 

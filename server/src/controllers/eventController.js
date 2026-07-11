@@ -262,6 +262,8 @@ const getEventById = async (req, res) => {
                 e.start_date,
                 e.end_date,
                 e.max_members,
+                e.max_attendees, 
+                e.registration_deadline,
                 e.status,
                 e.created_at,
 
@@ -357,6 +359,8 @@ const createEvent = async (req, res) => {
             end_date,
             max_members,
             leader_id,
+            max_attendees, 
+            registration_deadline
         } = req.body;
 
         // Kiểm tra rỗng các trường bắt buộc
@@ -405,7 +409,9 @@ const createEvent = async (req, res) => {
                 max_members, 
                 leader_id,
                 status,
-                created_by
+                created_by, 
+                max_attendees, 
+                registration_deadline
             )
                 VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
             [
@@ -417,7 +423,9 @@ const createEvent = async (req, res) => {
                 max_members || 0,   // Nếu không nhập số thành viên tối đa, mặc định là 0
                 leader_id || null,  // Nếu không chọn leader, mặc định để trống (null)
                 "Nháp",
-                req.user.id         // ID của người đang đăng nhập thực hiện bấm tạo sự kiện
+                req.user.id,
+                max_attendees || null, 
+                registration_deadline || null        // ID của người đang đăng nhập thực hiện bấm tạo sự kiện
             ]
         )
 
@@ -442,7 +450,9 @@ const updateEvent = async (req, res) => {
             start_date,
             end_date,
             max_members,
-            leader_id
+            leader_id, 
+            max_attendees, 
+            registration_deadline
         } = req.body;
 
         // Kiểm tra event tồn tại
@@ -518,7 +528,9 @@ const updateEvent = async (req, res) => {
                 start_date = ?,
                 end_date = ?,
                 max_members = ?,
-                leader_id = ?
+                leader_id = ?, 
+                max_attendees = ?, 
+                registration_deadline = ?
             WHERE id = ?
             `,
             [
@@ -529,6 +541,8 @@ const updateEvent = async (req, res) => {
                 end_date,
                 max_members,
                 leader_id,
+                max_attendees || null, 
+                registration_deadline || null,
                 id
             ]
         );

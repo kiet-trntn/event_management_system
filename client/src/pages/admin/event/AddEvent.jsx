@@ -11,8 +11,10 @@ function AddEvent() {
         location: '', 
         start_date: '',
         end_date: '',
-        max_members: '',
-        leader_id: '' 
+        max_members: '', // Nhân sự tối đa
+        leader_id: '',
+        max_attendees: '', // Khách tham gia tối đa
+        registration_deadline: '' // Hạn chót đăng ký form
     });
     
     const [users, setUsers] = useState([]);
@@ -28,7 +30,6 @@ function AddEvent() {
                 const data = await response.json();
                 
                 if (response.ok) {
-                    // Ưu tiên kiểm tra key .users theo chuẩn cấu hình của Backend
                     if (data.users && Array.isArray(data.users)) {
                         setUsers(data.users);
                     } else if (Array.isArray(data)) {
@@ -58,6 +59,14 @@ function AddEvent() {
             return;
         }
 
+        // Đóng gói data, nếu để trống thì truyền null để database hiểu là không giới hạn
+        const payload = {
+            ...formData,
+            status: 'Nháp',
+            max_attendees: formData.max_attendees ? Number(formData.max_attendees) : null,
+            registration_deadline: formData.registration_deadline || null
+        };
+
         try {
             const response = await fetch('http://localhost:5000/api/events', {
                 method: 'POST',
@@ -65,7 +74,7 @@ function AddEvent() {
                     'Content-Type': 'application/json',
                     'Authorization': `Bearer ${localStorage.getItem('my_token')}`
                 },
-                body: JSON.stringify({ ...formData, status: 'Nháp' })
+                body: JSON.stringify(payload)
             });
             
             const data = await response.json();
@@ -162,7 +171,7 @@ function AddEvent() {
 
                     <div style={{ display: 'flex', gap: '16px' }}>
                         <div className="form-group" style={{ flex: 1 }}>
-                            <label className="form-label">Số lượng tham gia tối đa</label>
+                            <label className="form-label">Số NV hỗ trợ tối đa</label>
                             <input 
                                 className="form-input" 
                                 type="number" 
@@ -188,6 +197,31 @@ function AddEvent() {
                                     </option>
                                 ))}
                             </select>
+                        </div>
+                    </div>
+
+                    {/* DÒNG: Số lượng khách & Hạn chót đăng ký (Hiển thị bình thường) */}
+                    <div style={{ display: 'flex', gap: '16px' }}>
+                        <div className="form-group" style={{ flex: 1 }}>
+                            <label className="form-label">Khách đăng ký tối đa <span style={{fontSize: '12px', color: '#64748b', fontWeight: 'normal'}}>(Tùy chọn)</span></label>
+                            <input 
+                                className="form-input" 
+                                type="number" 
+                                min="1"
+                                placeholder="Để trống nếu không giới hạn"
+                                value={formData.max_attendees}
+                                onChange={e => setFormData({...formData, max_attendees: e.target.value})} 
+                            />
+                        </div>
+                        
+                        <div className="form-group" style={{ flex: 1 }}>
+                            <label className="form-label">Hạn chót đóng Form đăng ký <span style={{fontSize: '12px', color: '#64748b', fontWeight: 'normal'}}>(Tùy chọn)</span></label>
+                            <input 
+                                className="form-input" 
+                                type="datetime-local" 
+                                value={formData.registration_deadline}
+                                onChange={e => setFormData({...formData, registration_deadline: e.target.value})}
+                            />
                         </div>
                     </div>
                     

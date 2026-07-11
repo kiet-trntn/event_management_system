@@ -350,6 +350,14 @@ function ViewEvent() {
                             <div><strong>Phụ trách: </strong> <span className="text-brand font-medium">{leaderName}</span></div>
                             <div><strong>Địa điểm: </strong> {event.location}</div>
                             <div><strong>Thời gian: </strong> {formatDateTime(event.start_date)} - {formatDateTime(event.end_date)}</div>
+                            <div>
+                                <strong>Khách tối đa: </strong> 
+                                <span style={{ color: '#3b82f6', fontWeight: '500' }}>{event.max_attendees ? `${event.max_attendees} người` : 'Không giới hạn'}</span>
+                            </div>
+                            <div>
+                                <strong>Đóng form lúc: </strong> 
+                                <span style={{ color: '#ef4444', fontWeight: '500' }}>{event.registration_deadline ? formatDateTime(event.registration_deadline) : 'Không giới hạn'}</span>
+                            </div>
                         </div>
                     </div>
 

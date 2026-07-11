@@ -541,17 +541,63 @@ const getEventRegistrations = async (req, res) => {
     }
 };
 
+/*
+|--------------------------------------------------------------------------
+| Admin hoặc Leader hủy đăng ký của khách
+|--------------------------------------------------------------------------
+*/
+const cancelRegistration = async (req, res) => {
+    try {
+        const { eventId, registrationId } = req.params;
 
+        if (!isValidId(eventId) || !isValidId(registrationId)) {
+            return res.status(400).json({
+                message: "Mã không hợp lệ"
+            });
+        }
 
+        // 1. Kiểm tra sự kiện tồn tại và quyền quản lý (Admin/Leader)
+        const [events] = await db.query(
+            `SELECT id, leader_id FROM events WHERE id = ? AND deleted_at IS NULL LIMIT 1`,
+            [Number(eventId)]
+        );
 
+        if (events.length === 0) {
+            return res.status(404).json({ message: "Không tìm thấy sự kiện" });
+        }
 
+        if (!canManageEvent(req, events[0])) {
+            return res.status(403).json({ message: "Bạn không có quyền thao tác sự kiện này" });
+        }
 
+        // 2. Tiến hành hủy vé
+        const [result] = await db.query(
+            `
+            UPDATE event_registrations 
+            SET status = 'cancelled' 
+            WHERE id = ? AND event_id = ? AND status = 'confirmed'
+            `,
+            [Number(registrationId), Number(eventId)]
+        );
 
+        if (result.affectedRows === 0) {
+            return res.status(400).json({ 
+                message: "Không thể hủy vé này (có thể vé không tồn tại hoặc đã bị hủy trước đó)" 
+            });
+        }
 
+        return res.status(200).json({
+            message: "Hủy đăng ký thành công"
+        });
+
+    } catch (error) {
+        return handleServerError(res, error);
+    }
+};
 
 module.exports = {
     getPublicEvent,
     registerForEvent,
     getEventRegistrations,
-
+    cancelRegistration
 };
