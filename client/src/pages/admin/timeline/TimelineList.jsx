@@ -87,11 +87,6 @@ function AdminEventTimeline() {
         }
     };
 
-    const formatPhase = (phase) => {
-        if (phase === 'preparation') return 'Chuẩn bị';
-        if (phase === 'during_event') return 'Diễn ra';
-        return 'Kết thúc';
-    };
 
     if (loading) return <div className="text-center py-6">Đang tải dữ liệu lịch trình...</div>;
 
@@ -140,7 +135,6 @@ function AdminEventTimeline() {
                             <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '14px' }}>
                                 <thead>
                                     <tr style={{ borderBottom: '2px solid #e5e7eb', textAlign: 'left', backgroundColor: '#f8fafc' }}>
-                                        <th style={{ padding: '12px' }}>Giai đoạn</th>
                                         <th style={{ padding: '12px' }}>Tiêu đề mốc</th>
                                         <th style={{ padding: '12px' }}>Thời gian</th>
                                         <th style={{ padding: '12px' }}>Việc liên kết</th>
@@ -150,13 +144,12 @@ function AdminEventTimeline() {
                                 <tbody>
                                     {items.map(item => (
                                         <tr key={item.id} style={{ borderBottom: '1px solid #e5e7eb' }}>
-                                            <td style={{ padding: '12px', fontWeight: '500' }}>{formatPhase(item.phase)}</td>
                                             <td style={{ padding: '12px' }}>
                                                 <div style={{ fontWeight: 'bold', color: '#1e293b' }}>{item.title}</div>
                                                 <div style={{ fontSize: '12px', color: '#64748b' }}>{item.description || 'Không có mô tả'}</div>
                                             </td>
                                             <td style={{ padding: '12px', color: '#475569', fontSize: '13px' }}>
-                                                {new Date(item.start_time).toLocaleString('vi-VN')} <br/>đến {new Date(item.end_date).toLocaleString('vi-VN')}
+                                                {new Date(item.start_time).toLocaleString('vi-VN')} <br/>đến {new Date(item.end_time).toLocaleString('vi-VN')}
                                             </td>
                                             <td style={{ padding: '12px', color: '#2563eb' }}>
                                                 {item.task_id ? `[#${item.task_id}] ${item.task_title}` : <span style={{ color: '#94a3b8' }}>Không đính kèm</span>}

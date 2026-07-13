@@ -413,7 +413,7 @@ const createEvent = async (req, res) => {
                 max_attendees, 
                 registration_deadline
             )
-                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?,?,?)`,
             [
                 title, 
                 description, 

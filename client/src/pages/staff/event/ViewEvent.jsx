@@ -386,46 +386,39 @@ function ViewEvent() {
                             <p className="text-secondary text-center" style={{ margin: 0, fontStyle: 'italic', fontSize: '14px' }}>Chưa có mốc thời gian nào được ghi nhận.</p>
                         ) : (
                             <div style={{ display: 'flex', flexDirection: 'column', gap: '14px', paddingLeft: '10px', borderLeft: '3px solid #e5e7eb', marginTop: '10px' }}>
-                                {timelineItems.map((item) => {
-                                    let phaseColor = '#64748b';
-                                    if (item.phase === 'during_event') phaseColor = '#ea580c';
-                                    if (item.phase === 'post_event') phaseColor = '#16a34a';
-
-                                    return (
-                                        <div key={item.id} style={{ position: 'relative', paddingBottom: '4px' }}>
-                                            <div style={{ position: 'absolute', left: '-18px', top: '5px', width: '12px', height: '12px', borderRadius: '50%', backgroundColor: phaseColor, border: '3px solid #fff' }}></div>
-                                            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', backgroundColor: '#f8fafc', padding: '12px 16px', borderRadius: '8px', border: '1px solid #e2e8f0' }}>
-                                                <div>
-                                                    <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '4px' }}>
-                                                        <span style={{ fontSize: '12px', fontWeight: 'bold', color: '#fff', backgroundColor: phaseColor, padding: '2px 6px', borderRadius: '4px' }}>
-                                                            {getTaskTypeLabel(item.phase)}
-                                                        </span>
-                                                        <h5 style={{ margin: 0, fontSize: '15px', fontWeight: '700', color: '#1e293b' }}>{item.title}</h5>
-                                                    </div>
-                                                    <p style={{ margin: '0 0 6px 0', fontSize: '13px', color: '#475569' }}>{item.description || 'Không có mô tả công việc.'}</p>
-                                                    <span style={{ fontSize: '12px', fontWeight: '600', color: '#64748b' }}>
-                                                        ⏱ {formatTimeLabel(item.start_time)} - {formatTimeLabel(item.end_time)}
-                                                    </span>
-                                                </div>
-                                                
-                                                <div style={{ textAlign: 'right', display: 'flex', flexDirection: 'column', gap: '6px', alignItems: 'flex-end' }}>
-                                                    {item.task_id && (
-                                                        <div style={{ fontSize: '12px', marginBottom: '4px' }}>
-                                                            <span style={{ color: '#94a3b8' }}>Liên kết: </span>
-                                                            <span onClick={() => navigate(`/staff/tasks/view/${item.task_id}`)} style={{ color: '#2563eb', fontWeight: '600', cursor: 'pointer', textDecoration: 'underline' }}>{item.task_title}</span>
-                                                        </div>
-                                                    )}
-                                                    {isLeader && isEditable && (
-                                                        <div style={{ display: 'flex', gap: '10px', fontSize: '12px' }}>
-                                                            <span onClick={() => navigate(`/staff/timelines/items/edit/${item.id}`)} style={{ color: '#3b82f6', fontWeight: '600', cursor: 'pointer' }}>Sửa mốc</span>
-                                                            <span onClick={() => handleDeleteTimelineItem(item.id)} style={{ color: '#ef4444', fontWeight: '600', cursor: 'pointer' }}>Xóa</span>
-                                                        </div>
-                                                    )}
-                                                </div>
-                                            </div>
-                                        </div>
-                                    );
-                                })}
+                                {timelineItems.map((item) => (
+    <div key={item.id} style={{ position: 'relative', paddingBottom: '4px' }}>
+        {/* Để một màu chấm tròn chung duy nhất (ví dụ màu xám xanh #64748b) */}
+        <div style={{ position: 'absolute', left: '-18px', top: '5px', width: '12px', height: '12px', borderRadius: '50%', backgroundColor: '#64748b', border: '3px solid #fff' }}></div>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', backgroundColor: '#f8fafc', padding: '12px 16px', borderRadius: '8px', border: '1px solid #e2e8f0' }}>
+            <div>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '4px' }}>
+                    {/* Đã gỡ bỏ cái nhãn báo tên Phase màu mè ở đây */}
+                    <h5 style={{ margin: 0, fontSize: '15px', fontWeight: '700', color: '#1e293b' }}>{item.title}</h5>
+                </div>
+                <p style={{ margin: '0 0 6px 0', fontSize: '13px', color: '#475569' }}>{item.description || 'Không có mô tả công việc.'}</p>
+                <span style={{ fontSize: '12px', fontWeight: '600', color: '#64748b' }}>
+                    ⏱ {formatTimeLabel(item.start_time)} - {formatTimeLabel(item.end_time)}
+                </span>
+            </div>
+            
+            <div style={{ textAlign: 'right', display: 'flex', flexDirection: 'column', gap: '6px', alignItems: 'flex-end' }}>
+                {item.task_id && (
+                    <div style={{ fontSize: '12px', marginBottom: '4px' }}>
+                        <span style={{ color: '#94a3b8' }}>Liên kết: </span>
+                        <span onClick={() => navigate(`/staff/tasks/view/${item.task_id}`)} style={{ color: '#2563eb', fontWeight: '600', cursor: 'pointer', textDecoration: 'underline' }}>{item.task_title}</span>
+                    </div>
+                )}
+                {isLeader && isEditable && (
+                    <div style={{ display: 'flex', gap: '10px', fontSize: '12px' }}>
+                        <span onClick={() => navigate(`/staff/timelines/items/edit/${item.id}`)} style={{ color: '#3b82f6', fontWeight: '600', cursor: 'pointer' }}>Sửa mốc</span>
+                        <span onClick={() => handleDeleteTimelineItem(item.id)} style={{ color: '#ef4444', fontWeight: '600', cursor: 'pointer' }}>Xóa</span>
+                    </div>
+                )}
+            </div>
+        </div>
+    </div>
+))}
                             </div>
                         )}
                     </div>

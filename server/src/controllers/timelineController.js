@@ -1,11 +1,6 @@
 const db = require("../config/db");
 const handleServerError = require("../utils/handleServerError");
 
-const VALID_PHASES = [
-    "preparation",
-    "during_event",
-    "post_event"
-];
 
 /*
 |--------------------------------------------------------------------------
@@ -229,7 +224,7 @@ const deleteTimeline = async (req, res) => {
 const addTimelineItem = async (req, res) => {
     try {
         const { timelineId } = req.params;
-        const { task_id, title, description, phase, start_time, end_time, order_number } = req.body;
+        const { task_id, title, description, start_time, end_time, order_number } = req.body; // Đã bỏ phase
 
         const timeline = await getTimelineContext(timelineId);
         if (!timeline) return res.status(404).json({ message: "Không tìm thấy timeline cha" });
@@ -251,23 +246,17 @@ const addTimelineItem = async (req, res) => {
         }
 
         const itemTitle = title?.trim() || linkedTask?.title;
-        const itemPhase = phase || linkedTask?.task_type;
 
         if (!itemTitle) return res.status(400).json({ message: "Tiêu đề không được để trống" });
-        if (!VALID_PHASES.includes(itemPhase)) return res.status(400).json({ message: "Giai đoạn không hợp lệ" });
-        if (linkedTask && itemPhase !== linkedTask.task_type) {
-            return res.status(400).json({ message: "Giai đoạn lịch trình phải trùng khớp với Giai đoạn của Công việc!" });
-        }
 
         const [result] = await db.query(
-            `INSERT INTO timeline_items (timeline_id, task_id, title, description, phase, start_time, end_time, order_number) VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
-            [Number(timelineId), linkedTask ? linkedTask.id : null, itemTitle, description?.trim() || linkedTask?.description || null, itemPhase, start_time, end_time, Number(order_number) || 0]
+            `INSERT INTO timeline_items (timeline_id, task_id, title, description, start_time, end_time, order_number) VALUES (?, ?, ?, ?, ?, ?, ?)`,
+            [Number(timelineId), linkedTask ? linkedTask.id : null, itemTitle, description?.trim() || linkedTask?.description || null, start_time, end_time, Number(order_number) || 0]
         );
 
         return res.status(201).json({ message: "Thêm mốc thành công", id: result.insertId });
     } catch (error) { return handleServerError(res, error); }
 };
-
 /*
 |--------------------------------------------------------------------------
 | 6. API Cập nhật mốc thời gian con (Khóa khi Đóng/Hủy)
@@ -276,7 +265,7 @@ const addTimelineItem = async (req, res) => {
 const updateTimelineItem = async (req, res) => {
     try {
         const { itemId } = req.params;
-        const { task_id, title, description, phase, start_time, end_time, order_number } = req.body;
+        const { task_id, title, description, start_time, end_time, order_number } = req.body; // Đã bỏ phase
 
         const [items] = await db.query(
             `
@@ -309,16 +298,10 @@ const updateTimelineItem = async (req, res) => {
         }
 
         const newTitle = title === undefined ? item.title : title.trim();
-        let newPhase = phase === undefined ? item.phase : phase;
-        if (task_id !== undefined && linkedTask && phase === undefined) newPhase = linkedTask.task_type;
-
-        if (linkedTask && newPhase !== linkedTask.task_type) {
-            return res.status(400).json({ message: "Giai đoạn mốc giờ và giai đoạn công việc không đồng bộ!" });
-        }
 
         await db.query(
-            `UPDATE timeline_items SET task_id = ?, title = ?, description = ?, phase = ?, start_time = ?, end_time = ?, order_number = ?, updated_at = NOW() WHERE id = ?`,
-            [newTaskId, newTitle, description === undefined ? item.description : description, newPhase, start_time || item.start_time, end_time || item.end_time, order_number === undefined ? item.order_number : Number(order_number), Number(itemId)]
+            `UPDATE timeline_items SET task_id = ?, title = ?, description = ?, start_time = ?, end_time = ?, order_number = ?, updated_at = NOW() WHERE id = ?`,
+            [newTaskId, newTitle, description === undefined ? item.description : description, start_time || item.start_time, end_time || item.end_time, order_number === undefined ? item.order_number : Number(order_number), Number(itemId)]
         );
         return res.status(200).json({ message: "Cập nhật mốc thành công" });
     } catch (error) { return handleServerError(res, error); }

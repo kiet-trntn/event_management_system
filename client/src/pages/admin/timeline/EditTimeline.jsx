@@ -8,7 +8,6 @@ function EditTimelineItem() {
 
     const [title, setTitle] = useState('');
     const [description, setDescription] = useState('');
-    const [phase, setPhase] = useState('preparation');
     const [startTime, setStartTime] = useState('');
     const [endTime, setEndTime] = useState('');
     const [orderNumber, setOrderNumber] = useState('0');
@@ -42,7 +41,6 @@ function EditTimelineItem() {
 
                 setTitle(itemData.title || '');
                 setDescription(itemData.description || '');
-                setPhase(itemData.phase || 'preparation');
                 setStartTime(formatForInput(itemData.start_time));
                 setEndTime(formatForInput(itemData.end_time));
                 setOrderNumber(String(itemData.order_number || 0));
@@ -86,7 +84,6 @@ function EditTimelineItem() {
                     task_id: taskId || null,
                     title: title.trim(),
                     description: description.trim(),
-                    phase,
                     start_time: startTime,
                     end_time: endTime,
                     order_number: Number(orderNumber) || 0
@@ -125,22 +122,12 @@ function EditTimelineItem() {
                     </div>
 
                     <div className="form-group">
-                        <label className="form-label">Giai đoạn sự kiện <span className="text-error">*</span></label>
-                        <select className="form-input" value={phase} onChange={(e) => setPhase(e.target.value)}>
-                            <option value="preparation">Chuẩn bị</option>
-                            <option value="during_event">Diễn ra</option>
-                            <option value="post_event">Kết thúc</option>
-                        </select>
-                    </div>
-
-                    <div className="form-group">
                         <label className="form-label">Liên kết công việc hệ thống</label>
                         <select className="form-input" value={taskId} onChange={(e) => {
                             setTaskId(e.target.value);
                             const t = availableTasks.find(item => String(item.id) === String(e.target.value));
                             if (t) {
                                 setTitle(t.title);
-                                setPhase(t.task_type);
                             }
                         }}>
                             <option value="">-- Không đính kèm công việc --</option>
