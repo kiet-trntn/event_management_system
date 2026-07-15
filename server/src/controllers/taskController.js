@@ -601,6 +601,8 @@ const createTask = async (req, res) => {
                 title,
                 status,
                 leader_id,
+                start_date,
+                end_date,
                 deleted_at
             FROM events
             WHERE id = ?
@@ -617,6 +619,25 @@ const createTask = async (req, res) => {
         }
 
         const event = events[0];
+
+        if (due_date) {
+            const dueDate = new Date(due_date);
+            const eventStart = new Date(event.start_date);
+            const eventEnd = new Date(event.end_date);
+
+            if (Number.isNaN(dueDate.getTime())) {
+                return res.status(400).json({
+                    message: "Hạn hoàn thành không hợp lệ"
+                });
+            }
+
+            if (dueDate < eventStart || dueDate > eventEnd) {
+                return res.status(400).json({
+                    message:
+                        "Hạn hoàn thành phải nằm trong thời gian bắt đầu và kết thúc sự kiện"
+                });
+            }
+        }
 
         // 🛑 SỬA ĐỔI: Chặn hoàn toàn (cho cả Admin lẫn Leader) việc tạo Task trong sự kiện đã đóng/hủy
         if (
