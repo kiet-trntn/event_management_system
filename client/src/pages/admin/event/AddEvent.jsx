@@ -24,7 +24,8 @@ function AddEvent() {
         
         const fetchUsers = async () => {
             try {
-                const response = await fetch('http://localhost:5000/api/users', {
+                // ĐÃ SỬA: Xóa localhost để chạy chuẩn trên ngrok
+                const response = await fetch('/api/users', {
                     headers: { 'Authorization': `Bearer ${localStorage.getItem('my_token')}` }
                 });
                 const data = await response.json();
@@ -49,15 +50,34 @@ function AddEvent() {
     const handleSubmit = async (e) => {
         e.preventDefault();
         
-        if (!formData.leader_id) {
-            Swal.fire({
-                icon: 'warning',
-                title: 'Thiếu thông tin',
-                text: 'Vui lòng chọn Nhóm trưởng cho sự kiện!',
-                confirmButtonColor: '#f59e0b'
-            });
-            return;
+        // --- BẮT ĐẦU PHẦN ĐỒNG BỘ THÔNG BÁO LỖI (VALIDATION) ---
+        if (!formData.title.trim()) {
+            return Swal.fire({ icon: 'warning', title: 'Thiếu thông tin', text: 'Vui lòng nhập tiêu đề sự kiện!', confirmButtonColor: '#f59e0b' });
         }
+        if (!formData.start_date) {
+            return Swal.fire({ icon: 'warning', title: 'Thiếu thông tin', text: 'Vui lòng chọn ngày bắt đầu!', confirmButtonColor: '#f59e0b' });
+        }
+        if (!formData.end_date) {
+            return Swal.fire({ icon: 'warning', title: 'Thiếu thông tin', text: 'Vui lòng chọn ngày kết thúc!', confirmButtonColor: '#f59e0b' });
+        }
+        
+        // Kiểm tra logic: Ngày bắt đầu phải trước ngày kết thúc
+        const startDate = new Date(formData.start_date);
+        const endDate = new Date(formData.end_date);
+        if (startDate >= endDate) {
+            return Swal.fire({ icon: 'error', title: 'Chưa hợp lệ!', text: 'Ngày bắt đầu phải trước ngày kết thúc.', confirmButtonColor: '#ef4444' });
+        }
+
+        if (!formData.location.trim()) {
+            return Swal.fire({ icon: 'warning', title: 'Thiếu thông tin', text: 'Vui lòng nhập địa điểm sự kiện!', confirmButtonColor: '#f59e0b' });
+        }
+        if (!formData.max_members || formData.max_members <= 0) {
+            return Swal.fire({ icon: 'warning', title: 'Thiếu thông tin', text: 'Vui lòng nhập số nhân viên hỗ trợ hợp lệ (lớn hơn 0)!', confirmButtonColor: '#f59e0b' });
+        }
+        if (!formData.leader_id) {
+            return Swal.fire({ icon: 'warning', title: 'Thiếu thông tin', text: 'Vui lòng chọn Nhóm trưởng cho sự kiện!', confirmButtonColor: '#f59e0b' });
+        }
+        // --- KẾT THÚC PHẦN VALIDATION ---
 
         // Đóng gói data, nếu để trống thì truyền null để database hiểu là không giới hạn
         const payload = {
@@ -68,7 +88,8 @@ function AddEvent() {
         };
 
         try {
-            const response = await fetch('http://localhost:5000/api/events', {
+            // ĐÃ SỬA: Xóa localhost để chạy chuẩn trên ngrok
+            const response = await fetch('/api/events', {
                 method: 'POST',
                 headers: { 
                     'Content-Type': 'application/json',
@@ -122,7 +143,8 @@ function AddEvent() {
             </div>
 
             <div className="form-card large">
-                <form onSubmit={handleSubmit}>
+                {/* ĐÃ SỬA: Thêm noValidate vào thẻ form để tắt thông báo mặc định của trình duyệt */}
+                <form onSubmit={handleSubmit} noValidate>
                     
                     <div className="form-group">
                         <label className="form-label">Tiêu đề sự kiện</label>
