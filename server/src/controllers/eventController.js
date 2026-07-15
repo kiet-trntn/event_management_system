@@ -370,14 +370,59 @@ const createEvent = async (req, res) => {
             });
         }
 
-        // Kiểm tra ngày đảm bảo thời gian bắt đầu trước thời gian kết thúc
-        if (
-            new Date(start_date) >= new Date(end_date)
-        ) {
-            return res.status(400).json({
-                message: "Ngày bắt đầu phải trước ngày kết thúc"
-            });
-        }
+        const startDate = new Date(start_date);
+const endDate = new Date(end_date);
+
+const now = new Date();
+now.setSeconds(0, 0);
+
+if (
+    Number.isNaN(startDate.getTime()) ||
+    Number.isNaN(endDate.getTime())
+) {
+    return res.status(400).json({
+        message: "Thời gian sự kiện không hợp lệ"
+    });
+}
+
+if (startDate < now) {
+    return res.status(400).json({
+        message:
+            "Thời gian bắt đầu không được nhỏ hơn thời gian hiện tại"
+    });
+}
+
+if (startDate >= endDate) {
+    return res.status(400).json({
+        message:
+            "Thời gian kết thúc phải sau thời gian bắt đầu"
+    });
+}
+
+if (registration_deadline) {
+    const registrationDeadline =
+        new Date(registration_deadline);
+
+    if (
+        Number.isNaN(
+            registrationDeadline.getTime()
+        )
+    ) {
+        return res.status(400).json({
+            message: "Hạn chót đăng ký không hợp lệ"
+        });
+    }
+
+    if (
+        registrationDeadline < startDate ||
+        registrationDeadline > endDate
+    ) {
+        return res.status(400).json({
+            message:
+                "Hạn chót đăng ký phải nằm trong thời gian bắt đầu và kết thúc sự kiện"
+        });
+    }
+}
 
         // Kiểm tra người phụ trách (leader_id) có tồn tại trong cơ sở dữ liệu hay không
         if (leader_id) {
@@ -491,15 +536,56 @@ const updateEvent = async (req, res) => {
             });
         }
 
-        // Kiểm tra ngày
+        const startDate = new Date(start_date);
+        const endDate = new Date(end_date);
+
+        const now = new Date();
+        now.setSeconds(0, 0);
+
         if (
-            new Date(start_date)
-            >=
-            new Date(end_date)
+            Number.isNaN(startDate.getTime()) ||
+            Number.isNaN(endDate.getTime())
         ) {
             return res.status(400).json({
-                message: "Ngày kết thúc phải lớn hơn ngày bắt đầu"
+                message: "Thời gian sự kiện không hợp lệ"
             });
+        }
+
+        if (startDate < now) {
+            return res.status(400).json({
+                message: "Thời gian bắt đầu không được nhỏ hơn thời gian hiện tại"
+            });
+        }
+
+        if (startDate >= endDate) {
+            return res.status(400).json({
+                message: "Thời gian kết thúc phải sau thời gian bắt đầu"
+            });
+        }
+
+        if (registration_deadline) {
+            const registrationDeadline =
+                new Date(registration_deadline);
+
+            if (
+                Number.isNaN(
+                    registrationDeadline.getTime()
+                )
+            ) {
+                return res.status(400).json({
+                    message: "Hạn chót đăng ký không hợp lệ"
+                });
+            }
+
+            if (
+                registrationDeadline < startDate ||
+                registrationDeadline > endDate
+            ) {
+                return res.status(400).json({
+                    message:
+                        "Hạn chót đăng ký phải nằm trong thời gian bắt đầu và kết thúc sự kiện"
+                });
+            }
         }
 
         // Kiểm tra leader
