@@ -25,7 +25,7 @@ function AddEvent() {
         const fetchUsers = async () => {
             try {
                 // ĐÃ SỬA: Xóa localhost để chạy chuẩn trên ngrok
-                const response = await fetch('/api/users', {
+                const response = await fetch('http://localhost:5000/api/users', {
                     headers: { 'Authorization': `Bearer ${localStorage.getItem('my_token')}` }
                 });
                 const data = await response.json();
@@ -89,7 +89,7 @@ function AddEvent() {
 
         try {
             // ĐÃ SỬA: Xóa localhost để chạy chuẩn trên ngrok
-            const response = await fetch('/api/events', {
+            const response = await fetch('http://localhost:5000/api/events', {
                 method: 'POST',
                 headers: { 
                     'Content-Type': 'application/json',
