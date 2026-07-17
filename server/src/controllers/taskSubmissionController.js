@@ -612,9 +612,223 @@ const downloadSubmissionFile = async (req, res) => {
 
 };
 
+// Leader/Admin mở lại công việc đã hoàn thành
+const reopenCompletedTask = async (req, res) => {
+    let connection;
+
+    try {
+        const { id } = req.params;
+        const { review_note } = req.body;
+
+        // Kiểm tra ID bài nộp
+        if (
+            !Number.isInteger(Number(id)) ||
+            Number(id) <= 0
+        ) {
+            return res.status(400).json({
+                message: "Mã bài nộp không hợp lệ"
+            });
+        }
+
+        // Bắt buộc nhập lý do
+        if (
+            !review_note ||
+            !review_note.trim()
+        ) {
+            return res.status(400).json({
+                message:
+                    "Vui lòng nhập lý do yêu cầu nhân viên làm lại"
+            });
+        }
+
+        connection = await db.getConnection();
+        await connection.beginTransaction();
+
+        // Lấy bài nộp + task + event
+        const [submissions] = await connection.query(
+            `
+            SELECT
+                s.id,
+                s.task_id,
+                s.submitted_by,
+                s.status AS submission_status,
+
+                t.title AS task_title,
+                t.status AS task_status,
+                t.assigned_to,
+                t.event_id,
+
+                e.title AS event_title,
+                e.status AS event_status,
+                e.leader_id
+
+            FROM task_submissions s
+
+            INNER JOIN tasks t
+                ON s.task_id = t.id
+
+            INNER JOIN events e
+                ON t.event_id = e.id
+
+            WHERE s.id = ?
+            AND t.is_deleted = FALSE
+            AND e.deleted_at IS NULL
+
+            LIMIT 1
+            FOR UPDATE
+            `,
+            [Number(id)]
+        );
+
+        if (submissions.length === 0) {
+            await connection.rollback();
+
+            return res.status(404).json({
+                message: "Không tìm thấy bài nộp"
+            });
+        }
+
+        const submission = submissions[0];
+
+        const isAdmin =
+            req.user.role === "admin";
+
+        const isLeader =
+            Number(req.user.id) ===
+            Number(submission.leader_id);
+
+        // Chỉ Admin hoặc Leader sự kiện
+        if (!isAdmin && !isLeader) {
+            await connection.rollback();
+
+            return res.status(403).json({
+                message:
+                    "Bạn không có quyền mở lại công việc này"
+            });
+        }
+
+        // Chỉ mở lại task đã completed
+        if (submission.task_status !== "completed") {
+            await connection.rollback();
+
+            return res.status(400).json({
+                message:
+                    "Chỉ có thể mở lại công việc đã hoàn thành"
+            });
+        }
+
+        // Chỉ mở lại bài đã approved
+        if (submission.submission_status !== "approved") {
+            await connection.rollback();
+
+            return res.status(400).json({
+                message:
+                    "Bài nộp này chưa được duyệt hoàn thành"
+            });
+        }
+
+        // Không mở lại nếu sự kiện đã kết thúc hoặc hủy
+        if (
+            submission.event_status === "Đã kết thúc" ||
+            submission.event_status === "Đã hủy"
+        ) {
+            await connection.rollback();
+
+            return res.status(400).json({
+                message:
+                    "Không thể mở lại công việc của sự kiện đã kết thúc hoặc đã hủy"
+            });
+        }
+
+        // Chuyển bài nộp cũ thành rejected
+        await connection.query(
+            `
+            UPDATE task_submissions
+            SET
+                status = 'rejected',
+                review_note = ?,
+                reviewed_by = ?,
+                reviewed_at = NOW(),
+                updated_at = NOW()
+            WHERE id = ?
+            `,
+            [
+                review_note.trim(),
+                req.user.id,
+                Number(id)
+            ]
+        );
+
+        // Chuyển task về in_progress
+        await connection.query(
+            `
+            UPDATE tasks
+            SET
+                status = 'in_progress',
+                updated_at = NOW()
+            WHERE id = ?
+            `,
+            [submission.task_id]
+        );
+
+        await connection.commit();
+
+        // Ghi lịch sử
+        await addTaskHistory(
+            submission.task_id,
+            `${req.user.full_name} đã mở lại công việc "${submission.task_title}". Lý do: ${review_note.trim()}`,
+            req.user.id
+        );
+
+        // Thông báo cho nhân viên
+        const receiverId =
+            submission.assigned_to ||
+            submission.submitted_by;
+
+        if (receiverId) {
+            await createNotification({
+                user_id: Number(receiverId),
+                title: "Công việc cần làm lại",
+                content:
+                    `Công việc "${submission.task_title}" đã được mở lại. ` +
+                    `Lý do: ${review_note.trim()}`,
+                type: "task",
+                related_id: submission.task_id
+            });
+        }
+
+        return res.status(200).json({
+            message:
+                "Đã mở lại công việc và yêu cầu nhân viên làm lại",
+            task: {
+                id: submission.task_id,
+                status: "in_progress"
+            },
+            submission: {
+                id: Number(id),
+                status: "rejected",
+                review_note: review_note.trim()
+            }
+        });
+
+    } catch (error) {
+        if (connection) {
+            await connection.rollback();
+        }
+
+        return handleServerError(res, error);
+
+    } finally {
+        if (connection) {
+            connection.release();
+        }
+    }
+};
+
 module.exports = {
     submitTask,
     reviewSubmission,
+    reopenCompletedTask,
     getPendingSubmissions,
     getSubmissionsByTask,
     downloadSubmissionFile
