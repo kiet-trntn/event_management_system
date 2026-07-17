@@ -9,7 +9,8 @@ const {
     reviewSubmission,
     getPendingSubmissions,
     getSubmissionsByTask,
-    downloadSubmissionFile
+    downloadSubmissionFile,
+    reopenCompletedTask
 } = require("../controllers/taskSubmissionController");
 
 
@@ -42,6 +43,12 @@ router.patch(
     "/:id/review",
     authMiddleware,
     reviewSubmission
+);
+
+router.patch(
+    "/:id/reopen",
+    authMiddleware,
+    reopenCompletedTask
 );
 
 
