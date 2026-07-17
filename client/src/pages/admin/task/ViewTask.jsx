@@ -45,6 +45,37 @@ function ViewTask() {
         fetchTaskDetail();
     }, [fetchTaskDetail]);
 
+    // HÀM CẬP NHẬT TRẠNG THÁI CHO ADMIN
+    const handleUpdateStatus = async (e) => {
+        const newStatus = e.target.value;
+        
+        if (newStatus === 'completed' || newStatus === 'submitted') {
+            return Swal.fire('Từ chối', 'Không thể đổi trực tiếp sang Hoàn thành/Chờ duyệt. Vui lòng duyệt bài nộp!', 'warning');
+        }
+
+        try {
+            const token = localStorage.getItem('my_token');
+            const response = await fetch(`http://localhost:5000/api/tasks/${id}/status`, {
+                method: 'PATCH',
+                headers: { 
+                    'Content-Type': 'application/json',
+                    'Authorization': `Bearer ${token}` 
+                },
+                body: JSON.stringify({ status: newStatus })
+            });
+
+            if (response.ok) {
+                Swal.fire({ toast: true, position: 'top-end', icon: 'success', title: 'Đã cập nhật trạng thái', showConfirmButton: false, timer: 1500 });
+                fetchTaskDetail();
+            } else {
+                const data = await response.json();
+                Swal.fire('Lỗi', data.message || 'Không thể cập nhật', 'error');
+            }
+        } catch (error) {
+            Swal.fire('Lỗi', 'Lỗi kết nối mạng', 'error');
+        }
+    };
+
     const handleDelete = async () => { 
         const result = await Swal.fire({
             title: 'Chuyển vào thùng rác?',
@@ -116,8 +147,8 @@ function ViewTask() {
     const statusStyle = getStatusStyle(task.status);
     const prioStyle = getPriorityStyle(task.priority);
 
-    // 🛑 LOGIC THÊM: Kiểm tra sự kiện cha đã đóng hoặc hủy chưa
     const isEventClosedOrCanceled = task.event_status === 'Đã kết thúc' || task.event_status === 'Đã hủy';
+    const isTaskLocked = task.status === 'completed' || task.status === 'cancelled' || task.status === 'submitted';
 
     return (
         <div className="page-container task-page" style={{ maxWidth: '1000px', margin: '0 auto' }}>
@@ -135,10 +166,24 @@ function ViewTask() {
             <div style={{ display: 'flex', gap: '24px', flexWrap: 'wrap', alignItems: 'flex-start' }}>
                 
                 <div className="form-card" style={{ flex: '2 1 500px', margin: 0, padding: '24px' }}>
-                    <div style={{ display: 'flex', gap: '12px', marginBottom: '16px' }}>
-                        <span style={{ backgroundColor: statusStyle.bg, color: statusStyle.color, padding: '6px 14px', borderRadius: '99px', fontSize: '13px', fontWeight: '600' }}>
-                            {statusStyle.text}
-                        </span>
+                    <div style={{ display: 'flex', gap: '12px', marginBottom: '16px', alignItems: 'center' }}>
+                        {/* SELECT DROPDOWN ĐỂ CẬP NHẬT TRẠNG THÁI */}
+                        {isEventClosedOrCanceled || isTaskLocked ? (
+                            <span style={{ backgroundColor: statusStyle.bg, color: statusStyle.color, padding: '6px 14px', borderRadius: '99px', fontSize: '13px', fontWeight: '600' }}>
+                                {statusStyle.text}
+                            </span>
+                        ) : (
+                            <select 
+                                value={task.status} 
+                                onChange={handleUpdateStatus}
+                                style={{ backgroundColor: statusStyle.bg, color: statusStyle.color, padding: '4px 14px', borderRadius: '99px', fontSize: '13px', fontWeight: '600', border: '1px solid transparent', outline: 'none', cursor: 'pointer' }}
+                            >
+                                <option value="pending" style={{ color: '#000' }}>Chờ xử lý</option>
+                                <option value="in_progress" style={{ color: '#000' }}>Đang tiến hành</option>
+                                <option value="cancelled" style={{ color: '#000' }}>Hủy công việc</option>
+                            </select>
+                        )}
+                        
                         <span style={{ backgroundColor: prioStyle.bg, color: prioStyle.color, padding: '6px 14px', borderRadius: '99px', fontSize: '13px', fontWeight: '600' }}>
                             Ưu tiên: {prioStyle.text}
                         </span>
@@ -195,7 +240,6 @@ function ViewTask() {
                             Quản lý File
                         </button>
                         
-                        {/* 🛑 CHẶN THAO TÁC: Chỉ hiện nút Xóa / Sửa cho Admin nếu sự kiện chưa bị hủy/kết thúc */}
                         {!isEventClosedOrCanceled && (
                             <>
                                 <button 
