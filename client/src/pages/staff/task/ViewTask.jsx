@@ -219,6 +219,36 @@ function TaskDetail() {
         } catch (error) { Swal.fire('Lỗi', 'Không thể kết nối máy chủ', 'error'); }
     };
 
+    // 🔥 HÀM YÊU CẦU LÀM LẠI CHO QUẢN LÝ (LEADER)
+    const handleReopenTask = async () => {
+        const { value: note } = await Swal.fire({
+            title: 'Yêu cầu làm lại',
+            input: 'textarea',
+            inputPlaceholder: 'Nhập lý do yêu cầu nhân viên làm lại...',
+            showCancelButton: true,
+            confirmButtonColor: '#ef4444',
+            confirmButtonText: 'Gửi yêu cầu'
+        });
+
+        if (note) {
+            try {
+                const token = localStorage.getItem('my_token');
+                const res = await fetch(`http://localhost:5000/api/task-submissions/${task.latest_submission_id}/reopen`, {
+                    method: 'PATCH',
+                    headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
+                    body: JSON.stringify({ review_note: note })
+                });
+                if (res.ok) {
+                    Swal.fire('Thành công', 'Đã mở lại công việc cho nhân viên!', 'success');
+                    fetchTaskData();
+                } else {
+                    const err = await res.json();
+                    Swal.fire('Lỗi', err.message, 'error');
+                }
+            } catch (e) { Swal.fire('Lỗi', 'Kết nối server thất bại', 'error'); }
+        }
+    };
+
     const handleDownload = async (fileId, fileName) => {
         try {
             const response = await fetch(`http://localhost:5000/api/attachments/${fileId}/download`, { 
@@ -270,7 +300,6 @@ function TaskDetail() {
     const hasManagerRights = isAdmin || isEventLeader;
     const isTaskClosed = task.status === 'completed' || task.status === 'cancelled';
 
-    // 🛑 LOGIC THÊM: Kiểm tra xem sự kiện chứa công việc này đã đóng hoặc hủy chưa
     const isEventClosedOrCanceled = task.event_status === 'Đã kết thúc' || task.event_status === 'Đã hủy';
 
     return (
@@ -282,7 +311,7 @@ function TaskDetail() {
                     </svg>
                     Quay lại
                  </button>   
-                 {/* 🛑 CHẶN: Chỉ hiện nút sửa công việc nếu Sự kiện còn hoạt động */}
+                 
                 {hasManagerRights && !isTaskClosed && !isEventClosedOrCanceled && (
                     <button className="btn-primary" onClick={() => navigate(`/staff/tasks/edit/${task.id}`)}>
                         Chỉnh sửa công việc
@@ -299,41 +328,27 @@ function TaskDetail() {
                     </div>
                     
                     <div className="task-info-grid" style={{ marginBottom: '24px' }}>
-    <div className="task-grid-item">
-        <span className="task-grid-label">Giai đoạn:</span>
-        <span style={{ color: '#0f172a', fontWeight: '500' }}>
-            {translateTaskType(task.task_type)}
-        </span>
-    </div>
-    
-    <div className="task-grid-item">
-        <span className="task-grid-label">Người giao:</span>
-        <span style={{ color: '#0f172a', fontWeight: '500' }}>
-            {task.created_by_name || 'Hệ thống'}
-        </span>
-    </div>
-    
-    <div className="task-grid-item">
-        <span className="task-grid-label">Người thực hiện:</span>
-        <span style={{ color: '#0f172a', fontWeight: '500' }}>
-            {task.assigned_name || 'Chưa phân công'}
-        </span>
-    </div>
-    
-    <div className="task-grid-item">
-        <span className="task-grid-label">Độ ưu tiên:</span>
-        <span style={{ color: '#0f172a', fontWeight: '500' }}>
-            {task.priority === 'high' ? 'Cao' : task.priority === 'medium' ? 'Trung bình' : 'Thấp'}
-        </span>
-    </div>
-    
-    <div className="task-grid-item">
-        <span className="task-grid-label">Hạn chót:</span>
-        <span style={{ color: '#ef4444', fontWeight: '600' }}>
-            {task.due_date ? new Date(task.due_date).toLocaleDateString('vi-VN') : 'Không có'}
-        </span>
-    </div>
-</div>
+                        <div className="task-grid-item">
+                            <span className="task-grid-label">Giai đoạn:</span>
+                            <span style={{ color: '#0f172a', fontWeight: '500' }}>{translateTaskType(task.task_type)}</span>
+                        </div>
+                        <div className="task-grid-item">
+                            <span className="task-grid-label">Người giao:</span>
+                            <span style={{ color: '#0f172a', fontWeight: '500' }}>{task.created_by_name || 'Hệ thống'}</span>
+                        </div>
+                        <div className="task-grid-item">
+                            <span className="task-grid-label">Người thực hiện:</span>
+                            <span style={{ color: '#0f172a', fontWeight: '500' }}>{task.assigned_name || 'Chưa phân công'}</span>
+                        </div>
+                        <div className="task-grid-item">
+                            <span className="task-grid-label">Độ ưu tiên:</span>
+                            <span style={{ color: '#0f172a', fontWeight: '500' }}>{task.priority === 'high' ? 'Cao' : task.priority === 'medium' ? 'Trung bình' : 'Thấp'}</span>
+                        </div>
+                        <div className="task-grid-item">
+                            <span className="task-grid-label">Hạn chót:</span>
+                            <span style={{ color: '#ef4444', fontWeight: '600' }}>{task.due_date ? new Date(task.due_date).toLocaleDateString('vi-VN') : 'Không có'}</span>
+                        </div>
+                    </div>
 
                     <div style={{ marginBottom: '24px' }}>
                         <h4 className="task-desc-title" style={{ marginBottom: '8px' }}>Mô tả chi tiết</h4>
@@ -346,7 +361,6 @@ function TaskDetail() {
                         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px' }}>
                             <h4 style={{ margin: 0, fontSize: '16px', fontWeight: '600' }}>Tài liệu đính kèm hệ thống ({attachments.length}):</h4>
                             
-                            {/* 🛑 YÊU CẦU 5: Ẩn nút "+ Thêm tài liệu" nếu sự kiện đã hủy/đóng */}
                             {hasManagerRights && !isTaskClosed && !isEventClosedOrCanceled && (
                                 <div>
                                     <input type="file" id="leader-upload-file" style={{ display: 'none' }} onChange={handleFileUpload} disabled={uploading} />
@@ -366,7 +380,6 @@ function TaskDetail() {
                                     <div style={{ display: 'flex', gap: '14px' }}>
                                         <button onClick={() => handleDownload(file.id, file.file_name)} style={{ background: 'none', border: 'none', color: '#3B82F6', cursor: 'pointer', fontWeight: 'bold' }}>Tải về</button>
                                         
-                                        {/* 🛑 YÊU CẦU 5: Ẩn hoàn toàn nút "Xóa" của toàn bộ tài liệu đã up trước đó nếu sự kiện đóng/hủy */}
                                         {hasManagerRights && !isEventClosedOrCanceled && (
                                             <button onClick={() => handleDeleteFile(file.id)} style={{ background: 'none', border: 'none', color: '#EF4444', cursor: 'pointer', fontWeight: 'bold' }}>Xóa</button>
                                         )}
@@ -379,7 +392,6 @@ function TaskDetail() {
 
                 <div style={{ flex: '1 1 340px', display: 'flex', flexDirection: 'column', gap: '24px' }}>
                     
-                    {/* 🛑 YÊU CẦU 4: KIỂM TRA SỰ KIỆN ĐÓNG/HỦY TRƯỚC KHI HIỂN THỊ KHỐI CỦA NHÂN VIÊN */}
                     {isEventClosedOrCanceled ? (
                         <div className="form-card" style={{ margin: 0, padding: '24px', backgroundColor: '#fff5f5', border: '1px solid #fee2e2', borderRadius: '12px', textAlign: 'center' }}>
                             <p style={{ color: '#dc2626', fontWeight: '700', fontSize: '15px', margin: 0 }}>
@@ -387,7 +399,6 @@ function TaskDetail() {
                             </p>
                         </div>
                     ) : (
-                        // Nếu sự kiện bình thường, hiện form nộp bài như cũ
                         !isTaskClosed && isAssignedUser && (
                             <div className="form-card" style={{ margin: 0, padding: '24px', backgroundColor: '#ffffff', border: '1px solid #e2e8f0', borderRadius: '12px', boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.05)' }}>
                                 <h3 style={{ fontSize: '18px', margin: '0 0 20px 0', color: '#1e293b', borderBottom: '1px solid #f1f5f9', paddingBottom: '12px' }}>Nộp minh chứng</h3>
@@ -423,7 +434,6 @@ function TaskDetail() {
                         )
                     )}
 
-                    {/* TRƯỜNG HỢP BÀI NỘP ĐANG CHỜ DUYỆT */}
                     {task.status === 'submitted' && !isAssignedUser && (
                         <div className="form-card" style={{ margin: 0, padding: '24px', backgroundColor: '#ffffff', border: '1px solid #e2e8f0', borderRadius: '12px', boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.05)' }}>
                             <h3 style={{ fontSize: '18px', margin: '0 0 16px 0', color: '#b45309', borderBottom: '1px solid #e2e8f0', paddingBottom: '12px' }}>Chi tiết minh chứng kết quả</h3>
@@ -438,7 +448,6 @@ function TaskDetail() {
                                 )}
                             </div>
                             
-                            {/* 🛑 YÊU CẦU 4: Ẩn hoàn toàn 2 nút "Trả lại" và "Duyệt Đạt" nếu sự kiện đã kết thúc hoặc hủy */}
                             {isEventLeader && !isEventClosedOrCanceled && (
                                 <div style={{ display: 'flex', gap: '12px', marginTop: '16px' }}>
                                     <button onClick={() => handleLeaderReview('rejected')} style={{ flex: 1, padding: '12px', backgroundColor: '#ef4444', color: '#ffffff', border: 'none', borderRadius: '8px', fontWeight: '600', cursor: 'pointer', fontSize: '14px' }}>Trả lại</button>
@@ -448,7 +457,7 @@ function TaskDetail() {
                         </div>
                     )}
 
-                    {/* CÁC BOX LỊCH SỬ THÌ GIỮ NGUYÊN ĐỂ XEM LẠI */}
+                    {/* 🔥 KHỐI CÔNG VIỆC HOÀN THÀNH - NÚT YÊU CẦU LÀM LẠI MÀU ĐỎ CHO QUẢN LÝ */}
                     {task.status === 'completed' && (
                         <div className="form-card" style={{ margin: 0, padding: '24px', backgroundColor: '#f0fdf4', border: '1px solid #bbf7d0', borderRadius: '12px' }}>
                             <div style={{ textAlign: 'center', marginBottom: '16px' }}>
@@ -458,6 +467,18 @@ function TaskDetail() {
                                 {task.submission_content && (<div><strong style={{ color: '#166534', display: 'block', marginBottom: '4px' }}>Nội dung:</strong><span>{task.submission_content}</span></div>)}
                                 {task.submission_link_url && (<div><strong style={{ color: '#166534', display: 'block', marginBottom: '4px' }}>Link:</strong><a href={task.submission_link_url} target="_blank" rel="noopener noreferrer" style={{ color: '#2563eb', textDecoration: 'underline', fontWeight: '600' }}>{task.submission_link_url} ↗</a></div>)}
                             </div>
+
+                            {/* 🔥 NÚT ĐỎ NẰM ĐÂY */}
+                            {hasManagerRights && !isEventClosedOrCanceled && (
+                                <div style={{ marginTop: '16px', display: 'flex', justifyContent: 'center' }}>
+                                    <button 
+                                        onClick={handleReopenTask}
+                                        style={{ padding: '8px 16px', backgroundColor: '#ef4444', color: '#fff', border: 'none', borderRadius: '6px', fontWeight: '600', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '6px' }}
+                                    >
+                                        Yêu cầu làm lại
+                                    </button>
+                                </div>
+                            )}
                         </div>
                     )}
 

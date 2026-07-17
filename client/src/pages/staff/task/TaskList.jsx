@@ -2,7 +2,7 @@ import React, { useState, useEffect, useCallback } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import Swal from 'sweetalert2';
 
-function MyTasks() {
+function TaskList() {
     const navigate = useNavigate();
     const location = useLocation();
     
@@ -14,7 +14,6 @@ function MyTasks() {
     const [draggedOverCol, setDraggedOverCol] = useState(null);
     const [filterTaskType, setFilterTaskType] = useState(''); 
 
-    // STATE LƯU USER VÀ CHẾ ĐỘ XEM
     const [currentUser, setCurrentUser] = useState(null);
     const [viewMode, setViewMode] = useState('all'); 
     const [isLeaderDetected, setIsLeaderDetected] = useState(false); 
@@ -70,7 +69,6 @@ function MyTasks() {
                         return; 
                     }
                 }
-
                 setTasks(fetchedTasks);
             }
         } catch (error) {
@@ -86,10 +84,7 @@ function MyTasks() {
     }, [fetchTasks]);
 
     const handleDragStart = (e, task) => {
-        if (
-            task.status === 'completed' || task.status === 'cancelled' || task.status === 'submitted' ||
-            task.event_status === 'Đã kết thúc' || task.event_status === 'Đã hủy'
-        ) {
+        if (task.event_status === 'Đã kết thúc' || task.event_status === 'Đã hủy') {
             e.preventDefault(); 
             return;
         }
@@ -102,7 +97,6 @@ function MyTasks() {
             e.preventDefault();
             return;
         }
-
         e.dataTransfer.setData('text/plain', task.id.toString());
         e.dataTransfer.effectAllowed = 'move';
     };
@@ -130,19 +124,68 @@ function MyTasks() {
 
         const isEventLeader = currentUser && (Number(taskToMove.event_leader_id) === Number(currentUser.id));
         const isAdmin = currentUser && currentUser.role === 'admin';
+        const token = localStorage.getItem('my_token');
 
-        if (newStatus === 'cancelled' && !isEventLeader && !isAdmin) {
-            return Swal.fire('Từ chối', 'Chỉ Quản lý sự kiện mới có quyền hủy công việc này.', 'warning');
+        // 🔥 LOGIC LÀM LẠI BẰNG CÁCH KÉO THẢ TỪ HOÀN THÀNH VỀ ĐANG TIẾN HÀNH
+        if (taskToMove.status === 'completed' && ['in_progress', 'pending'].includes(newStatus)) {
+            if (!isEventLeader && !isAdmin) {
+                return Swal.fire('Từ chối', 'Chỉ Quản lý sự kiện mới có quyền yêu cầu làm lại.', 'warning');
+            }
+
+            // Gọi API chi tiết để lấy submission ID vì list không có
+            let submissionId = taskToMove.latest_submission_id;
+            if (!submissionId) {
+                try {
+                    const detailRes = await fetch(`http://localhost:5000/api/tasks/${taskId}`, { headers: { 'Authorization': `Bearer ${token}` } });
+                    if (detailRes.ok) {
+                        const detailData = await detailRes.json();
+                        submissionId = detailData.latest_submission_id;
+                    }
+                } catch(e) { console.error(e) }
+            }
+
+            if (!submissionId) return Swal.fire('Lỗi', 'Không tìm thấy dữ liệu bài nộp.', 'error');
+
+            const { value: note } = await Swal.fire({
+                title: 'Yêu cầu làm lại',
+                input: 'textarea',
+                inputPlaceholder: 'Nhập lý do yêu cầu nhân viên sửa đổi...',
+                showCancelButton: true,
+                confirmButtonColor: '#d97706',
+                confirmButtonText: 'Gửi yêu cầu'
+            });
+
+            if (!note) return;
+
+            try {
+                const response = await fetch(`http://localhost:5000/api/task-submissions/${submissionId}/reopen`, {
+                    method: 'PATCH',
+                    headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
+                    body: JSON.stringify({ review_note: note })
+                });
+
+                if (response.ok) {
+                    Swal.fire({ toast: true, position: 'top-end', icon: 'success', title: 'Đã gửi yêu cầu làm lại', showConfirmButton: false, timer: 1500 });
+                    fetchTasks(); 
+                } else {
+                    const errorData = await response.json();
+                    Swal.fire('Lỗi', errorData.message, 'error');
+                }
+            } catch (error) { Swal.fire('Lỗi', 'Kết nối server thất bại', 'error'); }
+            return; 
         }
 
-        if (newStatus === 'submitted') return Swal.fire('Từ chối', 'Trạng thái "Chờ phê duyệt" tự động kích hoạt khi nộp file.', 'warning');
-        if (newStatus === 'completed') return Swal.fire('Từ chối', 'Bạn không thể tự hoàn thành. Vui lòng vào trang Chi tiết và Duyệt bài nộp.', 'warning');
+        // Kéo thả bình thường
+        if (newStatus === 'cancelled' && !isEventLeader && !isAdmin) {
+            return Swal.fire('Từ chối', 'Chỉ Quản lý mới có quyền hủy công việc này.', 'warning');
+        }
+        if (newStatus === 'submitted') return Swal.fire('Từ chối', 'Trạng thái chờ duyệt tự kích hoạt khi nộp file.', 'warning');
+        if (newStatus === 'completed') return Swal.fire('Từ chối', 'Không thể tự hoàn thành. Vui lòng Duyệt bài nộp.', 'warning');
 
         const oldStatus = taskToMove.status;
         setTasks(prev => prev.map(t => t.id.toString() === taskId ? { ...t, status: newStatus } : t));
 
         try {
-            const token = localStorage.getItem('my_token');
             const response = await fetch(`http://localhost:5000/api/tasks/${taskId}/status`, {
                 method: 'PATCH',
                 headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
@@ -150,11 +193,11 @@ function MyTasks() {
             });
 
             if (response.ok) {
-                Swal.fire({ toast: true, position: 'top-end', icon: 'success', title: 'Cập nhật trạng thái thành công!', showConfirmButton: false, timer: 1500 });
+                Swal.fire({ toast: true, position: 'top-end', icon: 'success', title: 'Cập nhật thành công!', showConfirmButton: false, timer: 1500 });
             } else {
                 setTasks(prev => prev.map(t => t.id.toString() === taskId ? { ...t, status: oldStatus } : t));
                 const errorData = await response.json();
-                Swal.fire('Lỗi', errorData.message || 'Không thể cập nhật trạng thái', 'error');
+                Swal.fire('Lỗi', errorData.message, 'error');
             }
         } catch (error) {
             setTasks(prev => prev.map(t => t.id.toString() === taskId ? { ...t, status: oldStatus } : t));
@@ -192,11 +235,7 @@ function MyTasks() {
 
     return (
         <div className="page-container" style={{ maxWidth: '100%' }}>
-            
-            {/* --- HEADER ĐƯỢC LÀM LẠI GIỐNG 100% ẢNH CỦA BẠN --- */}
             <div className="page-header-form" style={{ maxWidth: '100%', display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '24px' }}>
-                
-                {/* NHÓM TRÁI: Tiêu đề + Nút chuyển đổi */}
                 <div style={{ display: 'flex', alignItems: 'center', gap: '24px' }}>
                     <h3 style={{ margin: 0, fontSize: '22px', fontWeight: 'bold' }}>
                         {viewMode === 'all' ? 'Bảng chung sự kiện' : 'Công Việc Của Tôi'}
@@ -204,52 +243,14 @@ function MyTasks() {
                     
                     {showToggle && (
                         <div style={{ display: 'flex', backgroundColor: '#e2e8f0', padding: '4px', borderRadius: '8px' }}>
-                            <button 
-                                onClick={() => setViewMode('all')}
-                                style={{ 
-                                    padding: '6px 16px', 
-                                    backgroundColor: viewMode === 'all' ? '#ffffff' : 'transparent', 
-                                    color: viewMode === 'all' ? '#1e293b' : '#64748b', 
-                                    border: 'none', 
-                                    borderRadius: '6px', 
-                                    cursor: 'pointer', 
-                                    fontWeight: '600', 
-                                    fontSize: '14px', 
-                                    boxShadow: viewMode === 'all' ? '0 1px 3px rgba(0,0,0,0.1)' : 'none',
-                                    transition: 'all 0.2s ease'
-                                }}
-                            >
-                                Bảng chung sự kiện
-                            </button>
-                            <button 
-                                onClick={() => setViewMode('mine')}
-                                style={{ 
-                                    padding: '6px 16px', 
-                                    backgroundColor: viewMode === 'mine' ? '#ffffff' : 'transparent', 
-                                    color: viewMode === 'mine' ? '#1e293b' : '#64748b', 
-                                    border: 'none', 
-                                    borderRadius: '6px', 
-                                    cursor: 'pointer', 
-                                    fontWeight: '600', 
-                                    fontSize: '14px', 
-                                    boxShadow: viewMode === 'mine' ? '0 1px 3px rgba(0,0,0,0.1)' : 'none',
-                                    transition: 'all 0.2s ease'
-                                }}
-                            >
-                                Việc tôi được giao
-                            </button>
+                            <button onClick={() => setViewMode('all')} style={{ padding: '6px 16px', backgroundColor: viewMode === 'all' ? '#ffffff' : 'transparent', color: viewMode === 'all' ? '#1e293b' : '#64748b', border: 'none', borderRadius: '6px', cursor: 'pointer', fontWeight: '600', fontSize: '14px', boxShadow: viewMode === 'all' ? '0 1px 3px rgba(0,0,0,0.1)' : 'none', transition: 'all 0.2s ease' }}>Bảng chung sự kiện</button>
+                            <button onClick={() => setViewMode('mine')} style={{ padding: '6px 16px', backgroundColor: viewMode === 'mine' ? '#ffffff' : 'transparent', color: viewMode === 'mine' ? '#1e293b' : '#64748b', border: 'none', borderRadius: '6px', cursor: 'pointer', fontWeight: '600', fontSize: '14px', boxShadow: viewMode === 'mine' ? '0 1px 3px rgba(0,0,0,0.1)' : 'none', transition: 'all 0.2s ease' }}>Việc tôi được giao</button>
                         </div>
                     )}
                 </div>
 
-                {/* NHÓM PHẢI: Dropdown chọn giai đoạn */}
                 <div style={{ width: '220px' }}>
-                    <select 
-                        className="form-input" 
-                        value={filterTaskType} 
-                        onChange={(e) => setFilterTaskType(e.target.value)} 
-                        style={{ padding: '8px 12px', borderRadius: '6px', border: '1px solid #cbd5e1', cursor: 'pointer', outline: 'none' }}
-                    >
+                    <select className="form-input" value={filterTaskType} onChange={(e) => setFilterTaskType(e.target.value)} style={{ padding: '8px 12px', borderRadius: '6px', border: '1px solid #cbd5e1', cursor: 'pointer', outline: 'none', width: '100%' }}>
                         <option value="">-- Tất cả giai đoạn --</option>
                         <option value="preparation">Chuẩn bị</option>
                         <option value="during_event">Diễn ra</option>
@@ -258,7 +259,6 @@ function MyTasks() {
                 </div>
             </div>
 
-            {/* --- KANBAN BOARD --- */}
             <div className="kanban-board">
                 {columns.map(col => {
                     const colTasks = tasks
@@ -277,8 +277,10 @@ function MyTasks() {
                             <div style={{ flex: 1, minHeight: '50px', display: 'flex', flexDirection: 'column' }}>
                                 {colTasks.map(task => {
                                     const prio = getPriorityStyle(task.priority);
-                                    const isLocked = ['completed', 'cancelled', 'submitted'].includes(task.status);
                                     
+                                    // 🔥 MỞ KHÓA CHO ADMIN/LEADER ĐƯỢC CẦM THẺ HOÀN THÀNH
+                                    const isManager = currentUser && (currentUser.role === 'admin' || Number(task.event_leader_id) === Number(currentUser.id));
+                                    const isLocked = ['cancelled', 'submitted'].includes(task.status) || (task.status === 'completed' && !isManager);
                                     const canDrag = currentUser && (Number(task.event_leader_id) === Number(currentUser.id) || Number(task.assigned_to) === Number(currentUser.id) || currentUser.role === 'admin');
 
                                     return (
@@ -317,4 +319,4 @@ function MyTasks() {
     );
 }
 
-export default MyTasks;
+export default TaskList;
