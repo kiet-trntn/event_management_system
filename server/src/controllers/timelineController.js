@@ -40,17 +40,37 @@ const getEventById = async (eventId) => {
 const getTimelineContext = async (timelineId) => {
     const [timelines] = await db.query(
         `
-        SELECT 
-            et.id, et.event_id, et.title, et.description, et.created_by, et.created_at, et.updated_at,
-            e.title AS event_title, e.status AS event_status, e.leader_id
+        SELECT
+            et.id,
+            et.event_id,
+            et.title,
+            et.description,
+            et.created_by,
+            et.created_at,
+            et.updated_at,
+
+            e.title AS event_title,
+            e.status AS event_status,
+            e.leader_id,
+            e.start_date AS event_start_date,
+            e.end_date AS event_end_date
+
         FROM event_timelines et
-        INNER JOIN events e ON et.event_id = e.id
-        WHERE et.id = ? AND e.deleted_at IS NULL
+
+        INNER JOIN events e
+            ON et.event_id = e.id
+
+        WHERE et.id = ?
+        AND e.deleted_at IS NULL
+
         LIMIT 1
         `,
         [Number(timelineId)]
     );
-    return timelines.length > 0 ? timelines[0] : null;
+
+    return timelines.length > 0
+        ? timelines[0]
+        : null;
 };
 
 /*
@@ -224,38 +244,205 @@ const deleteTimeline = async (req, res) => {
 const addTimelineItem = async (req, res) => {
     try {
         const { timelineId } = req.params;
-        const { task_id, title, description, start_time, end_time, order_number } = req.body; // Đã bỏ phase
 
-        const timeline = await getTimelineContext(timelineId);
-        if (!timeline) return res.status(404).json({ message: "Không tìm thấy timeline cha" });
+        const {
+            task_id,
+            title,
+            description,
+            start_time,
+            end_time,
+            order_number
+        } = req.body;
 
-        if (timeline.event_status === "Đã kết thúc" || timeline.event_status === "Đã hủy") {
-            return res.status(403).json({ message: "Sự kiện đã khép lại, không thể thêm mốc thời gian mới!" });
+        if (!isValidId(timelineId)) {
+            return res.status(400).json({
+                message: "Mã timeline không hợp lệ"
+            });
         }
 
-        if (!canManageTimeline(req, timeline)) return res.status(403).json({ message: "Bạn không có quyền quản lý" });
+        const timeline =
+            await getTimelineContext(timelineId);
+
+        if (!timeline) {
+            return res.status(404).json({
+                message: "Không tìm thấy timeline cha"
+            });
+        }
+
+        if (
+            timeline.event_status === "Đã kết thúc" ||
+            timeline.event_status === "Đã hủy"
+        ) {
+            return res.status(403).json({
+                message:
+                    "Sự kiện đã kết thúc hoặc bị hủy, không thể thêm mốc thời gian"
+            });
+        }
+
+        if (!canManageTimeline(req, timeline)) {
+            return res.status(403).json({
+                message:
+                    "Bạn không có quyền quản lý timeline này"
+            });
+        }
+
+        // Validate thời gian mốc timeline
+        const timeError = validateTimelineItemTime({
+            startTime: start_time,
+            endTime: end_time,
+            eventStartDate:
+                timeline.event_start_date,
+            eventEndDate:
+                timeline.event_end_date
+        });
+
+        if (timeError) {
+            return res.status(400).json({
+                message: timeError
+            });
+        }
 
         let linkedTask = null;
+
         if (task_id) {
+            if (!isValidId(task_id)) {
+                return res.status(400).json({
+                    message:
+                        "Mã công việc không hợp lệ"
+                });
+            }
+
             const [tasks] = await db.query(
-                `SELECT id, event_id, title, description, task_type FROM tasks WHERE id = ? AND event_id = ? AND is_deleted = FALSE LIMIT 1`,
-                [Number(task_id), timeline.event_id]
+                `
+                SELECT
+                    id,
+                    event_id,
+                    title,
+                    description,
+                    task_type
+
+                FROM tasks
+
+                WHERE id = ?
+                AND event_id = ?
+                AND is_deleted = FALSE
+
+                LIMIT 1
+                `,
+                [
+                    Number(task_id),
+                    timeline.event_id
+                ]
             );
-            if (tasks.length === 0) return res.status(400).json({ message: "Công việc không tồn tại hoặc không thuộc sự kiện này phụ trách!" });
+
+            if (tasks.length === 0) {
+                return res.status(400).json({
+                    message:
+                        "Công việc không tồn tại hoặc không thuộc sự kiện này"
+                });
+            }
+
             linkedTask = tasks[0];
         }
 
-        const itemTitle = title?.trim() || linkedTask?.title;
+        const itemTitle =
+            title?.trim() ||
+            linkedTask?.title;
 
-        if (!itemTitle) return res.status(400).json({ message: "Tiêu đề không được để trống" });
+        if (!itemTitle) {
+            return res.status(400).json({
+                message:
+                    "Tiêu đề không được để trống"
+            });
+        }
 
         const [result] = await db.query(
-            `INSERT INTO timeline_items (timeline_id, task_id, title, description, start_time, end_time, order_number) VALUES (?, ?, ?, ?, ?, ?, ?)`,
-            [Number(timelineId), linkedTask ? linkedTask.id : null, itemTitle, description?.trim() || linkedTask?.description || null, start_time, end_time, Number(order_number) || 0]
+            `
+            INSERT INTO timeline_items
+            (
+                timeline_id,
+                task_id,
+                title,
+                description,
+                start_time,
+                end_time,
+                order_number
+            )
+            VALUES (?, ?, ?, ?, ?, ?, ?)
+            `,
+            [
+                Number(timelineId),
+                linkedTask
+                    ? linkedTask.id
+                    : null,
+                itemTitle,
+                description?.trim() ||
+                    linkedTask?.description ||
+                    null,
+                start_time,
+                end_time,
+                Number(order_number) || 0
+            ]
         );
 
-        return res.status(201).json({ message: "Thêm mốc thành công", id: result.insertId });
-    } catch (error) { return handleServerError(res, error); }
+        return res.status(201).json({
+            message:
+                "Thêm mốc timeline thành công",
+            timeline_item: {
+                id: result.insertId,
+                timeline_id:
+                    Number(timelineId),
+                title: itemTitle,
+                start_time,
+                end_time
+            }
+        });
+
+    } catch (error) {
+        return handleServerError(res, error);
+    }
+};
+
+const validateTimelineItemTime = ({
+    startTime,
+    endTime,
+    eventStartDate,
+    eventEndDate
+}) => {
+    if (!startTime || !endTime) {
+        return "Vui lòng nhập thời gian bắt đầu và kết thúc của mốc";
+    }
+
+    const itemStart = new Date(startTime);
+    const itemEnd = new Date(endTime);
+
+    const eventStart = new Date(eventStartDate);
+    const eventEnd = new Date(eventEndDate);
+
+    if (
+        Number.isNaN(itemStart.getTime()) ||
+        Number.isNaN(itemEnd.getTime()) ||
+        Number.isNaN(eventStart.getTime()) ||
+        Number.isNaN(eventEnd.getTime())
+    ) {
+        return "Thời gian timeline không hợp lệ";
+    }
+
+    if (itemStart >= itemEnd) {
+        return "Thời gian kết thúc mốc phải sau thời gian bắt đầu";
+    }
+
+    if (
+        itemStart < eventStart ||
+        itemEnd > eventEnd
+    ) {
+        return (
+            "Thời gian mốc phải nằm trong thời gian " +
+            "bắt đầu và kết thúc của sự kiện"
+        );
+    }
+
+    return null;
 };
 /*
 |--------------------------------------------------------------------------
@@ -269,16 +456,52 @@ const updateTimelineItem = async (req, res) => {
 
         const [items] = await db.query(
             `
-            SELECT ti.*, et.event_id, e.status AS event_status, e.leader_id 
+            SELECT
+                ti.*,
+                et.event_id,
+
+                e.status AS event_status,
+                e.leader_id,
+                e.start_date AS event_start_date,
+                e.end_date AS event_end_date
+
             FROM timeline_items ti
-            INNER JOIN event_timelines et ON ti.timeline_id = et.id
-            INNER JOIN events e ON et.event_id = e.id
-            WHERE ti.id = ? AND e.deleted_at IS NULL LIMIT 1
+
+            INNER JOIN event_timelines et
+                ON ti.timeline_id = et.id
+
+            INNER JOIN events e
+                ON et.event_id = e.id
+
+            WHERE ti.id = ?
+            AND e.deleted_at IS NULL
+
+            LIMIT 1
             `,
             [Number(itemId)]
         );
+
         if (items.length === 0) return res.status(404).json({ message: "Không tìm thấy mốc" });
         const item = items[0];
+
+        const newStartTime = start_time === undefined ? item.start_time : start_time;
+
+        const newEndTime =end_time === undefined ? item.end_time : end_time;
+
+        const timeError = validateTimelineItemTime({
+            startTime: newStartTime,
+            endTime: newEndTime,
+            eventStartDate:
+                item.event_start_date,
+            eventEndDate:
+                item.event_end_date
+        });
+
+        if (timeError) {
+            return res.status(400).json({
+                message: timeError
+            });
+        }
 
         if (item.event_status === "Đã kết thúc" || item.event_status === "Đã hủy") {
             return res.status(403).json({ message: "Sự kiện đã đóng băng dữ liệu, cấm chỉnh sửa mốc thời gian!" });
@@ -300,9 +523,33 @@ const updateTimelineItem = async (req, res) => {
         const newTitle = title === undefined ? item.title : title.trim();
 
         await db.query(
-            `UPDATE timeline_items SET task_id = ?, title = ?, description = ?, start_time = ?, end_time = ?, order_number = ?, updated_at = NOW() WHERE id = ?`,
-            [newTaskId, newTitle, description === undefined ? item.description : description, start_time || item.start_time, end_time || item.end_time, order_number === undefined ? item.order_number : Number(order_number), Number(itemId)]
+            `
+            UPDATE timeline_items
+            SET
+                task_id = ?,
+                title = ?,
+                description = ?,
+                start_time = ?,
+                end_time = ?,
+                order_number = ?,
+                updated_at = NOW()
+            WHERE id = ?
+            `,
+            [
+                newTaskId,
+                newTitle,
+                description === undefined
+                    ? item.description
+                    : description?.trim() || null,
+                newStartTime,
+                newEndTime,
+                order_number === undefined
+                    ? item.order_number
+                    : Number(order_number),
+                Number(itemId)
+            ]
         );
+        
         return res.status(200).json({ message: "Cập nhật mốc thành công" });
     } catch (error) { return handleServerError(res, error); }
 };
