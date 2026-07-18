@@ -32,9 +32,6 @@ import AddTask from './pages/admin/task/AddTask';
 import ViewTask from './pages/admin/task/ViewTask';
 import EditTask from './pages/admin/task/EditTask';
 
-import AttachmentList from './pages/admin/attachment/AttachmentList';
-
-// Import Thùng rác dùng chung nằm ở folder admin
 import Trash from './pages/Trash';
 
 import Messages from './pages/Chat';
@@ -86,7 +83,6 @@ function App() {
           <Route path="tasks/add" element={<AddTask />} />
           <Route path="tasks/view/:id" element={<ViewTask />} />
           <Route path="tasks/edit/:id" element={<EditTask />} />
-          <Route path="/admin/tasks/:id/attachments" element={<AttachmentList />} />
           <Route path="trash" element={<Trash />} />
           <Route path="messages" element={<Messages />} />
           <Route path="events/:eventId/registrations" element={<RegistrationList />} />
