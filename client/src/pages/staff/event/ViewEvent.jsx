@@ -276,7 +276,7 @@ function ViewEvent() {
     const isAdmin = currentUser?.role === 'admin';
     const isLeader = currentUser && event && (Number(event.leader_id) === Number(currentUser.id));
     const hasManagerRights = isAdmin || isLeader; 
-    const isEditable = event.status !== 'Đã kết thúc' && event.status !== 'Đã hủy' && event.status !== 'Đang diễn ra';
+    const isEditable = event.status !== 'Đã kết thúc' && event.status !== 'Đã hủy';
     const leaderName = event.leader_name || 'Chưa cập nhật';
 
     const taskTypeOrder = { 'preparation': 1, 'during_event': 2, 'post_event': 3 };
