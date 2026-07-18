@@ -151,26 +151,62 @@ function ViewEvent() {
     };
 
     const handleAddMemberPopup = async () => {
-        try {
-            const res = await fetch(`http://localhost:5000/api/users/available/${id}`, {
-                headers: { 'Authorization': `Bearer ${localStorage.getItem('my_token')}` }
-            });
-            const availableUsers = (await res.json()).users || [];
-            if (availableUsers.length === 0) return Swal.fire('Thông báo', 'Mọi nhân viên đều đã tham gia.', 'info');
+    try {
+        const res = await fetch(`http://localhost:5000/api/users/available/${id}`, {
+            headers: { 'Authorization': `Bearer ${localStorage.getItem('my_token')}` }
+        });
+        const data = await res.json();
+        const availableUsers = data.users || [];
 
-            const inputOptions = {};
-            availableUsers.forEach(u => { inputOptions[u.id] = `#${u.id} - ${u.full_name}`; });
+        if (availableUsers.length === 0) {
+            return Swal.fire('Thông báo', 'Mọi nhân viên đều đã tham gia.', 'info');
+        }
 
-            const { value: selectedUserId } = await Swal.fire({ title: 'Thêm thành viên mới', input: 'select', inputOptions, showCancelButton: true });
-            if (selectedUserId) {
-                const addRes = await fetch(`http://localhost:5000/api/events/${id}/members`, {
-                    method: 'POST', headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${localStorage.getItem('my_token')}` },
-                    body: JSON.stringify({ user_id: selectedUserId })
-                });
-                if (addRes.ok) { fetchViewEvent(); Swal.fire('Thành công!', 'Đã thêm thành viên.', 'success'); }
+        const inputOptions = {};
+        availableUsers.forEach(u => {
+            inputOptions[u.id] = `#${u.id} - ${u.full_name}`;
+        });
+
+        const { value: selectedUserId } = await Swal.fire({
+            title: 'Thêm thành viên mới',
+            input: 'select',
+            inputOptions: inputOptions,
+            inputPlaceholder: '--- Chọn nhân viên ---',
+            showCancelButton: true,
+            confirmButtonColor: '#3b82f6',
+            cancelButtonColor: '#9ca3af',
+            confirmButtonText: 'Thêm vào sự kiện',
+            cancelButtonText: 'Hủy bỏ',
+            inputValidator: (value) => {
+                if (!value) return 'Vui lòng chọn một nhân viên!';
             }
-        } catch (error) { Swal.fire('Lỗi', 'Thất bại', 'error'); }
-    };
+        });
+
+        if (selectedUserId) {
+            Swal.fire({ title: 'Đang xử lý...', allowOutsideClick: false, didOpen: () => Swal.showLoading() });
+            
+            const addRes = await fetch(`http://localhost:5000/api/events/${id}/members`, {
+                method: 'POST',
+                headers: { 
+                    'Content-Type': 'application/json',
+                    'Authorization': `Bearer ${localStorage.getItem('my_token')}` 
+                },
+                body: JSON.stringify({ user_id: selectedUserId })
+            });
+
+            if (addRes.ok) {
+                Swal.fire('Thành công!', 'Đã thêm thành viên.', 'success');
+                fetchViewEvent(); // Gọi lại hàm load dữ liệu của bạn
+            } else {
+                const errorData = await addRes.json();
+                Swal.fire('Lỗi', errorData.message || 'Không thể thêm thành viên', 'error');
+            }
+        }
+    } catch (error) {
+        console.error(error);
+        Swal.fire('Lỗi', 'Không thể kết nối đến máy chủ', 'error');
+    }
+};
 
     const handleRemoveMember = async (userId) => {
         const result = await Swal.fire({ title: 'Loại bỏ thành viên khỏi sự kiện?', icon: 'warning', showCancelButton: true });
@@ -387,38 +423,38 @@ function ViewEvent() {
                         ) : (
                             <div style={{ display: 'flex', flexDirection: 'column', gap: '14px', paddingLeft: '10px', borderLeft: '3px solid #e5e7eb', marginTop: '10px' }}>
                                 {timelineItems.map((item) => (
-    <div key={item.id} style={{ position: 'relative', paddingBottom: '4px' }}>
-        {/* Để một màu chấm tròn chung duy nhất (ví dụ màu xám xanh #64748b) */}
-        <div style={{ position: 'absolute', left: '-18px', top: '5px', width: '12px', height: '12px', borderRadius: '50%', backgroundColor: '#64748b', border: '3px solid #fff' }}></div>
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', backgroundColor: '#f8fafc', padding: '12px 16px', borderRadius: '8px', border: '1px solid #e2e8f0' }}>
-            <div>
-                <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '4px' }}>
-                    {/* Đã gỡ bỏ cái nhãn báo tên Phase màu mè ở đây */}
-                    <h5 style={{ margin: 0, fontSize: '15px', fontWeight: '700', color: '#1e293b' }}>{item.title}</h5>
-                </div>
-                <p style={{ margin: '0 0 6px 0', fontSize: '13px', color: '#475569' }}>{item.description || 'Không có mô tả công việc.'}</p>
-                <span style={{ fontSize: '12px', fontWeight: '600', color: '#64748b' }}>
-                    ⏱ {formatTimeLabel(item.start_time)} - {formatTimeLabel(item.end_time)}
-                </span>
-            </div>
-            
-            <div style={{ textAlign: 'right', display: 'flex', flexDirection: 'column', gap: '6px', alignItems: 'flex-end' }}>
-                {item.task_id && (
-                    <div style={{ fontSize: '12px', marginBottom: '4px' }}>
-                        <span style={{ color: '#94a3b8' }}>Liên kết: </span>
-                        <span onClick={() => navigate(`/staff/tasks/view/${item.task_id}`)} style={{ color: '#2563eb', fontWeight: '600', cursor: 'pointer', textDecoration: 'underline' }}>{item.task_title}</span>
-                    </div>
-                )}
-                {isLeader && isEditable && (
-                    <div style={{ display: 'flex', gap: '10px', fontSize: '12px' }}>
-                        <span onClick={() => navigate(`/staff/timelines/items/edit/${item.id}`)} style={{ color: '#3b82f6', fontWeight: '600', cursor: 'pointer' }}>Sửa mốc</span>
-                        <span onClick={() => handleDeleteTimelineItem(item.id)} style={{ color: '#ef4444', fontWeight: '600', cursor: 'pointer' }}>Xóa</span>
-                    </div>
-                )}
-            </div>
-        </div>
-    </div>
-))}
+                                    <div key={item.id} style={{ position: 'relative', paddingBottom: '4px' }}>
+                                        {/* Để một màu chấm tròn chung duy nhất (ví dụ màu xám xanh #64748b) */}
+                                        <div style={{ position: 'absolute', left: '-18px', top: '5px', width: '12px', height: '12px', borderRadius: '50%', backgroundColor: '#64748b', border: '3px solid #fff' }}></div>
+                                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', backgroundColor: '#f8fafc', padding: '12px 16px', borderRadius: '8px', border: '1px solid #e2e8f0' }}>
+                                            <div>
+                                                <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '4px' }}>
+                                                    {/* Đã gỡ bỏ cái nhãn báo tên Phase màu mè ở đây */}
+                                                    <h5 style={{ margin: 0, fontSize: '15px', fontWeight: '700', color: '#1e293b' }}>{item.title}</h5>
+                                                </div>
+                                                <p style={{ margin: '0 0 6px 0', fontSize: '13px', color: '#475569' }}>{item.description || 'Không có mô tả công việc.'}</p>
+                                                <span style={{ fontSize: '12px', fontWeight: '600', color: '#64748b' }}>
+                                                    ⏱ {formatTimeLabel(item.start_time)} - {formatTimeLabel(item.end_time)}
+                                                </span>
+                                            </div>
+                                            
+                                            <div style={{ textAlign: 'right', display: 'flex', flexDirection: 'column', gap: '6px', alignItems: 'flex-end' }}>
+                                                {item.task_id && (
+                                                    <div style={{ fontSize: '12px', marginBottom: '4px' }}>
+                                                        <span style={{ color: '#94a3b8' }}>Liên kết: </span>
+                                                        <span onClick={() => navigate(`/staff/tasks/view/${item.task_id}`)} style={{ color: '#2563eb', fontWeight: '600', cursor: 'pointer', textDecoration: 'underline' }}>{item.task_title}</span>
+                                                    </div>
+                                                )}
+                                                {isLeader && isEditable && (
+                                                    <div style={{ display: 'flex', gap: '10px', fontSize: '12px' }}>
+                                                        <span onClick={() => navigate(`/staff/timelines/items/edit/${item.id}`)} style={{ color: '#3b82f6', fontWeight: '600', cursor: 'pointer' }}>Sửa mốc</span>
+                                                        <span onClick={() => handleDeleteTimelineItem(item.id)} style={{ color: '#ef4444', fontWeight: '600', cursor: 'pointer' }}>Xóa</span>
+                                                    </div>
+                                                )}
+                                            </div>
+                                        </div>
+                                    </div>
+                                ))}
                             </div>
                         )}
                     </div>
