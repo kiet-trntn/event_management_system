@@ -2,39 +2,57 @@ const jwt = require("jsonwebtoken");
 const db = require("../config/db");
 
 const authMiddleware = async (req, res, next) => {
-
-    let token;
-    
-    if (req.headers.authorization && req.headers.authorization.startsWith("Bearer")) {
-        token = req.headers.authorization.split(" ")[1];
-    } 
-    else if (req.query.token) {
-        token = req.query.token;
-    }
-
-    if (!token) {
-        return res.status(401).json({
-            message: "Chưa đăng nhập"
-        });
-    }
-
     try {
+        const authHeader = req.headers.authorization;
 
-        const decoded = jwt.verify(
-            token,
-            process.env.JWT_SECRET
-        );
+        if (
+            !authHeader ||
+            !authHeader.startsWith("Bearer ")
+        ) {
+            return res.status(401).json({
+                message: "Chưa đăng nhập"
+            });
+        }
 
-        // Lấy thông tin User mới nhất
+        const token = authHeader.split(" ")[1];
+
+        if (!token) {
+            return res.status(401).json({
+                message: "Token không hợp lệ"
+            });
+        }
+
+        let decoded;
+
+        try {
+            decoded = jwt.verify(
+                token,
+                process.env.JWT_SECRET
+            );
+        } catch (error) {
+            if (error.name === "TokenExpiredError") {
+                return res.status(401).json({
+                    message:
+                        "Phiên đăng nhập đã hết hạn"
+                });
+            }
+
+            return res.status(401).json({
+                message: "Token không hợp lệ"
+            });
+        }
+
         const [users] = await db.query(
             `
             SELECT
                 id,
                 full_name,
                 email,
-                role
+                role,
+                status
             FROM users
             WHERE id = ?
+            LIMIT 1
             `,
             [decoded.id]
         );
@@ -45,18 +63,34 @@ const authMiddleware = async (req, res, next) => {
             });
         }
 
-        req.user = users[0];
+        const user = users[0];
+
+        if (user.status !== "active") {
+            return res.status(403).json({
+                message:
+                    "Tài khoản đã bị khóa hoặc ngừng hoạt động"
+            });
+        }
+
+        req.user = {
+            id: Number(user.id),
+            full_name: user.full_name,
+            email: user.email,
+            role: user.role
+        };
 
         next();
 
     } catch (error) {
+        console.error(
+            "Lỗi authMiddleware:",
+            error
+        );
 
-        return res.status(401).json({
-            message: "Token không hợp lệ"
+        return res.status(500).json({
+            message: "Lỗi xác thực người dùng"
         });
-
     }
-
 };
 
 module.exports = authMiddleware;
