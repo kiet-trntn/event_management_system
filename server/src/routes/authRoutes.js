@@ -7,25 +7,25 @@ const roleMiddleware = require("../middlewares/roleMiddleware"); // Middleware k
 
 // Import các hàm xử lý logic (Controller) từ file authController
 const {
-    register,
+    // register,
     login,
     changePassword
 } = require("../controllers/authController");
 
-// 1. Đường dẫn đăng ký tài khoản (Không cần đăng nhập)
-router.post("/register", register);
+// // 1. Đường dẫn đăng ký tài khoản (Không cần đăng nhập)
+// router.post("/register", register);
 
-// 2. Đường dẫn đăng nhập (Không cần đăng nhập)
+// Đăng nhập
 router.post("/login", login);
 
-// 3. Đường dẫn đổi mật khẩu (Bắt buộc phải đăng nhập trước)
+// Đổi mật khẩu
 router.put(
     "/change-password",
     authMiddleware, // Kiểm tra đăng nhập, hợp lệ mới cho đi tiếp
     changePassword  // Hàm xử lý đổi mật khẩu chính
 );
 
-// 4. Đường dẫn chỉ dành riêng cho Admin
+// Test quyền truy cập cho Admin
 router.get(
     "/admin-only",
     authMiddleware,           // Bước 1: Kiểm tra xem đã đăng nhập chưa

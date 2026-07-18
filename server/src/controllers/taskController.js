@@ -37,16 +37,24 @@ const getAllTasks = async (req, res) => {
         ];
 
         // Kiểm tra trạng thái công việc
-        if (status && !validStatuses.includes(status)) {
+        if (
+            status &&
+            !validStatuses.includes(status)
+        ) {
             return res.status(400).json({
-                message: "Trạng thái công việc không hợp lệ"
+                message:
+                    "Trạng thái công việc không hợp lệ"
             });
         }
 
         // Kiểm tra độ ưu tiên
-        if (priority && !validPriorities.includes(priority)) {
+        if (
+            priority &&
+            !validPriorities.includes(priority)
+        ) {
             return res.status(400).json({
-                message: "Độ ưu tiên không hợp lệ"
+                message:
+                    "Độ ưu tiên không hợp lệ"
             });
         }
 
@@ -56,7 +64,8 @@ const getAllTasks = async (req, res) => {
             !VALID_TASK_TYPES.includes(task_type)
         ) {
             return res.status(400).json({
-                message: "Loại công việc không hợp lệ"
+                message:
+                    "Loại công việc không hợp lệ"
             });
         }
 
@@ -69,7 +78,8 @@ const getAllTasks = async (req, res) => {
             )
         ) {
             return res.status(400).json({
-                message: "Mã sự kiện không hợp lệ"
+                message:
+                    "Mã sự kiện không hợp lệ"
             });
         }
 
@@ -82,27 +92,34 @@ const getAllTasks = async (req, res) => {
             )
         ) {
             return res.status(400).json({
-                message: "Mã người được giao không hợp lệ"
+                message:
+                    "Mã người được giao không hợp lệ"
             });
         }
 
-        // Kiểm tra định dạng ngày bắt đầu
+        // Kiểm tra ngày bắt đầu lọc
         if (
             from_date &&
-            Number.isNaN(new Date(from_date).getTime())
+            Number.isNaN(
+                new Date(from_date).getTime()
+            )
         ) {
             return res.status(400).json({
-                message: "Ngày bắt đầu lọc không hợp lệ"
+                message:
+                    "Ngày bắt đầu lọc không hợp lệ"
             });
         }
 
-        // Kiểm tra định dạng ngày kết thúc
+        // Kiểm tra ngày kết thúc lọc
         if (
             to_date &&
-            Number.isNaN(new Date(to_date).getTime())
+            Number.isNaN(
+                new Date(to_date).getTime()
+            )
         ) {
             return res.status(400).json({
-                message: "Ngày kết thúc lọc không hợp lệ"
+                message:
+                    "Ngày kết thúc lọc không hợp lệ"
             });
         }
 
@@ -110,10 +127,12 @@ const getAllTasks = async (req, res) => {
         if (
             from_date &&
             to_date &&
-            new Date(from_date) > new Date(to_date)
+            new Date(from_date) >
+                new Date(to_date)
         ) {
             return res.status(400).json({
-                message: "Ngày bắt đầu lọc không được lớn hơn ngày kết thúc lọc"
+                message:
+                    "Ngày bắt đầu lọc không được lớn hơn ngày kết thúc lọc"
             });
         }
 
@@ -152,36 +171,51 @@ const getAllTasks = async (req, res) => {
         const params = [];
 
         /*
-         * Phân quyền xem công việc:
-         * - Admin được xem tất cả.
-         * - Leader/Employee không được xem sự kiện Nháp.
-         * - Người dùng phải là thành viên hoặc Leader của sự kiện.
+         * Phân quyền:
+         *
+         * Admin:
+         * - Xem tất cả task.
+         *
+         * Leader:
+         * - Xem tất cả task thuộc sự kiện mình phụ trách.
+         *
+         * Employee:
+         * - Chỉ xem task được giao cho chính mình.
+         * - Phải còn là thành viên của sự kiện.
+         *
+         * Admin mới được xem task của sự kiện Nháp.
          */
         if (req.user.role !== "admin") {
             sql += `
                 AND e.status <> 'Nháp'
 
                 AND (
-                    EXISTS (
-                        SELECT 1
-                        FROM event_members em
-                        WHERE em.event_id = e.id
-                        AND em.user_id = ?
-                    )
+                    e.leader_id = ?
 
-                    OR e.leader_id = ?
+                    OR (
+                        t.assigned_to = ?
+
+                        AND EXISTS (
+                            SELECT 1
+                            FROM event_members em
+                            WHERE em.event_id = e.id
+                            AND em.user_id = ?
+                        )
+                    )
                 )
             `;
 
             params.push(
-                req.user.id,
-                req.user.id
+                Number(req.user.id),
+                Number(req.user.id),
+                Number(req.user.id)
             );
         }
 
-        // Tìm kiếm theo tiêu đề hoặc mô tả
+        // Tìm theo tiêu đề hoặc mô tả
         if (search && search.trim()) {
-            const keyword = `%${search.trim()}%`;
+            const keyword =
+                `%${search.trim()}%`;
 
             sql += `
                 AND (
@@ -190,7 +224,10 @@ const getAllTasks = async (req, res) => {
                 )
             `;
 
-            params.push(keyword, keyword);
+            params.push(
+                keyword,
+                keyword
+            );
         }
 
         // Lọc theo sự kiện
@@ -199,7 +236,9 @@ const getAllTasks = async (req, res) => {
                 AND t.event_id = ?
             `;
 
-            params.push(Number(event_id));
+            params.push(
+                Number(event_id)
+            );
         }
 
         // Lọc theo trạng thái
@@ -235,7 +274,9 @@ const getAllTasks = async (req, res) => {
                 AND t.assigned_to = ?
             `;
 
-            params.push(Number(assigned_to));
+            params.push(
+                Number(assigned_to)
+            );
         }
 
         // Lọc từ ngày hạn hoàn thành
@@ -260,7 +301,10 @@ const getAllTasks = async (req, res) => {
             ORDER BY t.id DESC
         `;
 
-        const [tasks] = await db.query(sql, params);
+        const [tasks] = await db.query(
+            sql,
+            params
+        );
 
         return res.status(200).json({
             total: tasks.length,
@@ -268,7 +312,10 @@ const getAllTasks = async (req, res) => {
         });
 
     } catch (error) {
-        return handleServerError(res, error);
+        return handleServerError(
+            res,
+            error
+        );
     }
 };
 
@@ -282,11 +329,12 @@ const getTaskById = async (req, res) => {
             Number(id) <= 0
         ) {
             return res.status(400).json({
-                message: "Mã công việc không hợp lệ"
+                message:
+                    "Mã công việc không hợp lệ"
             });
         }
 
-        // Lấy thông tin công việc và bài nộp mới nhất
+        // Lấy thông tin task và bài nộp mới nhất
         const [tasks] = await db.query(
             `
             SELECT
@@ -349,68 +397,93 @@ const getTaskById = async (req, res) => {
             WHERE t.id = ?
             AND t.is_deleted = FALSE
             AND e.deleted_at IS NULL
+
+            LIMIT 1
             `,
             [Number(id)]
         );
 
         if (tasks.length === 0) {
             return res.status(404).json({
-                message: "Không tìm thấy công việc"
+                message:
+                    "Không tìm thấy công việc"
             });
         }
 
         const task = tasks[0];
 
-        // Admin được xem tất cả công việc
+        // Admin được xem tất cả
         if (req.user.role === "admin") {
             return res.status(200).json(task);
         }
 
-        const isLeader =
-            Number(task.event_leader_id) === Number(req.user.id);
-
         /*
-         * Sự kiện Nháp:
-         * - Leader phụ trách được xem nếu nghiệp vụ của bạn cho phép.
-         * - Employee thông thường không được xem.
+         * Leader và Employee không được xem
+         * task của sự kiện Nháp.
          */
-        if (
-            task.event_status === "Nháp" &&
-            !isLeader
-        ) {
+        if (task.event_status === "Nháp") {
             return res.status(403).json({
-                message: "Bạn không có quyền xem công việc của sự kiện Nháp"
+                message:
+                    "Bạn không có quyền xem công việc của sự kiện Nháp"
             });
         }
 
-        // Kiểm tra người dùng có phải thành viên sự kiện không
-        const [members] = await db.query(
-            `
-            SELECT id
-            FROM event_members
-            WHERE event_id = ?
-            AND user_id = ?
-            LIMIT 1
-            `,
-            [
-                task.event_id,
-                req.user.id
-            ]
-        );
+        const isLeader =
+            Number(task.event_leader_id) ===
+            Number(req.user.id);
 
-        const isMember = members.length > 0;
+        const isAssigned =
+            task.assigned_to !== null &&
+            Number(task.assigned_to) ===
+            Number(req.user.id);
 
-        // Không phải thành viên và cũng không phải Leader
-        if (!isMember && !isLeader) {
+        /*
+         * Chỉ Leader của sự kiện hoặc
+         * Employee được giao task được xem.
+         */
+        if (!isLeader && !isAssigned) {
             return res.status(403).json({
-                message: "Bạn không có quyền xem công việc này"
+                message:
+                    "Bạn không có quyền xem công việc này"
             });
+        }
+
+        /*
+         * Nếu là Employee được giao task,
+         * kiểm tra người đó vẫn còn thuộc sự kiện.
+         *
+         * Leader không cần có bản ghi event_members.
+         */
+        if (isAssigned && !isLeader) {
+            const [members] = await db.query(
+                `
+                SELECT id
+                FROM event_members
+                WHERE event_id = ?
+                AND user_id = ?
+                LIMIT 1
+                `,
+                [
+                    Number(task.event_id),
+                    Number(req.user.id)
+                ]
+            );
+
+            if (members.length === 0) {
+                return res.status(403).json({
+                    message:
+                        "Bạn không còn là thành viên của sự kiện này"
+                });
+            }
         }
 
         return res.status(200).json(task);
 
     } catch (error) {
-        return handleServerError(res, error);
+        return handleServerError(
+            res,
+            error
+        );
     }
 };
 
@@ -1219,14 +1292,37 @@ const updateTaskStatus = async (req, res) => {
             });
         }
 
+        
+
         // Chỉ Admin, Leader hoặc người được giao mới được đổi trạng thái
-        if (
-            req.user.role !== "admin" &&
-            req.user.id !== task.leader_id &&
-            req.user.id !== task.assigned_to
-        ) {
+        const isAdmin =
+            req.user.role === "admin";
+
+        const isLeader =
+            Number(req.user.id) ===
+            Number(task.leader_id);
+
+        const isAssigned =
+            Number(req.user.id) ===
+            Number(task.assigned_to);
+
+        // Chỉ Admin, Leader hoặc người được giao mới được đổi trạng thái
+        if (!isAdmin && !isLeader && !isAssigned) {
             return res.status(403).json({
                 message: "Bạn không có quyền cập nhật công việc này"
+            });
+        }
+
+        // Employee được giao task không được tự hủy công việc
+        if (
+            isAssigned &&
+            !isAdmin &&
+            !isLeader &&
+            status === "cancelled"
+        ) {
+            return res.status(403).json({
+                message:
+                    "Nhân viên không được tự hủy công việc. Vui lòng liên hệ Leader"
             });
         }
 
